@@ -1,31 +1,22 @@
 <!DOCTYPE html>
-<html lang="en" class="default">
+<html lang="{{ data['lang_page'] }}" class="default">
 
 <head>
   <!-- Required meta tags -->
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
   {% include og_meta.html %}
-  <title>Crafty Controller</title>
+  <title>{{ translate('login', 'login', data['lang']) }} - Crafty Controller</title>
   <!-- plugins:css -->
   <link rel="stylesheet" href="/static/assets/vendors/mdi/css/materialdesignicons.min.css">
-  <link rel="stylesheet" href="/static/assets/vendors/flag-icon-css/css/flag-icon.min.css">
-  <link rel="stylesheet" href="/static/assets/vendors/ti-icons/css/themify-icons.css">
-  <link rel="stylesheet" href="/static/assets/vendors/typicons/typicons.css">
-  <link rel="stylesheet" href="/static/assets/css/login.css">
   <link rel="stylesheet" href="/static/assets/vendors/css/vendor.bundle.base.css">
   <link rel="manifest" href="/static/assets/crafty.webmanifest">
 
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black">
-  <!-- <meta name="apple-mobile-web-app-title" content="Crafty Controller 4"> -->
-  <link rel="apple-touch-icon" href="../static/assets/images/Crafty_4-0.png">
-  <!-- endinject -->
-  <!-- Plugin css for this page -->
-  <!-- End Plugin css for this page -->
+  <link rel="apple-touch-icon" href="/static/assets/images/Crafty_4-0.png">
   <!-- Layout styles -->
-  <link rel="stylesheet" href="/static/assest/css/internal/root.css">
   <link rel="stylesheet" href="/static/assets/css/themes/default.css">
   <link rel="stylesheet" href="/static/assets/css/base-style.css">
   <link rel="stylesheet" href="/static/assets/css/crafty.css">
@@ -33,334 +24,428 @@
   <!-- End Layout styles -->
   <link rel="shortcut icon" type="image/svg+xml" href="/static/assets/images/logo_small.svg">
   <link rel="alternate icon" href="/static/assets/images/favicon.png" />
+  <style>
+    .login-page {
+      background-image: url("/static/assets/images/auth/{% raw url_escape(data['background'], plus=False) %}"),
+        url("/static/assets/images/auth/login_1.jpg");
+    }
+  </style>
 </head>
-<style>
-  .auth.auth-bg-1 {
-    background: url("../../static/assets/images/auth/{% raw data['background'] %}"),
-    url("/static/assets/images/auth/login_1.jpg");
-    background-size: cover;
-    background-position: center;
-  }
-</style>
 
 <body>
-  <div class="container-scroller">
-    <div class="container-fluid page-body-wrapper full-page-wrapper">
-      <div class="content-wrapper d-flex align-items-center auth auth-bg-1 theme-one">
-        <div class="row w-100">
-          <div class="col-lg-4 mx-auto">
+  <main class="login-page">
+    <div id="login-form-background" class="login-card login-modal">
+      <div id="login_opacity" data-value="{{ data['login_opacity'] }}" hidden></div>
 
-            <div id="login-form-background" class="auto-form-wrapper login-modal">
-              <div id="login_opacity" data-value="{{ data['login_opacity'] }}" hidden></div>
-              <div class="text-center auto-form-logo">
-                <img src="{{ data['brand']['full'] }}">
-              </div>
-              <form id="login-form">
-                {% raw xsrf_form_html() %}
-                <div id="login-inputs"></div>
-                <div class="form-group">
-                  <div id="error-field" class="alert alert-danger" role="alert"></div>
-                </div>
-                <div class="form-group">
-                  <label class="label">{{ translate('login', 'username', data['lang']) }}</label>
-                  <div class="input-group">
-                    <input type="text" class="form-control login-text-input login-input"
-                      placeholder="{{ translate('login', 'username', data['lang']) }}" name="username" id="username"
-                      required="true">
-                  </div>
-                </div>
-                <div class="form-group">
-                  <label class="label">{{ translate('login', 'password', data['lang']) }}</label>
-                  <div class="input-group">
-                    <input type="password" class="form-control login-text-input login-input"
-                      placeholder="{{ translate('login', 'password', data['lang']) }}" name="password" id="password"
-                      required="true">
-                  </div>
-                </div>
-                <div class="form-group">
-                  <label class="label full-width" data-backupcode="{{ translate('login', 'backupCode', data['lang']) }}"
-                    data-2fa="{{ translate('login', 'totp', data['lang']) }}" id="multi-label"><span
-                      id="auth-code-label">{{
-                      translate('login', 'totp', data['lang']) }}</span>&nbsp;<span
-                      class="badge badge-pill badge-info">{{
-                      translate('login', '2fa', data['lang'])
-                      }}</span>
-                    <div class="input-group flex-container">
-                      <div id="totp_container">
-                        <input type="text" class="form-control login-text-input login-input" placeholder="000000"
-                          name="totp" id="totp" autocomplete="one-time-code">
-                      </div>
-                  </label>
-                  <select required class="form-control form-control-lg select-css" id="2fa-type" name="type">
-                    <option value="totp">{{ translate('login', 'totpSelect', data['lang']) }}</option>
-                    <option value="backup_code">{{ translate('login', 'backupCodeTitle', data['lang']) }}</option>
-                  </select>
-                </div>
-            </div>
-            <div class="form-group">
-              <button class="login-input btn btn-primary submit-btn btn-block">{{ translate('login', 'login',
-                data['lang']) }}</button>
-            </div>
-            <div id="passkey-section" class="form-group" style="display: none;">
-              <div class="text-center my-2">
-                <span class="text-muted">{{ translate('login', 'orSeparator', data['lang']) }}</span>
-              </div>
-              <button type="button" id="passkey-login-btn" class="btn btn-outline-primary btn-block">
-                <i class="mdi mdi-key"></i>&nbsp;{{ translate('login', 'signInWithPasskey', data['lang']) }}
-              </button>
-            </div>
-            <div class="form-group d-flex justify-content-between">
-              <div class="form-check form-check-flat mt-0">
-                &nbsp;
-              </div>
-              <button onclick="resetPass()" id="#resetPass" form=""
-                class="btn btn-outline-primary btn-sm forgot-password ">{{ translate('login', 'forgotPassword',
-                data['lang']) }}</button>
-            </div>
+      <div class="text-center auto-form-logo">
+        <img src="{{ data['brand']['full'] }}" alt="Crafty Controller">
+      </div>
 
-            <div class="text-block text-center my-3">
-              <span class="text-small font-weight-semibold"><a href="https://craftycontrol.com/">Crafty Control</a>
-              </span>
-            </div>
+      <div id="error-field" class="login-alert" role="alert" aria-live="assertive"></div>
 
-            <div class="text-block text-center my-3">
-              <a href="/status" class="text-small forgot-password">{{ translate('login', 'viewStatus',
-                data['lang']) }}</a>
-            </div>
-            </form>
+      <form id="login-form" novalidate data-next="{{ data['query'] }}"
+        data-msg-network="{{ translate('login', 'networkError', data['lang']) }}"
+        data-msg-show="{{ translate('login', 'showPassword', data['lang']) }}"
+        data-msg-hide="{{ translate('login', 'hidePassword', data['lang']) }}"
+        data-msg-required="{{ translate('login', 'fieldsRequired', data['lang']) }}"
+        data-msg-totp="{{ translate('login', 'mfaPrompt', data['lang']) }}"
+        data-msg-backup="{{ translate('login', 'backupPrompt', data['lang']) }}"
+        data-msg-use-backup="{{ translate('login', 'useBackupCode', data['lang']) }}"
+        data-msg-use-totp="{{ translate('login', 'useAuthenticator', data['lang']) }}"
+        data-label-totp="{{ translate('login', 'totp', data['lang']) }}"
+        data-label-backup="{{ translate('login', 'backupCode', data['lang']) }}">
+        {% raw xsrf_form_html() %}
 
-          </div>
-
+        <div class="form-group">
+          <label class="label" for="username">{{ translate('login', 'username', data['lang']) }}</label>
+          <input type="text" class="form-control login-text-input login-input" id="username" name="username"
+            placeholder="{{ translate('login', 'username', data['lang']) }}" autocomplete="username"
+            autocapitalize="none" autocorrect="off" spellcheck="false" required autofocus>
         </div>
+
+        <div class="form-group">
+          <label class="label" for="password">{{ translate('login', 'password', data['lang']) }}</label>
+          <div class="password-wrapper">
+            <input type="password" class="form-control login-text-input login-input" id="password" name="password"
+              placeholder="{{ translate('login', 'password', data['lang']) }}" autocomplete="current-password"
+              required>
+            <button type="button" id="toggle-password" class="password-toggle"
+              aria-label="{{ translate('login', 'showPassword', data['lang']) }}"
+              title="{{ translate('login', 'showPassword', data['lang']) }}" aria-pressed="false">
+              <i class="mdi mdi-eye-outline" aria-hidden="true"></i>
+            </button>
+          </div>
+        </div>
+
+        <div id="mfa-step" class="form-group mfa-step" hidden>
+          <p id="mfa-hint" class="mfa-hint">
+            <i class="mdi mdi-shield-lock-outline" aria-hidden="true"></i>
+            <span id="mfa-hint-text">{{ translate('login', 'mfaPrompt', data['lang']) }}</span>
+          </p>
+          <label class="label" for="totp" id="auth-code-label">{{ translate('login', 'totp', data['lang']) }}</label>
+          <input type="text" class="form-control login-text-input login-input mfa-input" id="totp" name="totp"
+            placeholder="000000" autocomplete="one-time-code" inputmode="numeric" maxlength="7"
+            autocapitalize="none" autocorrect="off" spellcheck="false">
+          <input type="hidden" id="mfa-type" value="totp">
+          <button type="button" id="toggle-mfa-type" class="btn btn-link btn-sm login-link px-0">
+            {{ translate('login', 'useBackupCode', data['lang']) }}
+          </button>
+        </div>
+
+        <button type="submit" id="login-submit" class="btn btn-primary btn-block submit-btn login-submit">
+          <span class="spinner-border spinner-border-sm mr-2" role="status" aria-hidden="true" hidden></span>
+          <span class="login-submit-label">{{ translate('login', 'login', data['lang']) }}</span>
+        </button>
+      </form>
+
+      {% if data['passkey_enabled'] %}
+      <div id="passkey-section" hidden>
+        <div class="login-divider"><span>{{ translate('login', 'orSeparator', data['lang']) }}</span></div>
+        <button type="button" id="passkey-login-btn" class="btn btn-outline-primary btn-block"
+          data-msg-login-failed="{{ translate('passkey', 'loginFailed', data['lang']) }}"
+          data-msg-auth-failed="{{ translate('passkey', 'authFailed', data['lang']) }}"
+          data-msg-insecure="{{ translate('passkey', 'insecureContext', data['lang']) }}"
+          data-msg-cancelled="{{ translate('passkey', 'cancelled', data['lang']) }}">
+          <i class="mdi mdi-key-variant" aria-hidden="true"></i>&nbsp;{{ translate('login', 'signInWithPasskey',
+          data['lang']) }}
+        </button>
+      </div>
+      {% end %}
+
+      <div class="login-footer">
+        <button type="button" id="reset-pass" class="btn btn-link login-link px-0"
+          data-confirm-title="{{ translate('login', 'passwordRecovery', data['lang']) }}"
+          data-confirm="{{ translate('login', 'forgotPasswordConfirm', data['lang']) }}"
+          data-cancel="{{ translate('login', 'cancel', data['lang']) }}">
+          {{ translate('login', 'forgotPassword', data['lang']) }}
+        </button>
+        <a href="/status" class="login-link">{{ translate('login', 'viewStatus', data['lang']) }}</a>
+      </div>
+
+      <div class="login-credit">
+        <a href="https://craftycontrol.com/" target="_blank" rel="noopener">Crafty Control</a>
       </div>
     </div>
-    <!-- content-wrapper ends -->
-  </div>
-  <!-- page-body-wrapper ends -->
-  </div>
-  <!-- container-scroller -->
+  </main>
+
   <!-- plugins:js -->
   <script src="/static/assets/vendors/js/vendor.bundle.base.js"></script>
-  <!-- endinject -->
-  <!-- inject:js -->
-  <script src="/static/assets/js/shared/off-canvas.js"></script>
-  <script src="/static/assets/js/shared/hoverable-collapse.js"></script>
-  <script src="/static/assets/js/shared/misc.js"></script>
-  <script src="/static/assets/js/shared/settings.js"></script>
-  <script src="/static/assets/js/shared/todolist.js"></script>
-  <script src="../static/assets/vendors/js/bootbox.min.js"></script>
+  <script src="/static/assets/vendors/js/bootbox.min.js"></script>
   <script src="/static/assets/js/shared/passkey.js"></script>
   <!-- endinject -->
   <script>
+    (function () {
+      "use strict";
 
-    $(document).ready(function () {
-      let login_opacity_div = document.getElementById('login_opacity');
-      let opacity = login_opacity_div.getAttribute('data-value');
-      document.getElementById('login-form-background').style.background = 'rgb(34, 36, 55, ' + (opacity / 100) + ')';
-      //Register Service worker for mobile app
-      if ('serviceWorker' in navigator) {
-        navigator.serviceWorker.register('/static/assets/js/shared/service-worker.js', { scope: '/' })
-          .then(function (registration) {
-            console.log('Service Worker Registered');
-          });
+      const form = document.getElementById("login-form");
+      const msg = form.dataset;
+      const errorField = document.getElementById("error-field");
+      const usernameInput = document.getElementById("username");
+      const passwordInput = document.getElementById("password");
+      const submitBtn = document.getElementById("login-submit");
+      const mfaStep = document.getElementById("mfa-step");
+      const mfaInput = document.getElementById("totp");
+      const mfaType = document.getElementById("mfa-type");
+      let cooldownTimer = null;
+
+      // Login box opacity is configurable from Panel Settings > Custom Login
+      const opacity = document.getElementById("login_opacity").getAttribute("data-value");
+      document.getElementById("login-form-background").style.background =
+        "rgba(34, 36, 55, " + (opacity / 100) + ")";
+
+      // Register Service worker for mobile app
+      if ("serviceWorker" in navigator) {
+        navigator.serviceWorker.register("/static/assets/js/shared/service-worker.js", { scope: "/" })
+          .catch(function () { /* Not fatal (e.g. self-signed certificates) */ });
       }
-    });
-    async function resetPass() {
-      let res = await fetch(`/api/v2/crafty/resetPass/`, {
-        method: 'GET',
-      });
-      let responseData = await res.json();
-      console.log(responseData);
-      bootbox.alert(responseData.data)
 
-    }
-    $("#2fa-type").on("change", function () {
-      if ($("#2fa-type").val() === "backup_code") {
-        $("#auth-code-label").html($("#multi-label").data("backupcode"))
-        $("#totp").attr("placeholder", "ABCD-EFGH-IJKL-MNOP")
-      } else {
-        $("#totp").attr("placeholder", "000000")
-        $("#auth-code-label").html($("#multi-label").data("2fa"))
-      }
-    })
-    $("#login-form").on("submit", async function (e) {
-      e.preventDefault();
-      let loginForm = document.getElementById("login-form");
-
-      let formData = new FormData(loginForm);
-
-      //Create an object from the form data entries
-      let formDataObject = Object.fromEntries(formData.entries());
-      let body = {
-        "username": formDataObject.username,
-        "password": (formDataObject.password).toString(),
-      }
-      if (formDataObject.totp != "") {
-        let key = $("#2fa-type").val();
-        body = {
-          "username": formDataObject.username,
-          "password": (formDataObject.password).toString(),
-          [key]: formDataObject.totp,
+      // Where to go once we're logged in. Only ever a local path.
+      function landingPage(fallback) {
+        const next = msg.next || "";
+        if (next.startsWith("/") && !next.startsWith("//") && !next.includes("\\")) {
+          return next;
         }
+        return fallback || "/panel/dashboard";
       }
-      let res = await fetch(`/api/v2/auth/login/`, {
-        method: 'POST',
-        headers: {
-          'X-XSRFToken': formDataObject._xsrf,
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify(body),
-      });
-      let responseData = await res.json();
-      if (responseData.status === "ok") {
-        if (responseData.data.warning) {
-          bootbox.alert({
-            message: responseData.data.warning,
-            callback: function () {
-              console.log("message answered");
-              // Redirect after the alert is acknowledged
-              location.href = responseData.data.page;
-            }
-          });
-        } else {
-          // Redirect immediately if no warning
-          location.href = responseData.data.page;
-        }
-      } else if (responseData.cooldown_time) {
-        $("#error-field").empty().text(responseData.error_data + " ").append($('<span id="cooldown"></span>').text(responseData.cooldown_time));
-        let time_array = String(responseData.cooldown_time).split(":")
-        startCountdown(time_array[0], time_array[1]);
-      } else {
-        $("#error-field").text(responseData.error_data);
+
+      function showError(text) {
+        errorField.textContent = text || "";
       }
-    });
-    function startCountdown(minutes, seconds) {
-      let totalSeconds = parseInt(minutes) * 60 + parseInt(seconds);
-      const interval = setInterval(() => {
-        const mins = Math.floor(totalSeconds / 60);
-        const secs = totalSeconds % 60;
-        const formattedTime = `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
-        $("#cooldown").html(formattedTime);
 
-        // Stop timer at 0
-        if (totalSeconds === 0) {
-          clearInterval(interval);
-          $("#error-field").html("")
-        }
+      function setBusy(busy) {
+        submitBtn.disabled = busy || cooldownTimer !== null;
+        submitBtn.querySelector(".spinner-border").hidden = !busy;
+        form.setAttribute("aria-busy", busy ? "true" : "false");
+      }
 
-        totalSeconds--;
-      }, 1000);
-    }
-
-    // Passkey authentication - base64URLToBuffer and bufferToBase64URL loaded from passkey.js
-
-    async function checkPasskeySupport() {
-      if (globalThis.PublicKeyCredential &&
-        PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable) {
+      async function readJson(res) {
         try {
-          // Check if passkey is enabled on server
-          const configCheck = await fetch('/api/v2/auth/passkey/login/options/', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({}),
-          });
-          const config = await configCheck.json();
-          if (config.status === 'ok') {
-            document.getElementById('passkey-section').style.display = 'block';
-          }
+          return await res.json();
         } catch (e) {
-          console.log('Passkey check failed:', e);
+          return { status: "error", error_data: msg.msgNetwork };
         }
       }
-    }
 
-    document.getElementById('passkey-login-btn').addEventListener('click', async function () {
-      const loginFailedMsg = '{{ translate("passkey", "loginFailed", data["lang"]) }}';
-      const authFailedMsg = '{{ translate("passkey", "authFailed", data["lang"]) }}';
-      try {
-        const optionsRes = await fetch('/api/v2/auth/passkey/login/options/', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({}),
-        });
+      // ---- Password visibility --------------------------------------------
+      const togglePassword = document.getElementById("toggle-password");
+      togglePassword.addEventListener("click", function () {
+        const show = passwordInput.type === "password";
+        passwordInput.type = show ? "text" : "password";
+        togglePassword.setAttribute("aria-pressed", show ? "true" : "false");
+        const label = show ? msg.msgHide : msg.msgShow;
+        togglePassword.setAttribute("aria-label", label);
+        togglePassword.title = label;
+        togglePassword.querySelector("i").className = show ? "mdi mdi-eye-off-outline" : "mdi mdi-eye-outline";
+        passwordInput.focus();
+      });
 
-        if (!optionsRes.ok) {
-          $('#error-field').text(loginFailedMsg);
+      // ---- Two-factor step --------------------------------------------------
+      function setMfaType(type) {
+        mfaType.value = type;
+        mfaInput.value = "";
+        const backup = type === "backup_code";
+        document.getElementById("auth-code-label").textContent = backup ? msg.labelBackup : msg.labelTotp;
+        document.getElementById("mfa-hint-text").textContent = backup ? msg.msgBackup : msg.msgTotp;
+        document.getElementById("toggle-mfa-type").textContent = backup ? msg.msgUseTotp : msg.msgUseBackup;
+        mfaInput.placeholder = backup ? "ABCD-EFGH-IJKL-MNOP" : "000000";
+        mfaInput.classList.toggle("is-backup", backup);
+        mfaInput.inputMode = backup ? "text" : "numeric";
+        mfaInput.maxLength = backup ? 19 : 7;
+        mfaInput.autocomplete = backup ? "off" : "one-time-code";
+      }
+
+      function showMfaStep() {
+        mfaStep.hidden = false;
+        mfaInput.required = true;
+        mfaInput.focus();
+      }
+
+      function hideMfaStep() {
+        if (mfaStep.hidden) return;
+        mfaStep.hidden = true;
+        mfaInput.required = false;
+        setMfaType("totp");
+      }
+
+      document.getElementById("toggle-mfa-type").addEventListener("click", function () {
+        setMfaType(mfaType.value === "totp" ? "backup_code" : "totp");
+        mfaInput.focus();
+      });
+
+      // Changing who is logging in means we no longer know whether 2FA applies
+      usernameInput.addEventListener("input", hideMfaStep);
+
+      function normalizedMfaCode() {
+        const raw = mfaInput.value.trim();
+        if (mfaType.value === "totp") {
+          return raw.replace(/\D/g, "");
+        }
+        // Backup codes are shown as ABCD-EFGH-IJKL-MNOP but people often
+        // type them without dashes or with spaces.
+        const compact = raw.replace(/[^a-zA-Z0-9]/g, "").toUpperCase();
+        return compact.length === 16 ? compact.match(/.{4}/g).join("-") : raw;
+      }
+
+      // ---- Rate limit cooldown -------------------------------------------
+      function startCooldown(message, time) {
+        const parts = String(time).split(":");
+        let remaining = parseInt(parts[0], 10) * 60 + parseInt(parts[1], 10);
+        if (!Number.isFinite(remaining) || remaining <= 0) {
+          showError(message);
+          return;
+        }
+        clearInterval(cooldownTimer);
+        const render = function () {
+          const mins = String(Math.floor(remaining / 60)).padStart(2, "0");
+          const secs = String(remaining % 60).padStart(2, "0");
+          showError(message + " " + mins + ":" + secs);
+        };
+        render();
+        cooldownTimer = setInterval(function () {
+          remaining--;
+          if (remaining <= 0) {
+            clearInterval(cooldownTimer);
+            cooldownTimer = null;
+            showError("");
+            setBusy(false);
+            return;
+          }
+          render();
+        }, 1000);
+        setBusy(false);
+      }
+
+      // ---- Password login -------------------------------------------------
+      form.addEventListener("submit", async function (e) {
+        e.preventDefault();
+        if (submitBtn.disabled) return;
+
+        const username = usernameInput.value.trim();
+        const password = passwordInput.value;
+        if (!username || !password) {
+          showError(msg.msgRequired);
+          (username ? passwordInput : usernameInput).focus();
           return;
         }
 
-        const optionsData = await optionsRes.json();
-        if (optionsData.status !== 'ok') {
-          $('#error-field').text(optionsData.error_data || loginFailedMsg);
-          return;
+        const body = { username: username, password: password };
+        if (!mfaStep.hidden) {
+          const code = normalizedMfaCode();
+          if (!code) {
+            mfaInput.focus();
+            return;
+          }
+          body[mfaType.value] = code;
         }
 
-        const options = optionsData.data.options;
-        options.challenge = base64URLToBuffer(options.challenge);
-        if (options.allowCredentials) {
-          options.allowCredentials = options.allowCredentials.map(cred => ({
-            ...cred,
-            id: base64URLToBuffer(cred.id),
-          }));
-        }
-
-        const credential = await navigator.credentials.get({ publicKey: options });
-
-        const verifyRes = await fetch('/api/v2/auth/passkey/login/verify/', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            challenge_id: optionsData.data.challenge_id,
-            credential: {
-              id: credential.id,
-              rawId: bufferToBase64URL(credential.rawId),
-              type: credential.type,
-              response: {
-                authenticatorData: bufferToBase64URL(credential.response.authenticatorData),
-                clientDataJSON: bufferToBase64URL(credential.response.clientDataJSON),
-                signature: bufferToBase64URL(credential.response.signature),
-                userHandle: credential.response.userHandle ?
-                  bufferToBase64URL(credential.response.userHandle) : null,
-              },
+        showError("");
+        setBusy(true);
+        let res, data;
+        try {
+          res = await fetch("/api/v2/auth/login/", {
+            method: "POST",
+            headers: {
+              "X-XSRFToken": form.querySelector("input[name=_xsrf]").value,
+              "Content-Type": "application/json",
             },
-          }),
-        });
-
-        if (!verifyRes.ok && verifyRes.status >= 500) {
-          $('#error-field').text(authFailedMsg);
+            body: JSON.stringify(body),
+          });
+          data = await readJson(res);
+        } catch (err) {
+          showError(msg.msgNetwork);
+          setBusy(false);
           return;
         }
 
-        const verifyData = await verifyRes.json();
-        if (verifyData.status === 'ok') {
-          location.href = '/panel/dashboard';
-        } else {
-          $('#error-field').text(verifyData.error_data || authFailedMsg);
+        if (data.status === "ok") {
+          const destination = landingPage(data.data.page);
+          if (data.data.warning) {
+            setBusy(false);
+            bootbox.alert({
+              message: data.data.warning,
+              callback: function () { location.href = destination; },
+            });
+          } else {
+            // Keep the button busy while the browser navigates away
+            location.href = destination;
+          }
+          return;
         }
-      } catch (e) {
-        if (e.name === 'SecurityError' || e.name === 'NotSupportedError') {
-          $('#error-field').text('{{ translate("passkey", "insecureContext", data["lang"]) }}');
-        } else if (e.name === 'NotAllowedError') {
-          $('#error-field').text('{{ translate("passkey", "cancelled", data["lang"]) }}');
-        } else {
-          console.error('Passkey error:', e);
-          $('#error-field').text(authFailedMsg + ': ' + e.message);
-        }
-      }
-    });
 
-    // Check passkey support on page load
-    $(document).ready(function () {
-      checkPasskeySupport();
-    });
+        setBusy(false);
+        if (data.error === "MFA_REQUIRED") {
+          showError("");
+          showMfaStep();
+        } else if (data.cooldown_time) {
+          startCooldown(data.error_data, data.cooldown_time);
+        } else {
+          showError(data.error_data || msg.msgNetwork);
+          if (!mfaStep.hidden) {
+            mfaInput.value = "";
+            mfaInput.focus();
+          } else {
+            passwordInput.select();
+            passwordInput.focus();
+          }
+        }
+      });
+
+      // ---- Forgot password ------------------------------------------------
+      const resetBtn = document.getElementById("reset-pass");
+      resetBtn.addEventListener("click", function () {
+        bootbox.confirm({
+          title: resetBtn.dataset.confirmTitle,
+          message: resetBtn.dataset.confirm,
+          buttons: {
+            cancel: { label: resetBtn.dataset.cancel, className: "btn-outline-secondary" },
+            confirm: { label: resetBtn.dataset.confirmTitle, className: "btn-primary" },
+          },
+          callback: async function (confirmed) {
+            if (!confirmed) return;
+            try {
+              const res = await fetch("/api/v2/crafty/resetPass/", { method: "GET" });
+              const data = await readJson(res);
+              bootbox.alert(data.data || data.error_data || msg.msgNetwork);
+            } catch (err) {
+              bootbox.alert(msg.msgNetwork);
+            }
+          },
+        });
+      });
+
+      // ---- Passkeys (base64URLToBuffer / bufferToBase64URL from passkey.js)
+      const passkeyBtn = document.getElementById("passkey-login-btn");
+      if (passkeyBtn && window.PublicKeyCredential && navigator.credentials) {
+        document.getElementById("passkey-section").hidden = false;
+        const pk = passkeyBtn.dataset;
+
+        passkeyBtn.addEventListener("click", async function () {
+          showError("");
+          passkeyBtn.disabled = true;
+          try {
+            const optionsRes = await fetch("/api/v2/auth/passkey/login/options/", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({}),
+            });
+            const optionsData = await readJson(optionsRes);
+            if (optionsData.status !== "ok") {
+              showError(optionsData.error_data || pk.msgLoginFailed);
+              return;
+            }
+
+            const options = optionsData.data.options;
+            options.challenge = base64URLToBuffer(options.challenge);
+            if (options.allowCredentials) {
+              options.allowCredentials = options.allowCredentials.map(function (cred) {
+                return Object.assign({}, cred, { id: base64URLToBuffer(cred.id) });
+              });
+            }
+
+            const credential = await navigator.credentials.get({ publicKey: options });
+
+            const verifyRes = await fetch("/api/v2/auth/passkey/login/verify/", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                challenge_id: optionsData.data.challenge_id,
+                credential: {
+                  id: credential.id,
+                  rawId: bufferToBase64URL(credential.rawId),
+                  type: credential.type,
+                  response: {
+                    authenticatorData: bufferToBase64URL(credential.response.authenticatorData),
+                    clientDataJSON: bufferToBase64URL(credential.response.clientDataJSON),
+                    signature: bufferToBase64URL(credential.response.signature),
+                    userHandle: credential.response.userHandle ?
+                      bufferToBase64URL(credential.response.userHandle) : null,
+                  },
+                },
+              }),
+            });
+
+            const verifyData = await readJson(verifyRes);
+            if (verifyData.status === "ok") {
+              location.href = landingPage();
+              return;
+            }
+            showError(verifyData.error_data || pk.msgAuthFailed);
+          } catch (e) {
+            if (e.name === "SecurityError" || e.name === "NotSupportedError") {
+              showError(pk.msgInsecure);
+            } else if (e.name === "NotAllowedError") {
+              showError(pk.msgCancelled);
+            } else {
+              console.error("Passkey error:", e);
+              showError(pk.msgAuthFailed + ": " + e.message);
+            }
+          } finally {
+            passkeyBtn.disabled = false;
+          }
+        });
+      }
+    })();
   </script>
-  <style>
-    .modal-content {
-      background-color: rgb(34, 36, 55) !important;
-      color: lightgray;
-      text-align: center;
-    }
-  </style>
 </body>
 
 </html>

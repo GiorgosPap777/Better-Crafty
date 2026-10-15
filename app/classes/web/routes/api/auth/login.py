@@ -132,7 +132,7 @@ class ApiAuthLoginHandler(BaseApiHandler):
         global_lang = self.helper.get_setting("language")
         if cooldown:
             err = self.helper.translation.translate("login", "cooldown", global_lang)
-            self.finish_json(
+            return self.finish_json(
                 429,  # HTTP 429 Too Many Requests
                 {
                     "status": "error",
@@ -174,16 +174,17 @@ class ApiAuthLoginHandler(BaseApiHandler):
                 " Authentication failed from remote"
                 f" IP {self.get_remote_ip()} account disabled"
             )
-            self.finish_json(
+            return self.finish_json(
                 403,
                 {
                     "status": "error",
                     "error": "ACCOUNT_DISABLED",
-                    "error_data": "ACCOUNT DISABLED",
+                    "error_data": self.helper.translation.translate(
+                        "login", "accountDisabled", global_lang
+                    ),
                     "token": None,
                 },
             )
-            return
 
         # Only block password auth if passkeys are enabled as an alternative.
         # If passkeys are globally disabled, allow password login to prevent lockout.
@@ -216,6 +217,24 @@ class ApiAuthLoginHandler(BaseApiHandler):
         # Get the length of user TOTP actions
         totp_enabled = len(list(user_data.totp_user)) > 0
 
+        if totp_enabled and pass_login_result and not totp and not backup_code:
+            # Correct password, but this account also needs a second factor.
+            # Tell the client to ask for it rather than reporting a failed login.
+            auth_log.info(
+                f"{username} provided a valid password from remote IP"
+                f" {self.get_remote_ip()}. Waiting for MFA code"
+            )
+            return self.finish_json(
+                401,
+                {
+                    "status": "error",
+                    "error": "MFA_REQUIRED",
+                    "error_data": self.helper.translation.translate(
+                        "login", "mfaRequired", global_lang
+                    ),
+                },
+            )
+
         totp_login_result = False
         # Check if user has TOTP and if we got any type of TOTP data in the login
         # payload
@@ -238,7 +257,7 @@ class ApiAuthLoginHandler(BaseApiHandler):
                         user_data.user_id, valid_backup_code
                     )
             except RuntimeError:
-                self.finish_json(
+                return self.finish_json(
                     401,
                     {
                         "status": "error",
