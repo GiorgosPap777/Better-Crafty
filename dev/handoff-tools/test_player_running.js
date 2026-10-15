@@ -1,0 +1,51 @@
+const { chromium } = require('/opt/node22/lib/node_modules/playwright');
+const fs = require('fs');
+const TOKEN = fs.readFileSync(__dirname + '/token', 'utf8').trim();
+const S1 = '669ae1ce-61fa-498d-9782-6f3bb1804313';
+const BASE = 'https://localhost:8443';
+(async () => {
+  const b = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium-1194/chrome-linux/chrome' });
+  const ctx = await b.newContext({ viewport: { width: 1440, height: 900 }, ignoreHTTPSErrors: true });
+  await ctx.addCookies([{ name: 'token', value: TOKEN, domain: 'localhost', path: '/', secure: true }]);
+  const p = await ctx.newPage();
+  const errors = [];
+  p.on('pageerror', e => errors.push('PAGEERROR ' + e.message));
+  const auth = { headers: { Authorization: 'Bearer ' + TOKEN } };
+  await p.request.post(`${BASE}/api/v2/servers/${S1}/action/start_server`, auth);
+  let running = false;
+  for (let i = 0; i < 20 && !running; i++) {
+    await p.waitForTimeout(1000);
+    running = (await (await p.request.get(`${BASE}/api/v2/servers/${S1}/players`, auth)).json()).data.running;
+  }
+  console.log('running:', running);
+  await p.goto(`${BASE}/panel/server_detail?id=${S1}&subpage=admin_controls`, { waitUntil: 'load' });
+  await p.waitForSelector('#player-body tr');
+  await p.locator('#player-body tr', { hasText: 'Notch' }).getByRole('button', { name: 'Details' }).click();
+  await p.waitForSelector('#player_modal_body:not([hidden])');
+  await p.waitForTimeout(400);
+  await p.selectOption('#player_tab_overview select', 'creative');
+  await p.click('#player_tab_overview button:has-text("Change")');
+  await p.waitForTimeout(500);
+  console.log('status 1:', await p.locator('#player_modal_status').innerText());
+  await p.click('#player_saved button');
+  await p.waitForTimeout(500);
+  console.log('status 2:', await p.locator('#player_modal_status').innerText(), '| button:', await p.locator('#player_saved button').innerText());
+  await p.waitForTimeout(3500);
+  console.log('reloaded, body visible:', await p.isVisible('#player_modal_body'), '| save button back:', await p.locator('#player_saved button').innerText());
+  // Ban prompt over the details window
+  await p.click('#player_tab_overview button:has-text("Ban")');
+  await p.waitForSelector('.bootbox.modal.show');
+  await p.waitForTimeout(400);
+  const z = await p.evaluate(() => [...document.querySelectorAll('.modal.show')].map(m => m.id || m.className.slice(0, 30)) + ' / ' + getComputedStyle(document.querySelector('.bootbox.modal')).zIndex);
+  console.log('stacked:', z);
+  await p.screenshot({ path: __dirname + '/shots/stacked.png' });
+  await p.click('.bootbox .bootbox-cancel');
+  await p.waitForTimeout(600);
+  console.log('body modal-open after prompt closed:', await p.evaluate(() => document.body.classList.contains('modal-open')));
+  await p.screenshot({ path: __dirname + '/shots/running_overview.png' });
+  const log = await (await p.request.get(`${BASE}/api/v2/servers/${S1}/logs?file=false&colors=false&raw=true`, auth)).text();
+  console.log('log tail:', log.slice(-300));
+  await p.request.post(`${BASE}/api/v2/servers/${S1}/action/stop_server`, auth);
+  console.log('errors:', errors);
+  await b.close();
+})();

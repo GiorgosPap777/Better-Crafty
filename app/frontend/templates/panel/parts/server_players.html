@@ -6,12 +6,18 @@
     <div class="alert d-none" id="players_status" role="status"></div>
 </div>
 
-<div class="col-xl-6 col-12">
+<div class="col-12">
     <section class="config-section">
-        <div class="config-section-head">
-            <h3><i class="ph ph-users" aria-hidden="true"></i>{{ translate('serverPlayerManagement', 'players',
-                data['lang']) }}</h3>
-            <p class="text-muted small">{{ translate('serverPlayerManagement', 'playersDesc', data['lang']) }}</p>
+        <div class="config-section-head players-list-head">
+            <div>
+                <h3><i class="ph ph-users" aria-hidden="true"></i>{{ translate('serverPlayerManagement', 'players',
+                    data['lang']) }} <span class="badge badge-pill players-count" id="player_count"></span></h3>
+                <p class="text-muted small" id="players_desc">{{ translate('serverPlayerManagement', 'playersDesc',
+                    data['lang']) }}</p>
+            </div>
+            <input type="search" class="form-control players-search" id="player_search" maxlength="64" hidden
+                aria-label="{{ translate('serverPlayerManagement', 'searchPlayers', data['lang'], False) }}"
+                placeholder="{{ translate('serverPlayerManagement', 'searchPlayers', data['lang'], False) }}">
         </div>
         <div class="table-responsive">
             <table class="table players-table">
@@ -19,12 +25,17 @@
                     <tr>
                         <th scope="col">{{ translate('serverPlayerManagement', 'player', data['lang']) }}</th>
                         <th scope="col">{{ translate('serverPlayerManagement', 'status', data['lang']) }}</th>
+                        <th scope="col" class="players-playtime-col text-nowrap" id="player_playtime_head">{{
+                            translate('serverPlayerManagement', 'playTime', data['lang'], False) }}</th>
                         <th scope="col" class="text-right">{{ translate('serverPlayerManagement', 'actions',
                             data['lang']) }}</th>
                     </tr>
                 </thead>
                 <tbody id="player-body"></tbody>
             </table>
+        </div>
+        <div class="text-center mb-3" id="player_more_wrap" hidden>
+            <button type="button" class="btn btn-sm btn-outline-secondary" id="player_more"></button>
         </div>
     </section>
 </div>
@@ -104,4 +115,57 @@
             </table>
         </div>
     </section>
+</div>
+
+<div class="modal fade" id="player_modal" tabindex="-1" role="dialog" aria-labelledby="player_modal_title"
+    aria-hidden="true">
+    <div class="modal-dialog modal-xl modal-dialog-scrollable" role="document">
+        <div class="modal-content player-modal">
+            <div class="modal-header">
+                <div class="player-modal-title">
+                    <h5 class="modal-title" id="player_modal_title"></h5>
+                    <div class="small text-muted text-monospace" id="player_modal_uuid"></div>
+                </div>
+                <button type="button" class="close" data-dismiss="modal"
+                    aria-label="{{ translate('serverPlayerManagement', 'close', data['lang'], False) }}">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div id="player_modal_loading" class="text-center text-muted py-5">
+                    <span class="spinner-border spinner-border-sm" aria-hidden="true"></span>
+                    {{ translate('serverPlayerManagement', 'loading', data['lang'], False) }}
+                </div>
+                <div class="alert alert-danger" id="player_modal_error" role="alert" hidden></div>
+                <div id="player_modal_body" hidden>
+                    <div class="alert d-none" id="player_modal_status" role="status"></div>
+                    <div class="player-saved small text-muted" id="player_saved"></div>
+                    <ul class="nav nav-tabs player-tabs" role="tablist">
+                        <li class="nav-item"><a class="nav-link active" data-toggle="tab" href="#player_tab_overview"
+                                role="tab">{{ translate('serverPlayerManagement', 'tabOverview', data['lang'], False)
+                                }}</a></li>
+                        <li class="nav-item"><a class="nav-link" data-toggle="tab" href="#player_tab_inventory"
+                                role="tab">{{ translate('serverPlayerManagement', 'tabInventory', data['lang'], False)
+                                }}</a></li>
+                        <li class="nav-item"><a class="nav-link" data-toggle="tab" href="#player_tab_ender"
+                                role="tab">{{ translate('serverPlayerManagement', 'tabEnderChest', data['lang'], False)
+                                }}</a></li>
+                        <li class="nav-item"><a class="nav-link" data-toggle="tab" href="#player_tab_stats"
+                                role="tab">{{ translate('serverPlayerManagement', 'tabStats', data['lang'], False)
+                                }}</a></li>
+                        <li class="nav-item"><a class="nav-link" data-toggle="tab" href="#player_tab_advancements"
+                                role="tab">{{ translate('serverPlayerManagement', 'tabAdvancements', data['lang'],
+                                False) }}</a></li>
+                    </ul>
+                    <div class="tab-content player-tab-content">
+                        <div class="tab-pane fade show active" id="player_tab_overview" role="tabpanel"></div>
+                        <div class="tab-pane fade" id="player_tab_inventory" role="tabpanel"></div>
+                        <div class="tab-pane fade" id="player_tab_ender" role="tabpanel"></div>
+                        <div class="tab-pane fade" id="player_tab_stats" role="tabpanel"></div>
+                        <div class="tab-pane fade" id="player_tab_advancements" role="tabpanel"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
 </div>

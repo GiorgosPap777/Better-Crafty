@@ -40,6 +40,7 @@ from app.classes.web.routes.api.servers.server.properties import (
     ApiServersServerPropertiesHandler,
 )
 from app.classes.web.routes.api.servers.server.players import (
+    ApiServersServerPlayerHandler,
     ApiServersServerPlayersHandler,
 )
 from app.classes.web.routes.api.servers.server.history import (
@@ -494,6 +495,11 @@ def api_handlers(handler_args):
         (
             r"/api/v2/servers/([a-z0-9-]+)/players/?",
             ApiServersServerPlayersHandler,
+            handler_args,
+        ),
+        (
+            r"/api/v2/servers/([a-z0-9-]+)/players/([0-9a-fA-F-]+)/?",
+            ApiServersServerPlayerHandler,
             handler_args,
         ),
         (

@@ -28,7 +28,7 @@ Please report problems with this fork here, not to them.
 | **Server page header** | The same header on every server tab: status, Start / Restart / Stop, live uptime, CPU, memory, players and version. |
 | **Terminal** | Auto-scroll switch, command history with the ↑ and ↓ keys, a cap of 2,000 lines so the page stays fast, a link to older logs. |
 | **Config** | Split into sections. Game settings (`server.properties`) and memory are normal form fields now, so no more editing the file or the Java command by hand. |
-| **Players** | Online players, whitelist, operators and bans in one place, with add and remove buttons. |
+| **Players** | Everyone who has ever joined, with play time and last seen. Each player opens to their inventory, armor, ender chest, statistics and advancements. Whitelist, operators and bans in one place. |
 | **Backups** | Shows the last backup (time and size) and how many copies are kept. Buttons have labels. Restore errors are shown, and restoring a snapshot asks first. |
 | **Files** | A clickable folder path, readable file types, a menu button on each row, and a layout that works on phones. |
 | **Metrics** | Separate CPU, memory and player charts that zoom together, with quick time ranges. |
@@ -76,14 +76,37 @@ with unsaved changes, and deleting the server is in a separate danger zone.
 
 ### Players
 
-Online players, the whitelist, operators and banned players, read from the
-game's own files. Add or remove someone with one click; the command goes to
-the server console for you. The page also tells you when the whitelist is
+Every player who has ever joined the server is listed, not just the ones
+online now, with their play time and when they last played. Search the list
+by name or UUID. The whitelist, operators and banned players are read from
+the game's own files. Add or remove someone with one click; the command goes
+to the server console for you. The page also tells you when the whitelist is
 turned off, so anyone can join.
 
 | Before | After |
 |---|---|
 | ![Player management in Crafty 4.11.0](docs/screenshots/players-before.png) | ![Player management in Better Crafty](docs/screenshots/players-after.png) |
+
+**Details** opens a window for one player (Minecraft Java servers):
+
+- **Overview:** health, hunger, level, game mode, where they are, their
+  spawn point and where they last died. Kick, ban, op, whitelist or change
+  their game mode from here.
+- **Inventory:** armor, off hand, main inventory and hotbar laid out like the
+  game. Click an item for its enchantments, durability, custom name and
+  what is inside shulker boxes and bundles.
+- **Ender chest**, **Statistics** (play time, deaths, kills, distance, most
+  mined, crafted and killed, and every other statistic in a searchable
+  table) and **Advancements**.
+
+All of this is read from the world's save files, so nothing is changed and
+it works while the server is stopped. The game saves player data every few
+minutes; while the server is running, **Save now** asks it to save straight
+away. Save files from Minecraft 1.12 up to the newest format are understood.
+
+| Inventory | Statistics |
+|---|---|
+| ![A player's inventory in Better Crafty](docs/screenshots/player-inventory-after.png) | ![A player's statistics in Better Crafty](docs/screenshots/player-stats-after.png) |
 
 ### Backups
 

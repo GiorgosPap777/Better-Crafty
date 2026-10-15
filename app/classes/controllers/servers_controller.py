@@ -7,7 +7,7 @@ import typing as t
 
 from app.classes.controllers.roles_controller import RolesController
 from app.classes.helpers.file_helpers import FileHelpers
-from app.classes.helpers import server_properties
+from app.classes.helpers import player_data, server_properties
 
 from app.classes.shared.singleton import Singleton
 from app.classes.shared.server import ServerInstance
@@ -686,8 +686,14 @@ class ServersController(metaclass=Singleton):
             "whitelist": None,
             "whitelist_enabled": None,
             "ops": None,
+            "known": None,
         }
         if server_type == "minecraft-java":
+            try:
+                overview["known"] = player_data.list_players(server_path)
+            except Exception as ex:
+                logger.warning(f"Could not list saved players for {server_id}: {ex}")
+                overview["known"] = []
             overview["whitelist"] = sorted(
                 (
                     str(entry["name"])
@@ -719,6 +725,19 @@ class ServersController(metaclass=Singleton):
                 except OSError as ex:
                     logger.warning(f"Could not read {properties}: {ex}")
         return overview
+
+    @staticmethod
+    def get_player_details(server_id, uuid: str) -> t.Optional[dict]:
+        """What a Java server has saved about one player, or None.
+
+        Raises ValueError if the server is not a Java server or the UUID
+        is not valid.
+        """
+        if HelperServers.get_server_type_by_id(server_id) != "minecraft-java":
+            raise ValueError("Player data is only read for Minecraft Java servers")
+        srv = ServersController().get_server_instance_by_id(server_id)
+        server_path = srv.stats_helper.get_server_stats()["server_id"]["path"]
+        return player_data.player_details(server_path, uuid)
 
     def check_for_old_logs(self):
         servers = HelperServers.get_all_defined_servers()

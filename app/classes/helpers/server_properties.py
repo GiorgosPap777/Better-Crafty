@@ -104,6 +104,16 @@ def _read_lines(path: Path) -> t.List[str]:
         return f.read().splitlines(keepends=True)
 
 
+def read_value(path: Path, key: str) -> t.Optional[str]:
+    """One raw Java setting, with \\uXXXX escapes decoded; None if not set."""
+    value = None
+    for line in _read_lines(path):
+        parsed = _split_line(line)
+        if parsed and parsed[0] == key:
+            value = _decode_java(parsed[1])
+    return value
+
+
 def read_settings(path: Path, server_type: str) -> t.List[t.Dict[str, t.Any]]:
     """List the known settings found in the file, in the order of the field list."""
     fields = fields_for(server_type)

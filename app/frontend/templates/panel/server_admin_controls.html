@@ -48,12 +48,27 @@
 {% block js %}
 <script>
   const playerServerId = {% raw json_encode(data['server_stats']['server_id']['server_id']) %};
-  const playerText = {% raw json_encode({key: translate('serverPlayerManagement', key, data['lang']) for key in [
+  const playerText = {% raw json_encode({key: translate('serverPlayerManagement', key, data['lang'], False) for key in [
     'ban', 'kick', 'unban', 'op', 'deop', 'remove', 'online', 'lastSeen', 'noPlayers', 'noBanned',
     'noWhitelist', 'noOps', 'bannedBy', 'level', 'commandSent', 'commandFailed', 'invalidName',
-    'reasonPrompt', 'whitelistOn', 'offlineAction', 'operator']}) %};
+    'reasonPrompt', 'whitelistOn', 'offlineAction', 'operator', 'actions', 'playersDesc', 'playersDescSaved',
+    'playTime', 'lastPlayed', 'showMore', 'noMatch', 'unknownName', 'details', 'loadFailed', 'noData',
+    'lastSaved', 'staleNote', 'saveNow', 'saving', 'fileError', 'noPlayerFile', 'health', 'food',
+    'experience', 'gameMode', 'location', 'spawnPoint', 'worldSpawn', 'lastDeath', 'survival', 'creative',
+    'adventure', 'spectator', 'change', 'whitelistAdd', 'whitelistRemove', 'noNameActions', 'overworld',
+    'nether', 'end', 'head', 'chest', 'legs', 'feet', 'offhand', 'armor', 'mainInventory', 'hotbar', 'empty',
+    'itemHint', 'itemId', 'count', 'enchantments', 'durability', 'damageTaken', 'unbreakable', 'potion',
+    'contents', 'noStats', 'deaths', 'mobKills', 'playerKills', 'distance', 'blocksMined', 'itemsCrafted',
+    'jumps', 'fishCaught', 'animalsBred', 'trades', 'topMined', 'topKilled', 'topKilledBy', 'topCrafted',
+    'topUsed', 'allStats', 'searchStats', 'category', 'statistic', 'value', 'general', 'searchToSeeMore',
+    'noAdvancements', 'advancementsDone', 'advancement', 'completed']}) %};
   let overview = {% raw json_encode(data['player_overview']) %};
   let refreshTimer = null;
+  let playerSearch = "";
+  let playerLimit = 50;
+  // The player open in the details window: {uuid, name, details}
+  let currentPlayer = null;
+  let playerRequest = 0;
 
   // Player names come from the game's status ping and from files the game
   // writes, so they are only ever put on the page as text.
@@ -65,7 +80,9 @@
   }
 
   function showStatus(kind, text) {
-    $("#players_status").removeClass("d-none alert-success alert-danger").addClass("alert-" + kind).text(text);
+    // Inside the details window when it is open, so the message is seen
+    const target = $("#player_modal").hasClass("show") ? "#player_modal_status" : "#players_status";
+    $(target).removeClass("d-none alert-success alert-danger").addClass("alert-" + kind).text(text);
   }
 
   async function sendCommand(command) {
@@ -139,48 +156,219 @@
     return $('<tr class="players-empty"></tr>').append($("<td></td>").attr("colspan", columns).text(text));
   }
 
-  function renderPlayers() {
-    const body = $("#player-body").empty();
-    const players = Array.isArray(overview.players) ? overview.players : [];
-    if (players.length === 0) {
-      body.append(emptyRow(playerText.noPlayers, 3));
-      return;
+  // ---- Formatting -------------------------------------------------------
+
+  const SMALL_WORDS = new Set(["a", "and", "in", "of", "on", "the", "with"]);
+
+  // "minecraft:diamond_sword" -> "Diamond Sword"; other namespaces keep their mod name
+  function prettyId(id) {
+    id = String(id == null ? "" : id);
+    const colon = id.indexOf(":");
+    const namespace = colon >= 0 ? id.slice(0, colon) : "minecraft";
+    const path = (colon >= 0 ? id.slice(colon + 1) : id).split("/").pop();
+    const title = path.replace(/[._]+/g, " ").trim().split(/\s+/)
+      .map((word, i) => i && SMALL_WORDS.has(word) ? word : word.charAt(0).toUpperCase() + word.slice(1)).join(" ");
+    return namespace === "minecraft" ? title : `${title} (${namespace})`;
+  }
+
+  function formatNumber(value) {
+    return Number(value || 0).toLocaleString();
+  }
+
+  function formatDecimal(value) {
+    return value == null ? "—" : String(Math.round(value * 10) / 10);
+  }
+
+  // Game ticks (20 per second) as "2d 3h", "3h 12m" or "12m"
+  function formatDuration(ticks) {
+    if (ticks == null) return "—";
+    const minutes = Math.floor(ticks / 20 / 60);
+    if (minutes < 1) return "< 1m";
+    const days = Math.floor(minutes / 1440), hours = Math.floor(minutes / 60) % 24;
+    if (days) return `${days}d ${hours}h`;
+    return hours ? `${hours}h ${minutes % 60}m` : `${minutes}m`;
+  }
+
+  function formatDistance(centimetres) {
+    const metres = (centimetres || 0) / 100;
+    if (metres < 1000) return `${Math.round(metres)} m`;
+    return `${(metres / 1000).toLocaleString(undefined, { maximumFractionDigits: 1 })} km`;
+  }
+
+  function dimensionName(dimension) {
+    const known = {
+      "minecraft:overworld": playerText.overworld,
+      "minecraft:the_nether": playerText.nether,
+      "minecraft:the_end": playerText.end,
+    };
+    return known[dimension] || (dimension ? prettyId(dimension) : "?");
+  }
+
+
+  const ROMAN = ["", "I", "II", "III", "IV", "V", "VI", "VII", "VIII", "IX", "X"];
+  const SINGLE_LEVEL = new Set(["mending", "silk_touch", "infinity", "flame", "channeling", "multishot",
+    "aqua_affinity", "binding_curse", "vanishing_curse"]);
+
+  function enchantmentText([id, level]) {
+    const name = prettyId(id);
+    if (level === 1 && SINGLE_LEVEL.has(String(id).replace(/^minecraft:/, ""))) return name;
+    return `${name} ${ROMAN[level] || level}`;
+  }
+
+  // Durability of vanilla items; the game only saves it when it is changed
+  const TOOL_DURABILITY = { wooden: 59, stone: 131, copper: 190, iron: 250, golden: 32, diamond: 1561, netherite: 2031 };
+  const ARMOR_BASE = { helmet: 11, chestplate: 16, leggings: 15, boots: 13 };
+  const ARMOR_MULTIPLIER = { leather: 5, chainmail: 15, copper: 11, iron: 15, golden: 7, diamond: 33, netherite: 37 };
+  const OTHER_DURABILITY = {
+    bow: 384, crossbow: 465, trident: 250, shield: 336, elytra: 432, fishing_rod: 64, flint_and_steel: 64,
+    shears: 238, carrot_on_a_stick: 25, warped_fungus_on_a_stick: 100, mace: 500, brush: 64,
+    turtle_helmet: 275, wolf_armor: 64,
+  };
+
+  function maxDurability(item) {
+    if (item.max_damage) return item.max_damage;
+    const id = String(item.id);
+    if (id.includes(":") && !id.startsWith("minecraft:")) return null;
+    const path = id.replace(/^minecraft:/, "");
+    if (OTHER_DURABILITY[path]) return OTHER_DURABILITY[path];
+    const match = path.match(/^([a-z]+)_(sword|pickaxe|axe|shovel|hoe|helmet|chestplate|leggings|boots)$/);
+    if (!match) return null;
+    if (ARMOR_BASE[match[2]]) {
+      return ARMOR_MULTIPLIER[match[1]] ? ARMOR_BASE[match[2]] * ARMOR_MULTIPLIER[match[1]] : null;
     }
-    const opNames = new Set((overview.ops || []).map(op => op.name.toLowerCase()));
-    const sorted = [...players].sort((a, b) =>
-      (a.status === "Online" ? 0 : 1) - (b.status === "Online" ? 0 : 1) || a.name.localeCompare(b.name));
-    for (const player of sorted) {
-      const name = String(player.name);
-      const row = $("<tr></tr>");
-      const nameCell = $("<td></td>").append($("<strong></strong>").text(name));
+    return TOOL_DURABILITY[match[1]] || null;
+  }
+
+  // ---- Player list ------------------------------------------------------
+
+  function lowerNames(entries) {
+    return new Set((entries || []).map(entry => String(typeof entry === "string" ? entry : entry.name).toLowerCase()));
+  }
+
+  function isOnline(name) {
+    const lower = String(name).toLowerCase();
+    return (overview.players || []).some(p => p.status === "Online" && String(p.name).toLowerCase() === lower);
+  }
+
+  // Players with saved data (Java) together with the ones Crafty has seen online
+  function mergedPlayers() {
+    const cache = Array.isArray(overview.players) ? overview.players : [];
+    const seenByCrafty = new Map(cache.map(p => [String(p.name).toLowerCase(), p]));
+    const list = [];
+    const listed = new Set();
+    for (const known of overview.known || []) {
+      const name = known.name ? String(known.name) : null;
+      const cached = name ? seenByCrafty.get(name.toLowerCase()) : null;
+      if (name) listed.add(name.toLowerCase());
+      list.push({
+        uuid: known.uuid, name, online: Boolean(cached && cached.status === "Online"),
+        lastPlayed: known.last_played, playTime: known.play_time, lastSeen: cached ? cached.last_seen : null,
+      });
+    }
+    for (const cached of cache) {
+      if (listed.has(String(cached.name).toLowerCase())) continue;
+      list.push({
+        uuid: null, name: String(cached.name), online: cached.status === "Online",
+        lastPlayed: null, playTime: null, lastSeen: cached.last_seen,
+      });
+    }
+    list.sort((a, b) => (b.online - a.online) || ((b.lastPlayed || 0) - (a.lastPlayed || 0))
+      || String(a.name || "~").localeCompare(String(b.name || "~")));
+    return list;
+  }
+
+  function playerRow(player, opNames, withPlayTime) {
+    const name = player.name;
+    const row = $("<tr></tr>");
+    const nameCell = $("<td></td>");
+    if (name) {
+      nameCell.append($("<strong></strong>").text(name));
       if (opNames.has(name.toLowerCase())) {
         nameCell.append(" ", $('<span class="badge badge-warning"></span>').text(playerText.operator));
       }
-      row.append(nameCell);
-      const status = $("<td></td>");
-      if (player.status === "Online") {
-        status.append($('<span class="text-success"><i class="ph ph-cell-signal-full" aria-hidden="true"></i> </span>')
-          .append(document.createTextNode(playerText.online)));
+    } else {
+      nameCell.append($('<em class="text-muted"></em>').text(playerText.unknownName),
+        $('<div class="players-uuid"></div>').text(player.uuid));
+    }
+    row.append(nameCell);
+
+    const status = $("<td></td>");
+    if (player.online) {
+      status.append($('<span class="text-success"><i class="ph ph-cell-signal-full" aria-hidden="true"></i> </span>')
+        .append(document.createTextNode(playerText.online)));
+    } else if (player.lastPlayed) {
+      const when = moment.unix(player.lastPlayed);
+      status.append($('<span class="text-muted"></span>').text(`${playerText.lastPlayed}: ${when.fromNow()}`)
+        .attr("title", when.format("YYYY-MM-DD HH:mm")));
+    } else {
+      status.append($('<span class="text-muted"></span>').text(`${playerText.lastSeen}: ${player.lastSeen || "—"}`));
+    }
+    row.append(status);
+
+    if (withPlayTime) {
+      const playTime = $('<td class="players-playtime-col text-nowrap"></td>');
+      if (player.playTime != null) {
+        playTime.append($('<i class="ph ph-clock text-muted d-sm-none" aria-hidden="true"></i> '))
+          .append(document.createTextNode(formatDuration(player.playTime)))
+          .attr("title", `${playerText.playTime}: ${formatDuration(player.playTime)}`);
       } else {
-        status.append($('<span class="text-muted"></span>').text(`${playerText.lastSeen}: ${player.last_seen || "—"}`));
+        playTime.addClass("text-muted").text("—");
       }
-      row.append(status);
-      const actions = $('<div class="players-actions"></div>');
-      if (playerArg(name) !== null) {
-        if (player.status === "Online") {
-          actions.append(actionButton(playerText.kick, "btn-outline-danger", () => askReason("kick", name)));
-        }
-        if (overview.server_type !== "minecraft-bedrock") {
-          actions.append(actionButton(playerText.ban, "btn-danger", () => askReason("ban", name)));
-        }
-        if (opNames.has(name.toLowerCase())) {
-          actions.append(actionButton(playerText.deop, "btn-outline-warning", () => playerCommand("deop", name)));
-        } else {
-          actions.append(actionButton(playerText.op, "btn-outline-warning", () => playerCommand("op", name)));
-        }
+      row.append(playTime);
+    }
+
+    const actions = $('<div class="players-actions"></div>');
+    if (player.uuid) {
+      actions.append($('<button type="button" class="btn btn-sm btn-primary"></button>')
+        .append('<i class="ph ph-identification-card" aria-hidden="true"></i> ')
+        .append(document.createTextNode(playerText.details))
+        .on("click", () => openPlayerDetails(player)));
+    }
+    if (playerArg(name) !== null) {
+      if (player.online) {
+        actions.append(actionButton(playerText.kick, "btn-outline-danger", () => askReason("kick", name)));
       }
-      row.append($('<td class="text-right players-actions-cell"></td>').append(actions));
-      body.append(row);
+      if (overview.server_type !== "minecraft-bedrock") {
+        actions.append(actionButton(playerText.ban, "btn-outline-danger", () => askReason("ban", name)));
+      }
+      if (opNames.has(name.toLowerCase())) {
+        actions.append(actionButton(playerText.deop, "btn-outline-warning", () => playerCommand("deop", name)));
+      } else {
+        actions.append(actionButton(playerText.op, "btn-outline-warning", () => playerCommand("op", name)));
+      }
+    }
+    row.append($('<td class="text-right players-actions-cell"></td>').append(actions));
+    return row;
+  }
+
+  function renderPlayers() {
+    const body = $("#player-body").empty();
+    const withPlayTime = Array.isArray(overview.known);
+    const players = mergedPlayers();
+    const columns = withPlayTime ? 4 : 3;
+    $("#player_playtime_head").prop("hidden", !withPlayTime);
+    $("#players_desc").text(withPlayTime ? playerText.playersDescSaved : playerText.playersDesc);
+    $("#player_count").text(players.length || "");
+    $("#player_search").prop("hidden", players.length < 8 && !playerSearch);
+    $("#player_more_wrap").prop("hidden", true);
+    if (players.length === 0) {
+      body.append(emptyRow(playerText.noPlayers, columns));
+      return;
+    }
+    const query = playerSearch.trim().toLowerCase();
+    const matches = query
+      ? players.filter(p => String(p.name || "").toLowerCase().includes(query) || String(p.uuid || "").includes(query))
+      : players;
+    if (matches.length === 0) {
+      body.append(emptyRow(playerText.noMatch, columns));
+      return;
+    }
+    const opNames = lowerNames(overview.ops);
+    for (const player of matches.slice(0, playerLimit)) body.append(playerRow(player, opNames, withPlayTime));
+    const rest = matches.length - playerLimit;
+    if (rest > 0) {
+      $("#player_more").text(`${playerText.showMore} (${rest})`);
+      $("#player_more_wrap").prop("hidden", false);
     }
   }
 
@@ -238,6 +426,409 @@
       renderNameList("#ops-body", overview.ops, playerText.noOps, "deop", op =>
         op.level ? $('<span class="small text-muted ml-2"></span>').text(`${playerText.level} ${op.level}`) : "");
     }
+    // Ops, whitelist and online state shown in the details window
+    if (currentPlayer && currentPlayer.details) {
+      renderPlayerHeader();
+      renderOverview(currentPlayer.details);
+    }
+  }
+
+  // ---- Player details window ---------------------------------------------
+
+  function card(label, value, extra) {
+    return $('<div class="player-card"></div>').append(
+      $('<div class="player-card-label"></div>').text(label),
+      $('<div class="player-card-value"></div>').text(value),
+      extra || "");
+  }
+
+  function locationCard(label, location) {
+    if (!location || !location.position) return card(label, "—");
+    return card(label, dimensionName(location.dimension),
+      $('<div class="player-card-sub"></div>').text(location.position.map(formatDecimal).join(", ")));
+  }
+
+  function bar(fraction, kind) {
+    if (fraction == null || isNaN(fraction)) return "";
+    const width = Math.max(0, Math.min(1, fraction)) * 100;
+    return $('<div class="player-bar"></div>').append($("<span></span>").addClass("bg-" + kind).css("width", `${width}%`));
+  }
+
+  function note(text, kind) {
+    return $('<div class="alert"></div>').addClass("alert-" + (kind || "info")).text(text);
+  }
+
+  function sectionTitle(text) {
+    return $('<h6 class="inv-section-title"></h6>').text(text);
+  }
+
+  function renderPlayerHeader() {
+    const name = currentPlayer.name;
+    const title = $("#player_modal_title").text(name || playerText.unknownName);
+    if (name && isOnline(name)) title.append(" ", $('<span class="badge badge-success"></span>').text(playerText.online));
+    if (name && lowerNames(overview.ops).has(name.toLowerCase())) {
+      title.append(" ", $('<span class="badge badge-warning"></span>').text(playerText.operator));
+    }
+  }
+
+  function openPlayerDetails(player) {
+    currentPlayer = { uuid: player.uuid, name: player.name, details: null };
+    renderPlayerHeader();
+    $("#player_modal_uuid").text(player.uuid);
+    $("#player_modal_status").addClass("d-none");
+    $('#player_modal .player-tabs a[href="#player_tab_overview"]').tab("show");
+    $("#player_modal").modal("show");
+    loadPlayerDetails(true);
+  }
+
+  async function loadPlayerDetails(showSpinner) {
+    const request = ++playerRequest;
+    const uuid = currentPlayer.uuid;
+    if (showSpinner) {
+      $("#player_modal_loading").prop("hidden", false);
+      $("#player_modal_error, #player_modal_body").prop("hidden", true);
+    }
+    let details = null, error = playerText.loadFailed;
+    try {
+      const res = await fetch(`/api/v2/servers/${playerServerId}/players/${encodeURIComponent(uuid)}`);
+      let data = {};
+      try { data = await res.json(); } catch (e) { /* not JSON */ }
+      if (res.ok && data.status === "ok") {
+        details = data.data;
+      } else if (res.status === 404) {
+        error = playerText.noData;
+      } else {
+        error = `${playerText.loadFailed}: ${data.error_data || data.error || res.status}`;
+      }
+    } catch (e) {
+      console.error("Could not load player", e);
+    }
+    // Another player was opened in the meantime
+    if (request !== playerRequest || !currentPlayer || currentPlayer.uuid !== uuid) return;
+    $("#player_modal_loading").prop("hidden", true);
+    if (!details) {
+      $("#player_modal_body").prop("hidden", true);
+      $("#player_modal_error").text(error).prop("hidden", false);
+      return;
+    }
+    currentPlayer.details = details;
+    if (details.name) currentPlayer.name = details.name;
+    renderPlayerHeader();
+    renderSaved(details);
+    renderOverview(details);
+    renderInventory(details);
+    renderEnderChest(details);
+    renderStats(details);
+    renderAdvancements(details);
+    $("#player_modal_error").prop("hidden", true);
+    $("#player_modal_body").prop("hidden", false);
+  }
+
+  function renderSaved(details) {
+    const saved = $("#player_saved").empty();
+    if (details.saved_at) {
+      const when = moment.unix(details.saved_at);
+      saved.append($('<span class="font-weight-bold"></span>')
+        .text(`${playerText.lastSaved}: ${when.fromNow()}.`)
+        .attr("title", when.format("YYYY-MM-DD HH:mm:ss")), " ");
+    }
+    saved.append($("<span></span>").text(playerText.staleNote));
+    if (overview.running) {
+      const button = $('<button type="button" class="btn btn-sm btn-outline-primary ml-2"></button>')
+        .append('<i class="ph ph-floppy-disk" aria-hidden="true"></i> ')
+        .append(document.createTextNode(playerText.saveNow));
+      button.on("click", async function () {
+        button.prop("disabled", true).text(playerText.saving);
+        // The game saves player files a moment after the command
+        if (await sendCommand("save-all")) {
+          setTimeout(() => loadPlayerDetails(false), 3000);
+        } else {
+          button.prop("disabled", false).text(playerText.saveNow);
+        }
+      });
+      saved.append(button);
+    }
+  }
+
+  function renderOverview(details) {
+    const pane = $("#player_tab_overview").empty();
+    const profile = details.profile;
+    if (details.playerdata_error) {
+      pane.append(note(playerText.fileError, "warning"));
+    } else if (!profile) {
+      pane.append(note(playerText.noPlayerFile));
+    }
+    if (profile) {
+      const cards = $('<div class="player-cards"></div>');
+      cards.append(card(playerText.health, `${formatDecimal(profile.health)} / ${formatDecimal(profile.max_health)}`,
+        bar(profile.health / profile.max_health, "danger")));
+      cards.append(card(playerText.food, profile.food == null ? "—" : `${profile.food} / 20`,
+        bar(profile.food / 20, "warning")));
+      cards.append(card(playerText.experience, profile.xp_level == null ? "—" : `${playerText.level} ${profile.xp_level}`,
+        bar(profile.xp_progress, "success")));
+      cards.append(card(playerText.gameMode, playerText[profile.game_mode] || "—"));
+      cards.append(locationCard(playerText.location, { dimension: profile.dimension, position: profile.position }));
+      cards.append(profile.spawn ? locationCard(playerText.spawnPoint, profile.spawn)
+        : card(playerText.spawnPoint, playerText.worldSpawn));
+      cards.append(locationCard(playerText.lastDeath, profile.last_death));
+      pane.append(cards);
+    }
+
+    pane.append(sectionTitle(playerText.actions));
+    const name = currentPlayer.name;
+    if (playerArg(name) === null) {
+      pane.append($('<p class="small text-muted"></p>').text(playerText.noNameActions));
+      return;
+    }
+    if (!overview.running) pane.append($('<p class="small text-muted"></p>').text(playerText.offlineAction));
+    const lower = name.toLowerCase();
+    const actions = $('<div class="players-actions player-modal-actions"></div>');
+    if (isOnline(name)) actions.append(actionButton(playerText.kick, "btn-outline-danger", () => askReason("kick", name)));
+    actions.append(actionButton(playerText.ban, "btn-outline-danger", () => askReason("ban", name)));
+    if (lowerNames(overview.ops).has(lower)) {
+      actions.append(actionButton(playerText.deop, "btn-outline-warning", () => playerCommand("deop", name)));
+    } else {
+      actions.append(actionButton(playerText.op, "btn-outline-warning", () => playerCommand("op", name)));
+    }
+    if (overview.whitelist !== null) {
+      if (lowerNames(overview.whitelist).has(lower)) {
+        actions.append(actionButton(playerText.whitelistRemove, "btn-outline-danger",
+          () => playerCommand("whitelist remove", name)));
+      } else {
+        actions.append(actionButton(playerText.whitelistAdd, "btn-outline-success",
+          () => playerCommand("whitelist add", name)));
+      }
+    }
+    const select = $('<select class="form-control form-control-sm"></select>')
+      .attr("aria-label", playerText.gameMode).prop("disabled", !overview.running);
+    for (const mode of ["survival", "creative", "adventure", "spectator"]) {
+      select.append($("<option></option>").val(mode).text(playerText[mode]));
+    }
+    if (profile && profile.game_mode) select.val(profile.game_mode);
+    const change = actionButton(playerText.change, "btn-outline-primary",
+      () => sendCommand(`gamemode ${select.val()} ${playerArg(name)}`));
+    actions.append($('<div class="player-gamemode"></div>').append(
+      $('<span class="small text-muted"></span>').text(playerText.gameMode), select, change));
+    pane.append(actions);
+  }
+
+  function itemSlot(item, info, label, options = {}) {
+    if (!item) {
+      const empty = $('<div class="inv-slot empty"></div>');
+      if (label && options.alwaysLabel) empty.append($('<span class="inv-slot-label always"></span>').text(label));
+      return empty;
+    }
+    const name = item.name || prettyId(item.id);
+    const button = $('<button type="button" class="inv-slot"></button>')
+      .toggleClass("enchanted", Boolean(item.enchantments)).toggleClass("hotbar-selected", Boolean(options.selected))
+      .attr("aria-label", item.count > 1 ? `${item.count} × ${name}` : name).attr("title", name);
+    if (label) {
+      button.append($('<span class="inv-slot-label"></span>').toggleClass("always", Boolean(options.alwaysLabel)).text(label));
+    }
+    button.append($('<span class="inv-slot-name"></span>').toggleClass("custom-name", Boolean(item.name)).text(name));
+    const foot = $('<span class="inv-slot-foot"></span>');
+    const max = maxDurability(item);
+    if (item.damage && max && !item.unbreakable) {
+      const left = Math.max(0, (max - item.damage) / max);
+      foot.append($('<span class="inv-durability"></span>').append(
+        $("<span></span>").css({ width: `${left * 100}%`, background: `hsl(${Math.round(left * 120)}, 80%, 45%)` })));
+    }
+    if (item.count > 1) foot.append($('<span class="inv-slot-count"></span>').text(item.count));
+    button.append(foot);
+    button.on("click", () => showItem(button, item, info));
+    return button;
+  }
+
+  function showItem(button, item, info) {
+    button.closest(".tab-pane").find(".inv-slot.active").removeClass("active");
+    button.addClass("active");
+    info.empty().append($("<h6></h6>").toggleClass("custom-name", Boolean(item.name)).text(item.name || prettyId(item.id)));
+    const list = $('<dl class="item-info-list"></dl>');
+    const add = (label, value) => list.append($("<dt></dt>").text(label), $("<dd></dd>").text(value));
+    add(playerText.itemId, item.id);
+    add(playerText.count, item.count);
+    if (item.enchantments) add(playerText.enchantments, item.enchantments.map(enchantmentText).join(", "));
+    const max = maxDurability(item);
+    if (item.unbreakable) {
+      add(playerText.durability, playerText.unbreakable);
+    } else if (item.damage) {
+      add(playerText.durability, max ? `${Math.max(0, max - item.damage)} / ${max}` : `${playerText.damageTaken}: ${item.damage}`);
+    }
+    if (item.potion) add(playerText.potion, prettyId(item.potion));
+    if (item.contents) {
+      add(playerText.contents, item.contents.map(stack => `${stack.count} × ${stack.name || prettyId(stack.id)}`).join(", "));
+    }
+    info.append(list);
+  }
+
+  // A grid of slots from..to (inclusive), as the game lays them out
+  function slotGrid(bySlot, from, to, info, labelFor, selected) {
+    const grid = $('<div class="inv-grid"></div>');
+    let filled = 0;
+    for (let slot = from; slot <= to; slot++) {
+      const item = bySlot.get(slot);
+      if (item) filled++;
+      grid.append(itemSlot(item, info, labelFor ? labelFor(slot) : null, { selected: item && slot === selected }));
+    }
+    return filled ? grid : [grid, $('<p class="small text-muted d-lg-none"></p>').text(playerText.empty)];
+  }
+
+  function itemInfoBox() {
+    return $('<div class="item-info small text-muted"></div>').text(playerText.itemHint);
+  }
+
+  function renderInventory(details) {
+    const pane = $("#player_tab_inventory").empty();
+    if (!details.inventory) {
+      pane.append(note(details.playerdata_error ? playerText.fileError : playerText.noPlayerFile));
+      return;
+    }
+    const info = itemInfoBox();
+    const bySlot = new Map(details.inventory.map(entry => [entry.slot, entry.item]));
+    const equipment = $('<div class="inv-grid inv-equipment"></div>');
+    for (const key of ["head", "chest", "legs", "feet", "offhand"]) {
+      equipment.append(itemSlot(details.equipment[key], info, playerText[key], { alwaysLabel: true }));
+    }
+    const selected = details.profile ? details.profile.selected_slot : null;
+    pane.append(sectionTitle(playerText.armor), equipment,
+      sectionTitle(playerText.mainInventory), slotGrid(bySlot, 9, 35, info),
+      sectionTitle(playerText.hotbar), slotGrid(bySlot, 0, 8, info, slot => String(slot + 1), selected),
+      info);
+  }
+
+  function renderEnderChest(details) {
+    const pane = $("#player_tab_ender").empty();
+    if (!details.ender_chest) {
+      pane.append(note(details.playerdata_error ? playerText.fileError : playerText.noPlayerFile));
+      return;
+    }
+    const info = itemInfoBox();
+    const bySlot = new Map(details.ender_chest.map(entry => [entry.slot, entry.item]));
+    pane.append(slotGrid(bySlot, 0, 26, info), info);
+  }
+
+  const TIME_STATS = new Set(["play_time", "play_one_minute", "time_since_death", "time_since_rest",
+    "sneak_time", "total_world_time"]);
+
+  function statValue(category, id, value) {
+    if (category === "minecraft:custom") {
+      const path = String(id).replace(/^minecraft:/, "");
+      if (path.endsWith("_one_cm")) return formatDistance(value);
+      if (TIME_STATS.has(path)) return formatDuration(value);
+    }
+    return formatNumber(value);
+  }
+
+  const STATS_SHOWN = 300;
+
+  function renderStats(details) {
+    const pane = $("#player_tab_stats").empty();
+    const stats = details.stats;
+    if (!stats) {
+      pane.append(note(playerText.noStats));
+      return;
+    }
+    const custom = stats["minecraft:custom"] || {};
+    const general = key => custom[`minecraft:${key}`] || 0;
+    const total = category => Object.values(stats[category] || {}).reduce((sum, value) => sum + value, 0);
+    const distance = Object.entries(custom).filter(([key]) => key.endsWith("_one_cm"))
+      .reduce((sum, [, value]) => sum + value, 0);
+    const cards = $('<div class="player-cards"></div>');
+    for (const [label, value] of [
+      [playerText.playTime, formatDuration(general("play_time"))],
+      [playerText.deaths, formatNumber(general("deaths"))],
+      [playerText.mobKills, formatNumber(general("mob_kills"))],
+      [playerText.playerKills, formatNumber(general("player_kills"))],
+      [playerText.distance, formatDistance(distance)],
+      [playerText.blocksMined, formatNumber(total("minecraft:mined"))],
+      [playerText.itemsCrafted, formatNumber(total("minecraft:crafted"))],
+      [playerText.jumps, formatNumber(general("jump"))],
+      [playerText.fishCaught, formatNumber(general("fish_caught"))],
+      [playerText.animalsBred, formatNumber(general("animals_bred"))],
+      [playerText.trades, formatNumber(general("traded_with_villager"))],
+    ]) {
+      cards.append(card(label, value));
+    }
+    pane.append(cards);
+
+    const tops = $('<div class="player-top-lists"></div>');
+    for (const [category, label] of [
+      ["minecraft:mined", playerText.topMined], ["minecraft:killed", playerText.topKilled],
+      ["minecraft:killed_by", playerText.topKilledBy], ["minecraft:crafted", playerText.topCrafted],
+      ["minecraft:used", playerText.topUsed],
+    ]) {
+      const entries = Object.entries(stats[category] || {}).filter(([, value]) => value > 0)
+        .sort((a, b) => b[1] - a[1]).slice(0, 10);
+      if (!entries.length) continue;
+      const list = $("<ol></ol>");
+      for (const [id, value] of entries) {
+        list.append($("<li></li>").append($("<span></span>").text(prettyId(id)),
+          $('<span class="player-top-value"></span>').text(formatNumber(value))));
+      }
+      tops.append($('<div class="player-top-list"></div>').append($("<h6></h6>").text(label), list));
+    }
+    if (tops.children().length) pane.append(tops);
+
+    const rows = [];
+    for (const [category, values] of Object.entries(stats)) {
+      const categoryLabel = category === "minecraft:custom" ? playerText.general : prettyId(category);
+      for (const [id, value] of Object.entries(values)) {
+        rows.push({ category: categoryLabel, name: prettyId(id), value: statValue(category, id, value) });
+      }
+    }
+    rows.sort((a, b) => a.category.localeCompare(b.category) || a.name.localeCompare(b.name));
+    const search = $('<input type="search" class="form-control form-control-sm player-stats-search" maxlength="64">')
+      .attr({ placeholder: playerText.searchStats, "aria-label": playerText.searchStats });
+    const body = $("<tbody></tbody>");
+    const more = $('<p class="small text-muted"></p>');
+    const fill = () => {
+      const query = String(search.val() || "").trim().toLowerCase();
+      const matches = query
+        ? rows.filter(row => row.name.toLowerCase().includes(query) || row.category.toLowerCase().includes(query))
+        : rows;
+      body.empty();
+      for (const row of matches.slice(0, STATS_SHOWN)) {
+        body.append($("<tr></tr>").append($("<td></td>").text(row.category), $("<td></td>").text(row.name),
+          $('<td class="text-right"></td>').text(row.value)));
+      }
+      if (!matches.length) body.append(emptyRow(playerText.noMatch, 3));
+      more.text(matches.length > STATS_SHOWN ? playerText.searchToSeeMore : "").prop("hidden", matches.length <= STATS_SHOWN);
+    };
+    search.on("input", fill);
+    const head = $("<tr></tr>").append($('<th scope="col"></th>').text(playerText.category),
+      $('<th scope="col"></th>').text(playerText.statistic), $('<th scope="col" class="text-right"></th>').text(playerText.value));
+    pane.append(sectionTitle(playerText.allStats), search,
+      $('<div class="table-responsive"></div>').append(
+        $('<table class="table table-sm player-stats-table"></table>').append($("<thead></thead>").append(head), body)),
+      more);
+    fill();
+  }
+
+  function renderAdvancements(details) {
+    const pane = $("#player_tab_advancements").empty();
+    const done = details.advancements || [];
+    if (!done.length) {
+      pane.append(note(playerText.noAdvancements));
+      return;
+    }
+    pane.append($('<p class="small text-muted"></p>').text(`${playerText.advancementsDone}: ${done.length}`));
+    const body = $("<tbody></tbody>");
+    for (const advancement of done) {
+      const id = String(advancement.id);
+      const parts = id.split("/");
+      const namespace = id.includes(":") ? id.slice(0, id.indexOf(":") + 1) : "";
+      const category = parts.length > 1 ? prettyId(parts[0]) : "";
+      const name = parts.length > 1 && parts[parts.length - 1] === "root" ? category : prettyId(id);
+      const when = moment(advancement.done_at, "YYYY-MM-DD HH:mm:ss Z");
+      body.append($("<tr></tr>").append(
+        $("<td></td>").append($("<strong></strong>").text(name)).attr("title", id),
+        $('<td class="text-muted"></td>').text(category || namespace),
+        $('<td class="text-right text-nowrap"></td>').text(when.isValid() ? when.format("YYYY-MM-DD HH:mm") : "—")));
+    }
+    const head = $("<tr></tr>").append($('<th scope="col"></th>').text(playerText.advancement),
+      $('<th scope="col"></th>').text(playerText.category), $('<th scope="col" class="text-right"></th>').text(playerText.completed));
+    pane.append($('<div class="table-responsive"></div>').append(
+      $('<table class="table table-sm player-stats-table"></table>').append($("<thead></thead>").append(head), body)));
   }
 
   function bindForm(selector, action) {
@@ -252,20 +843,54 @@
     });
   }
 
+  function onlineNames(players) {
+    return (players || []).filter(p => p.status === "Online").map(p => String(p.name).toLowerCase()).sort().join(",");
+  }
+
   $(function () {
     bindForm("#ban_form", "ban");
     bindForm("#whitelist_form", "whitelist add");
     bindForm("#ops_form", "op");
+    $("#player_search").on("input", function () {
+      playerSearch = this.value;
+      playerLimit = 50;
+      renderPlayers();
+    });
+    $("#player_more").on("click", function () {
+      playerLimit += 200;
+      renderPlayers();
+    });
+    $("#player_modal").on("hidden.bs.modal", function () {
+      currentPlayer = null;
+      playerRequest++;
+    });
+    // A reason prompt can open on top of the details window: keep it in
+    // front, and keep the page from scrolling once it closes
+    $(document).on("show.bs.modal", ".modal", function () {
+      const open = $(".modal.show").not(this).length;
+      if (!open) return;
+      $(this).css("z-index", 1050 + open * 20);
+      setTimeout(() => $(".modal-backdrop").last().css("z-index", 1040 + open * 20));
+    });
+    $(document).on("hidden.bs.modal", ".modal", function () {
+      if ($(".modal.show").length) $("body").addClass("modal-open");
+    });
     renderAll();
     // Live updates from the shared server header (details_stats.html)
     window.onServerDetails = function (server) {
       const wasRunning = overview.running;
+      const wasOnline = onlineNames(overview.players);
       overview.running = Boolean(server.running);
       if (Array.isArray(server.players_cache)) overview.players = server.players_cache;
       if (wasRunning !== overview.running) {
         refreshOverview();
-      } else {
-        renderPlayers();
+        return;
+      }
+      renderPlayers();
+      // Someone joined or left: the game has saved their file, so read it again
+      if (wasOnline !== onlineNames(overview.players)) {
+        clearTimeout(refreshTimer);
+        refreshTimer = setTimeout(refreshOverview, 3000);
       }
     };
   });

@@ -22,6 +22,15 @@ const toTabs = async p => p.evaluate(() => {
   }
 });
 
+// Open a player's details window on the given tab
+const openPlayer = (tab, slot) => async p => {
+  await p.locator('#player-body tr', { hasText: 'Notch' }).getByRole('button', { name: 'Details' }).click();
+  await p.waitForSelector('#player_modal_body:not([hidden])');
+  await p.click(`a[href="${tab}"]`);
+  await p.waitForTimeout(500);
+  if (slot) await p.locator(`${tab} button.inv-slot`, { hasText: slot }).first().click();
+};
+
 const SHOTS = [
   { name: 'login', url: '/login', vp: DESK, auth: false },
   { name: 'login-phone', url: '/login', vp: PHONE, auth: false },
@@ -32,6 +41,9 @@ const SHOTS = [
   { name: 'config-game', url: server('config'), vp: DESK, afterOnly: true,
     prep: p => p.evaluate(() => { const s = document.querySelector('#game-settings'); window.scrollTo(0, s.getBoundingClientRect().top + window.scrollY - 80); }) },
   { name: 'players', url: server('admin_controls'), vp: DESK, prep: toTabs },
+  { name: 'player-inventory', url: server('admin_controls'), vp: DESK, afterOnly: true,
+    prep: openPlayer('#player_tab_inventory', 'Netherite Sword') },
+  { name: 'player-stats', url: server('admin_controls'), vp: DESK, afterOnly: true, prep: openPlayer('#player_tab_stats') },
   { name: 'backups', url: server('backup'), vp: DESK, prep: toTabs },
   { name: 'backup-files', url: `/panel/edit_backup?id=${S1}&backup_id=${B1}`, vp: DESK,
     prep: p => p.evaluate(() => { const t = document.querySelector('.restore_button'); if (t) window.scrollTo(0, t.closest('table, .card').getBoundingClientRect().top + window.scrollY - 120); }) },

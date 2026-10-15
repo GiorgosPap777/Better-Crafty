@@ -4,10 +4,12 @@ Read this first when picking the work back up. It records what has been done,
 what is half done, and how to rebuild the test setup (the cloud container is
 temporary, so only what is committed here survives).
 
-**Picking up on the owner's PC?** Sessions 1-6 ran in a temporary cloud
+**Picking up on the owner's PC?** Sessions 1-7 ran in a temporary cloud
 container. Paths like `$SP`, `/home/crafty/run` and `/opt/pw-browsers` existed
 only there; the scripts in `dev/handoff-tools/` need adapting to your machine.
-**Start with "Session 6" below: it is unfinished and is the current task.**
+**"Session 6" below is unfinished** (Docker image and install docs; the
+owner said they will pick it up later). Session 7 (player management) is
+done.
 
 ## The project
 
@@ -48,6 +50,8 @@ only there; the scripts in `dev/handoff-tools/` need adapting to your machine.
    Crafty controller." **Half done, see Session 6.**
 9. Then moved the work to an agent on their own PC, because the cloud
    session lacked the tools they normally use, and asked for this handoff.
+10. Session 7: "Ok I will do that later can you work on player management
+    ( inventorys , statistics etc)". Done, see Session 7.
 
 ### Questions still waiting on the owner
 
@@ -85,7 +89,8 @@ only there; the scripts in `dev/handoff-tools/` need adapting to your machine.
 | `e409e2fc` | Handoff notes for sessions 2-4, test scripts |
 | `0374b193` | Login cookie `SameSite=Lax` |
 | `8806e7ec` | README for visitors with before/after screenshots |
-| (this commit) | Dockerfile `ARG TARGETARCH` fix and fork labels; draft publish workflow; this handoff (session 6) |
+| `4e9e1244` | Dockerfile `ARG TARGETARCH` fix and fork labels; draft publish workflow; this handoff (session 6) |
+| (this commit) | Player management: every player, details window (inventory, ender chest, stats, advancements) (session 7) |
 
 ### 1. Login (`d3946c3f`)
 
@@ -590,6 +595,76 @@ the GitHub repo. The arm64 half builds under emulation and can be slow.
 - **Not checked:** what port 8000 actually does. The README currently
   calls it "HTTP".
 
+## Session 7: player management (done)
+
+The owner asked for player management "( inventorys , statistics etc)". All
+of it is read-only and comes from the world's save files, so it works while
+the server is stopped and changes nothing.
+
+### What was built
+
+- **Players list** (Player management tab): everyone who has ever joined,
+  not only who is online. Rows come from `playerdata/*.dat` merged with
+  Crafty's own `players_cache.json` (names matched case-insensitively).
+  Shows play time and last played; a search box appears from 8 players;
+  the first 50 are shown, then "Show more" adds 200. A player whose name is
+  not in `usercache.json` shows as "Unknown name" with the UUID.
+- **Details window** (Bootstrap `modal-xl`, scrollable) with tabs:
+  - Overview: health, food, level and XP bar, game mode, location and
+    dimension, spawn point, last death. Kick, ban, op/deop, whitelist and
+    a game mode select (`gamemode <mode> <name>`); these send console
+    commands, so they only show while the server runs.
+  - Inventory: armor and off hand row, main inventory 9-35, hotbar 0-8
+    with the selected slot outlined. Clicking an item shows its id, count,
+    custom name, enchantments (roman numerals), durability (computed from
+    a table of max durabilities in the JS), potion, and what is inside
+    shulker boxes and bundles.
+  - Ender chest, Statistics (11 summary cards, top-10 lists for mined,
+    killed, killed by, crafted, used; a searchable table of every stat,
+    300 rows at most), Advancements (done ones, recipes left out).
+  - "Last saved" uses the `.dat` file time. While the server runs, **Save
+    now** sends `save-all` and reloads after 3 seconds.
+- The list refreshes when the set of online players changes.
+
+### Files
+
+- `app/classes/helpers/player_data.py` (new): a small NBT reader (gzip or
+  plain; size, depth and list-length limits, raises `NbtError`), item
+  parsing, `world_folder()` (reads `level-name`, refuses folders outside
+  the server), `list_players()`, `player_details()`.
+- `app/classes/helpers/server_properties.py`: `read_value(path, key)`.
+- `servers_controller.py`: `get_player_overview()` now has `known` (list
+  from the save files, `null` for non-Java servers);
+  `get_player_details(server_id, uuid)`.
+- `api/servers/server/players.py`: shared `_authorize_players()` (server
+  access plus the Players permission) and the new handler.
+  **API:** `GET /api/v2/servers/<id>/players/<uuid>` returns
+  `{"status":"ok","data":{...}}`; 400 `INVALID_PLAYER` for a bad UUID or a
+  non-Java server; 404 `PLAYER_NOT_FOUND` when there is no save data.
+- `panel/parts/server_players.html`, `panel/server_admin_controls.html`
+  (all the JS), `css/partial/crafty-players.css`, 87 new keys under
+  `serverPlayerManagement` in `en_EN.json`. Other languages fall back to
+  English; `translate(..., False)` keeps missing keys out of the error log.
+- `tests/classes/helpers/test_player_data.py`: 23 tests, with an NBT writer
+  in the test file (also used by `dev/handoff-tools/player_fixtures.py`).
+
+### Save format differences handled
+
+- Item data in `components` (1.20.5+) or `tag` (older). Enchantments wrapped
+  in `levels` in 1.20.5-1.21.4, flat from 1.21.5, a list before 1.20.5.
+- Armor and off hand in the `equipment` compound (1.21.5+) or Inventory
+  slots 100-103 and -106 (older). Respawn point in `respawn` (1.21.5+) or
+  `SpawnX/Y/Z`.
+- Stats: nested by category (1.13+) or flat `stat.*` keys (1.12).
+  `play_one_minute` became `play_time` in 1.17; both count ticks.
+
+### Not done (ideas if the owner wants more)
+
+- Bedrock servers: their player data lives in the LevelDB world database,
+  which needs a LevelDB reader. The details button only shows for Java.
+- Editing inventories (would need the server stopped and NBT writing).
+- Item icons: names only, because Minecraft's textures cannot be shipped.
+
 ## Rebuilding the test setup (cloud container; adapt on other machines)
 
 The helper scripts are saved in `dev/handoff-tools/`. They expect to live in
@@ -607,7 +682,7 @@ the session scratchpad (`SP`), next to a `venv/`, a `token` file and a
    after editing a template, run stop, sync, start. CSS/JS only needs sync.
 3. Linters/tests: a separate venv in `$SP/venv` with black, pylint, pytest,
    pyotp, requests. Run `black --check app tests` and `pytest -q tests`
-   (104 passing at this commit).
+   (127 passing at this commit).
 4. Browser tests use Playwright at `/opt/node22/lib/node_modules/playwright`
    with Chromium at `/opt/pw-browsers/chromium-1194/chrome-linux/chrome`.
    - `crawl.js`: opens every panel page (desktop + mobile) and reports page
@@ -623,6 +698,17 @@ the session scratchpad (`SP`), next to a `venv/`, a `token` file and a
      `test_files.js`, `test_logs.js`, `test_audit.js`: E2E checks for each
      tab (`test_audit.js` covers the session 4 fixes). Run with
      `NODE_TLS_REJECT_UNAUTHORIZED=0 node X.js`.
+   - Players (session 7): `player_fixtures.py <server dir>` writes sample
+     save files for five players (modern and 1.12-era formats, an unknown
+     name) into a server's `world/`, plus `usercache.json`. Run it with the
+     `$SP/venv` python from the repo root (it imports the NBT writer from
+     the tests; set `REPO` if the repo is elsewhere). With `XSS=1` it uses
+     HTML-looking player and item names for the escaping checks; leave it
+     off for screenshots. Then `test_player_details.js` (list, every tab,
+     item details, search, phone width, escaping) and, with server 1
+     running, `test_player_running.js` (game mode, Save now, a prompt
+     stacked over the details window). `readme_shots.js` takes the
+     `players`, `player-inventory` and `player-stats` README shots.
    - After `test_files.js`, rename `world/data/renamed.txt` back to
      `world.txt` and delete `κόσμος.txt` in server 1.
 5. Test data to recreate (ids will change; update the constants at the top
