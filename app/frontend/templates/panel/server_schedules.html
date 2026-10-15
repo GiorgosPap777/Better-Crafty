@@ -440,9 +440,15 @@
         'token': token,
       },
     });
-    let responseData = await res;
-    if (responseData.statusText === "OK") {
+    // statusText is empty over HTTP/2, so check the API's own status instead
+    let responseData = await res.json().catch(() => ({}));
+    if (responseData.status === "ok") {
       globalThis.location.reload();
+    } else {
+      bootbox.alert({
+        title: responseData.error || `HTTP ${res.status}`,
+        message: responseData.error_data || ""
+      });
     }
   }
 

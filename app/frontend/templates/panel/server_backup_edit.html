@@ -382,6 +382,10 @@
   });
 
   function replacer(key, value) {
+    // Text fields and excluded paths stay text even when they look like numbers
+    if (Array.isArray(this) || ["backup_name", "backup_location", "backup_type"].includes(key)) {
+      return value;
+    }
     if (key === "excluded_dirs") {
       if (value == 0) {
         return []
@@ -423,7 +427,8 @@
     $(".cancel-button").on("click", function () {
       location.href = `/panel/server_detail?id=${serverId}&subpage=backup`
     });
-    webSocket.on('backup_status', function (backup) {
+    // webSocket is null when the panel is served without HTTPS
+    if (webSocket) webSocket.on('backup_status', function (backup) {
       text = ``;
       $(`#${backup.backup_id}_status`).show();
       if (backup.percent >= 100) {
@@ -694,15 +699,16 @@
 
   function process_tree_response(response) {
     let path = response.data.root_path.path;
-    let text = `<ul class="tree-nested d-block" id="${path}ul">`;
+    let text = `<ul class="tree-nested d-block" id="${escapeHtml(path)}ul">`;
     Object.entries(response.data).forEach(([key, value]) => {
       if (key === "root_path" || key === "db_stats") {
         //continue is not valid in for each. Return acts as a continue.
         return;
       }
       let checked = ""
-      let dpath = value.path;
-      let filename = key;
+      // Names come from the server's disk, so escape them before building HTML
+      let dpath = escapeHtml(value.path);
+      let filename = escapeHtml(key);
       if (value.excluded) {
         checked = "checked"
       }

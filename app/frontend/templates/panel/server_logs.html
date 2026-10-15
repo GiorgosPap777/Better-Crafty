@@ -135,28 +135,26 @@
 
     // Display filtered word
     words.push(word);
-    $("#ignored-words").append(
-      `<li id=${safe_word.replaceAll(" ", "-")} class="list-group-item">` +
-      "<div class='text-sm d-flex justify-content-between align-items-center'>" +
-      `${word}&nbsp;<button class='btn btn-danger' onclick='deleteWord("${word}")' >` +
-      "<i class='ph-fill ph-trash-simple'></i></button></div></li>"
-    );
+    renderWord(word);
 
     // Set word filters in browser cache
     localStorage.setItem("words", JSON.stringify(words));
   });
 
   function populateWords() {
-    words.map(word => {
-      let safe_word = sanitize(word);
+    words.forEach(renderWord);
+  }
 
-      $("#ignored-words").append(
-        `<li id=${safe_word.replaceAll(" ", "-")}  class="list-group-item">` +
-        "<div class='text-sm d-flex justify-content-between align-items-center'>" +
-        `${word}&nbsp;<button class='btn btn-danger' onclick='deleteWord("${word}")' >` +
-        "<i class='ph-fill ph-trash-simple'></i></button></div></li>"
-      );
-    });
+  // Built with DOM nodes so a filter word is always shown as plain text
+  function renderWord(word) {
+    const $remove = $("<button type='button' class='btn btn-danger'><i class='ph-fill ph-trash-simple'></i></button>")
+      .on("click", () => deleteWord(word));
+    $("#ignored-words").append(
+      $("<li class='list-group-item'>").attr("id", sanitize(word).replaceAll(" ", "-")).append(
+        $("<div class='text-sm d-flex justify-content-between align-items-center'>")
+          .append(document.createTextNode(word), "\u00a0", $remove)
+      )
+    );
   }
   // ##### End Log Filter Block #####
 

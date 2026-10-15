@@ -1,6 +1,6 @@
 const urlParams = new URLSearchParams(globalThis.location.search);
 const serverId = urlParams.get("server_id");
-const path = decodeURIComponent(urlParams.get("file"))
+const path = urlParams.get("file") // URLSearchParams already decodes it
 let modified_epoch = 1.5;
 let serverFileContent = "";
 let themes = { "dark": "ace/theme/monokai", "light": "ace/theme/chrome", "default": "ace/theme/dracula" }

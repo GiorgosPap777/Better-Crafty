@@ -3,6 +3,7 @@ import logging
 import shutil
 import asyncio
 from pathlib import Path
+from urllib.parse import unquote
 import anyio
 from PIL import Image, UnidentifiedImageError
 from app.classes.web.base_api_handler import BaseApiHandler
@@ -61,6 +62,13 @@ class ApiFilesUploadHandler(BaseApiHandler):
         self.chunked = self.request.headers.get("chunked", False)
         self.filename = self.request.headers.get("fileName", None)
         self.location = self.request.headers.get("location", None)
+        # Headers only carry Latin-1, so the web UI URI-encodes names and
+        # paths and says so; other API clients may still send them raw.
+        if self.request.headers.get("nameEncoding") == "uri":
+            if self.filename is not None:
+                self.filename = unquote(self.filename)
+            if self.location is not None:
+                self.location = unquote(self.location)
         self.chunk_index = self.request.headers.get("chunkId")
         self.temp_dir = Path(
             self.controller.project_root, "temp", self.file_id

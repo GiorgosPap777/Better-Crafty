@@ -418,15 +418,16 @@
 
   function process_tree_response(response) {
     let path = response.data.root_path.path;
-    let text = `<ul class="tree-nested d-block" id="${path}ul">`;
+    let text = `<ul class="tree-nested d-block" id="${escapeHtml(path)}ul">`;
     Object.entries(response.data).forEach(([key, value]) => {
       if (key === "root_path" || key === "db_stats") {
         //continue is not valid in for each. Return acts as a continue.
         return;
       }
       let checked = ""
-      let dpath = value.path;
-      let filename = key;
+      // Names come from the server's disk, so escape them before building HTML
+      let dpath = escapeHtml(value.path);
+      let filename = escapeHtml(key);
       if (value.excluded) {
         checked = "checked"
       }

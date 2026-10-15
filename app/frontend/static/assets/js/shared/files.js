@@ -136,7 +136,14 @@ async function getTreeView(path) {
         process_tree_response(recent_response);
         return;
     }
-    let responseData = await res.json();
+    let responseData;
+    try {
+        responseData = await res.json();
+    } catch {
+        $("#files-table-body").html("");
+        bootbox.alert(`Could not load this folder (HTTP ${res.status}).`);
+        return;
+    }
     recent_response = responseData;
     if (responseData.status === "ok") {
         modified_time = responseData.data.root_path.modified;
@@ -199,6 +206,7 @@ function setup_table_nav(response) {
 function get_more_files() {
     $("#get_more_container").remove();
     setup_table_body(recent_response);
+    setup_table_listeners();
 }
 
 function setup_table_body(response) {
@@ -276,7 +284,7 @@ function setup_table_body(response) {
 }
 
 function setup_table_listeners() {
-    $(".directory").on("mousedown", function (e) {
+    $(".directory").off("mousedown").on("mousedown", function (e) {
         if (e.button == 2) {
             return; //Dump out on right click. Let ctx pick it up
         }
@@ -296,15 +304,15 @@ function setup_table_listeners() {
         }
         getTreeView($(this).attr("data-path"))
     });
-    $(".file").click(function (e) {
+    $(".file").off("click").on("click", function (e) {
         // Prevent the click from firing if it’s on the context menu button
         if ($(e.target).closest(".context-button").length) return;
         if ($(e.target).closest(".row-select").length) return;
         if (!$(this).data("can_open") && !e.altKey) return; // Allow opening override with alt key + click
         if ($(this).children(".column-1").hasClass("editing")) return;
-        window.open(`/panel/edit_file?server_id=${serverId}&file=${encodeURI($(this).attr("data-path"))}`, "_blank")
+        window.open(`/panel/edit_file?server_id=${serverId}&file=${encodeURIComponent($(this).attr("data-path"))}`, "_blank")
     });
-    $(".tree-nav").click(function (e) {
+    $(".tree-nav").off("click").on("click", function (e) {
         // Prevent the click from firing if it’s on the context menu button
         if ($(e.target).closest(".context-button").length) return;
         getTreeView($(this).attr("data-path"))
@@ -389,7 +397,9 @@ function add_rename_listener() {
                 if ($(selected_row).children(".column-1").attr("data-name") != result) {
                     let rename = await renameItem($(selected_row).attr("data-path"), result);
                     if (rename === true) {
-                        $(selected_row).attr("data-path", $(selected_row).attr("data-path").replace($(selected_row).children(".column-1").attr("data-name"), result))
+                        const oldPath = $(selected_row).attr("data-path");
+                        const sep = Math.max(oldPath.lastIndexOf("/"), oldPath.lastIndexOf("\\"));
+                        $(selected_row).attr("data-path", oldPath.slice(0, sep + 1) + result);
 
                         $(selected_row).children(".column-1").empty()
                         let icon = '<i class="ph-fill ph-file-x text-danger"></i>'
@@ -449,14 +459,14 @@ function setup_nav_listeners() {
             "</div><div class='clearfix'></div>";
         bootbox.dialog({
             message: uploadHtml,
-            title: `${$("#table-nav-container").attr("data-uploadTitle")} ${path}`,
+            title: `${$("#table-nav-container").attr("data-uploadTitle")} ${escapeHtml(path)}`,
             buttons: {
                 success: {
                     label: $("#table-nav-container").attr("data-upload"),
                     className: "btn-default",
                     callback: async function () {
                         if ($("#files").get(0).files.length === 0) {
-                            return hideUploadBox();
+                            return;
                         }
 
                         let files = document.getElementById("files");
@@ -493,11 +503,11 @@ function setup_select_nav() {
                 message: $("#table-nav-container").attr("data-deleteItemQuestionMessage"),
                 buttons: {
                     confirm: {
-                        label: $("#table-nav-container").attr(""),
+                        label: $("#table-nav-container").attr("data-yesDelete"),
                         className: "btn-danger",
                     },
                     cancel: {
-                        label: $("#table-nav-container").attr(""),
+                        label: $("#table-nav-container").attr("data-noDelete"),
                         className: "btn-link",
                     },
                 },
@@ -579,16 +589,16 @@ function add_delete_listener() {
         const path = $(selected_row).attr("data-path");
         bootbox.confirm({
             size: "",
-            title: `${$("#table-nav-container").attr("data-deleteItemQuestion")} ${path}!`,
+            title: `${$("#table-nav-container").attr("data-deleteItemQuestion")} ${escapeHtml(path)}!`,
             closeButton: false,
             message: $("#table-nav-container").attr("data-deleteItemQuestionMessage"),
             buttons: {
                 confirm: {
-                    label: $("#table-nav-container").attr(""),
+                    label: $("#table-nav-container").attr("data-yesDelete"),
                     className: "btn-danger",
                 },
                 cancel: {
-                    label: $("#table-nav-container").attr(""),
+                    label: $("#table-nav-container").attr("data-noDelete"),
                     className: "btn-link",
                 },
             },
@@ -645,7 +655,7 @@ function add_unzip_listener() {
         const name = $(selected_row).children(".column-1").attr("data-name");
         const unzip_progress = `      
         <div style="width: 100%; min-width: 100%;" id="upload-progress-bar-${unzip_id}-container">
-          <small>${name}:</small>
+          <small>${escapeHtml(name)}:</small>
           <br>
         <div class="d-flex">
           <span class="upload-percent" id="upload-percent-${unzip_id}"></span>
@@ -731,7 +741,7 @@ async function handleUpload(files, path) {
         const file = files[i];
         const progressHtml = `
       <div style="width: 100%; min-width: 100%;" id="upload-progress-bar-${file_id}-container">
-          <small>${file.name}:</small>
+          <small>${escapeHtml(file.name)}:</small>
           <br>
           <div class="d-flex">
           <span class="upload-percent" id="upload-percent-${file_id}"></span>
@@ -954,7 +964,7 @@ $(document).ready(function () {
 
 function setup_row_select_listener() {
     console.log('listener setup')
-    $(".row-select").on("change", function () {
+    $(".row-select").off("change").on("change", function () {
         if ($(this).prop("checked")) {
             $(this).closest("tr").addClass("highlight-row");
         } else {
@@ -962,7 +972,7 @@ function setup_row_select_listener() {
         }
         setup_select_nav();
     });
-    $(".root-select").on("change", function () {
+    $(".root-select").off("change").on("change", function () {
         const checkboxes = document.querySelectorAll('.row-select');
         const main_checked = $(this).prop("checked");
         for (const row of checkboxes) {

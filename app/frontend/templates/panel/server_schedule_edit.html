@@ -219,6 +219,8 @@
     }
 
     function replacer(key, value) {
+      // Text fields stay text even when they look like numbers (e.g. "2024")
+      if (key === "name") return value;
       if (key != "start_time" && key != "cron_string" && key != "interval_type" && key != "action_id") {
         if (typeof value == "boolean") {
           return value

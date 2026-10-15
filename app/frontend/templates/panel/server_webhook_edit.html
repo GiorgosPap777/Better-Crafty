@@ -152,28 +152,10 @@
       return r ? r[1] : undefined;
     }
 
+    // Webhook fields are all strings, arrays or booleans: send them as typed.
     function replacer(key, value) {
-    if (key != "start_time" && key != "cron_string" && key != "interval_type") {
-      if (typeof value == "boolean") {
-        return value
-      }
-      console.log(key)
-      if (key === "interval" && value === ""){
-        return 0;
-      }
-      if (key === "command" && typeof(value === "integer")){
-        return value.toString();
-      }else {
-        return (isNaN(value) ? value : +value);
-      }
-    } else {
-      if (value === "" && key == "start_time"){
-        return "00:00";
-      }else{
-        return value;
-      }
+      return value;
     }
-  }
 
     const serverId = new URLSearchParams(document.location.search).get('id');
     const webhookId = new URLSearchParams(document.location.search).get('webhook_id');
