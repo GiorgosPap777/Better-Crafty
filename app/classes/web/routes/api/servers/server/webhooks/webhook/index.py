@@ -63,6 +63,27 @@ webhook_patch_schema = {
 
 
 class ApiServersServerWebhooksManagementIndexHandler(BaseApiHandler):
+    def _webhook_on_server(self, server_id: str, webhook_id: str) -> bool:
+        """Check the webhook belongs to this server; send a 400 if not.
+
+        Without this, a user with config rights on one server could read,
+        change, test or delete another server's webhooks by id.
+        """
+        if (
+            str(webhook_id)
+            in self.controller.management.get_webhooks_by_server(server_id).keys()
+        ):
+            return True
+        self.finish_json(
+            400,
+            {
+                "status": "error",
+                "error": "NO WEBHOOK FOUND",
+                "error_data": "NOT FOUND",
+            },
+        )
+        return False
+
     def get(self, server_id: str, webhook_id: str):
         auth_data = self.authenticate_user()
         if not auth_data:
@@ -86,18 +107,8 @@ class ApiServersServerWebhooksManagementIndexHandler(BaseApiHandler):
                     ),
                 },
             )
-        if (
-            not str(webhook_id)
-            in self.controller.management.get_webhooks_by_server(server_id).keys()
-        ):
-            return self.finish_json(
-                400,
-                {
-                    "status": "error",
-                    "error": "NO WEBHOOK FOUND",
-                    "error_data": "NOT FOUND",
-                },
-            )
+        if not self._webhook_on_server(server_id, webhook_id):
+            return
         self.finish_json(
             200,
             {
@@ -130,6 +141,8 @@ class ApiServersServerWebhooksManagementIndexHandler(BaseApiHandler):
                 },
             )
 
+        if not self._webhook_on_server(server_id, webhook_id):
+            return
         try:
             self.controller.management.delete_webhook(webhook_id)
         except Exception:
@@ -214,6 +227,8 @@ class ApiServersServerWebhooksManagementIndexHandler(BaseApiHandler):
                 },
             )
 
+        if not self._webhook_on_server(server_id, webhook_id):
+            return
         data["server_id"] = server_id
         if "trigger" in data.keys():
             triggers = ""
@@ -274,6 +289,8 @@ class ApiServersServerWebhooksManagementIndexHandler(BaseApiHandler):
                     ),
                 },
             )
+        if not self._webhook_on_server(server_id, webhook_id):
+            return
         webhook = self.controller.management.get_webhook_by_id(webhook_id)
         webhook_provider = WebhookFactory.create_provider(webhook["webhook_type"])
         server_base_url = f"{self.helper.get_setting('base_url')}"

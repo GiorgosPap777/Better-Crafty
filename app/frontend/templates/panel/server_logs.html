@@ -30,7 +30,8 @@
           <div class="col-md-12">
             <div class="form-group">
               <label for="log_file_select">{{ translate('serverDetails', 'logFile', data['lang']) }}</label>
-              <select class="form-control" id="log_file_select"></select>
+              <select class="form-control" id="log_file_select"
+                data-empty="{{ translate('serverDetails', 'noLogFiles', data['lang']) }}"></select>
             </div>
             <div class="input-group">
               <div id="virt_console" class="virt_console">
@@ -227,10 +228,15 @@
         'X-XSRFToken': token
       },
     });
-    let responseData = await res.json();
-    if (responseData.status !== "ok") return;
-
+    let responseData = await res.json().catch(() => ({}));
     const select = document.getElementById('log_file_select');
+    if (responseData.status !== "ok" || !responseData.data || responseData.data.length === 0) {
+      select.innerHTML = '';
+      let option = document.createElement('option');
+      option.textContent = select.dataset.empty;
+      select.appendChild(option);
+      return;
+    }
     select.innerHTML = '';
     for (let entry of responseData.data) {
       let option = document.createElement('option');

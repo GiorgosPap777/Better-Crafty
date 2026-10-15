@@ -12,6 +12,7 @@ import httpx
 import aiofiles
 import nh3
 import tornado.web
+from peewee import DoesNotExist
 
 # TZLocal is set as a hidden import on win pipeline
 from tzlocal import get_localzone
@@ -1240,6 +1241,10 @@ class PanelHandler(BaseHandler):
                 self.controller.servers.get_server_type_by_id(server_id)
             )
             page_data["new_webhook"] = False
+            if str(webhook_id) not in self.controller.management.get_webhooks_by_server(
+                server_id
+            ):
+                return self.redirect("/panel/error?error=Invalid Webhook ID")
             page_data["webhook"] = self.controller.management.get_webhook_by_id(
                 webhook_id
             )
@@ -1338,7 +1343,12 @@ class PanelHandler(BaseHandler):
             if sch_id is None:
                 self.redirect("/panel/error?error=Invalid Schedule ID")
                 return
-            schedule = self.controller.management.get_scheduled_task_model(sch_id)
+            try:
+                schedule = self.controller.management.get_scheduled_task_model(sch_id)
+            except DoesNotExist:
+                schedule = None
+            if schedule is None or str(schedule.server_id_id) != str(server_id):
+                return self.redirect("/panel/error?error=Invalid Schedule ID")
             page_data["active_link"] = "schedules"
             page_data["permissions"] = {
                 "Commands": EnumPermissionsServer.COMMANDS,
@@ -1446,9 +1456,14 @@ class PanelHandler(BaseHandler):
                 )
             )
             server_info = self.controller.servers.get_server_data_by_id(server_id)
-            page_data["backup_config"] = self.controller.management.get_backup_config(
-                backup_id
-            )
+            try:
+                page_data["backup_config"] = (
+                    self.controller.management.get_backup_config(backup_id)
+                )
+            except DoesNotExist:
+                return self.redirect("/panel/error?error=Invalid Backup ID")
+            if page_data["backup_config"]["server_id"]["server_id"] != server_id:
+                return self.redirect("/panel/error?error=Invalid Backup ID")
             page_data["backups"] = self.controller.management.get_backups_by_server(
                 server_id, model=True
             )

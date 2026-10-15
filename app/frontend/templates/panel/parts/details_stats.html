@@ -135,8 +135,7 @@
             translate('serverStats', 'description', data['lang']) }}</div>
           <div class="server-stat-value server-stat-text">
             <span id="input_motd" class="input_motd">{% if srv['version'] not in ('False', '', False, None) %}{{
-              translate('serverStats', 'loadingMotd', data['lang']) }}{% else %}{{ translate('serverStats',
-              'unableToConnect', data['lang']) }}{% end %}</span>
+              translate('serverStats', 'loadingMotd', data['lang']) }}{% else %}&mdash;{% end %}</span>
           </div>
         </div>
 
@@ -339,7 +338,7 @@
       const hasVersion = running && stats.version && stats.version !== "False";
       document.getElementById("version").textContent = hasVersion ? stats.version : msg.msgUnable;
       const motd = document.getElementById("input_motd");
-      motd.innerText = hasVersion ? (stats.desc || "") : msg.msgUnable;
+      motd.innerText = hasVersion ? (stats.desc || "") : "\u2014";
       initParser("input_motd", "input_motd");
 
       renderState();

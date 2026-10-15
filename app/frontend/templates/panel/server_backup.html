@@ -57,12 +57,13 @@
                         <tr class="rounded">
                           <th scope="col" style="width: 15%; min-width: 10px;">{{ translate('serverBackups', 'name',
                             data['lang']) }} </th>
-                          <th scope="col" style="width: 10%; min-width: 10px;">{{ translate('serverBackups', 'status',
+                          <th scope="col" style="width: 12%; min-width: 10px;">{{ translate('serverBackups', 'status',
                             data['lang']) }} </th>
-                          <th scope="col" style="width: 50%; min-width: 50px;">{{ translate('serverBackups',
+                          <th scope="col" style="width: 38%; min-width: 50px;">{{ translate('serverBackups',
                             'storageLocation', data['lang']) }}</th>
-                          <th scope="col" style="width: 10%; min-width: 50px;">Backup Type</th>
-                          <th scope="col" style="width: 10%; min-width: 50px;">{{ translate('serverBackups', 'actions',
+                          <th scope="col" style="width: 17%; min-width: 50px;">{{ translate('serverBackups', 'type',
+                            data['lang']) }}</th>
+                          <th scope="col" style="width: 18%; min-width: 50px;">{{ translate('serverBackups', 'actions',
                             data['lang']) }}</th>
                         </tr>
                       </thead>
@@ -89,8 +90,13 @@
                           <td id="{{backup.backup_location}}" class="type">
                             <p class="no-scroll">{{backup.backup_location}}</p>
                           </td>
-                          <td id="{{backup.max_backups}}" class="trigger overflow-scroll" style="max-width: 30px;">
-                            <p>{{backup.max_backups}}</p>
+                          <td class="trigger">
+                            <p class="mb-1">{% if backup.backup_type == "snapshot" %}{{ translate('serverBackups',
+                              'typeSnapshot', data['lang']) }}{% else %}{{ translate('serverBackups', 'typeZip',
+                              data['lang']) }}{% end %}</p>
+                            <small class="text-muted">{{ translate('serverBackups', 'maxBackups', data['lang']) }}:
+                              {% if backup.max_backups %}{{ backup.max_backups }}{% else %}{{
+                              translate('serverBackups', 'unlimited', data['lang']) }}{% end %}</small>
                           </td>
                           <td id="backup_edit" class="action">
                             <button
@@ -99,12 +105,12 @@
                               <i class="ph-fill ph-pencil-simple"></i>
                             </button>
                             {% if not backup.default %}
-                            <button data-backup={{ backup.backup_id }} data-backupname={{ backup.backup_name }}
+                            <button data-backup="{{ backup.backup_id }}" data-backupname="{{ backup.backup_name }}"
                               class="btn btn-danger del_button">
                               <i class="ph-fill ph-trash-simple" aria-hidden="true"></i>
                             </button>
                             {% end %}
-                            <button data-backup={{ backup.backup_id }} data-toggle="tooltip"
+                            <button data-backup="{{ backup.backup_id }}" data-toggle="tooltip"
                               title="{{ translate('serverBackups', 'run', data['lang']) }}"
                               class="btn btn-outline-warning run-backup backup_now_button">
                               <i class="ph-fill ph-fast-forward"></i>
@@ -152,12 +158,12 @@
                               <i class="ph-fill ph-pencil-simple"></i>
                             </button>
                             {% if not backup.default %}
-                            <button data-backup={{ backup.backup_id }} data-backupname={{ backup.backup_name }}
+                            <button data-backup="{{ backup.backup_id }}" data-backupname="{{ backup.backup_name }}"
                               class="btn btn-danger del_button">
                               <i class="ph-fill ph-trash-simple" aria-hidden="true"></i>
                             </button>
                             {% end %}
-                            <button data-backup={{ backup.backup_id }} data-toggle="tooltip"
+                            <button data-backup="{{ backup.backup_id }}" data-toggle="tooltip"
                               title="{{ translate('serverBackups', 'run', data['lang']) }}"
                               class="btn btn-outline-warning test-socket backup_now_button">
                               <i class="ph-fill ph-fast-forward"></i>

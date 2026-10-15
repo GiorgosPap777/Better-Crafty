@@ -98,14 +98,14 @@
                           </td>
                           <td id="{{schedule.interval}}">
                             {% if schedule.interval_type != '' and schedule.interval_type != 'reaction' %}
-                            <p>{{ translate('serverSchedules', 'every', data['lang']) }}</p>
-                            <p>{{schedule.interval}} {{schedule.interval_type}}</p>
+                            <p>{{ translate('serverSchedules', 'every', data['lang']) }}
+                              {% if schedule.interval == 1 %}{{ schedule.interval_type[:-1] }}{% else %}{{ schedule.interval }} {{ schedule.interval_type }}{% end %}</p>
                             {% elif schedule.interval_type == 'reaction' %}
                             <p>{{schedule.interval_type}}<br><br>{{ translate('serverSchedules', 'child',
                               data['lang'])}}:
                               {{ schedule.parent }}</p>
                             {% else %}
-                            <p>Cron String:</p>
+                            <p>{{ translate('serverSchedules', 'cron', data['lang']) }}:</p>
                             <p>{{schedule.cron_string}}</p>
                             {% end %}
                           </td>
@@ -193,11 +193,10 @@
                                     <p class="mb-0">{{schedule.command}}</p>
                                   </li>
                                   <li id="{{schedule.interval}}" class="action list-group-item">
-                                    {% if schedule.interval != '' %}
+                                    {% if schedule.interval_type != '' and schedule.interval_type != 'reaction' %}
                                     <h4>{{ translate('serverSchedules', 'interval', data['lang']) }}</h4>
                                     <p class="mb-0">{{ translate('serverSchedules', 'every', data['lang']) }}
-                                      {{schedule.interval}}
-                                      {{schedule.interval_type}}</p>
+                                      {% if schedule.interval == 1 %}{{ schedule.interval_type[:-1] }}{% else %}{{ schedule.interval }} {{ schedule.interval_type }}{% end %}</p>
                                     {% elif schedule.interval_type == 'reaction' %}
                                     <h4>{{ translate('serverSchedules', 'interval', data['lang']) }}</h4>
                                     <p class="mb-0">{{schedule.interval_type}}<br><br>{{ translate('serverSchedules',

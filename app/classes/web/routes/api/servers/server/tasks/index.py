@@ -4,6 +4,7 @@ import json
 import logging
 
 from croniter import croniter
+from playhouse.shortcuts import model_to_dict
 from jsonschema import ValidationError, validate
 from app.classes.models.server_permissions import EnumPermissionsServer
 from app.classes.web.base_api_handler import BaseApiHandler
@@ -94,8 +95,46 @@ new_task_schema = {
 
 
 class ApiServersServerTasksIndexHandler(BaseApiHandler):
-    def get(self, server_id: str, task_id: str):
-        pass
+    def get(self, server_id: str):
+        auth_data = self.authenticate_user()
+        if not auth_data:
+            return
+        if server_id not in [str(x["server_id"]) for x in auth_data[0]]:
+            return self.finish_json(
+                400,
+                {
+                    "status": "error",
+                    "error": "NOT_AUTHORIZED",
+                    "error_data": self.helper.translation.translate(
+                        "validators", "insufficientPerms", auth_data[4]["lang"]
+                    ),
+                },
+            )
+        mask = self.controller.server_perms.get_lowest_api_perm_mask(
+            self.controller.server_perms.get_user_permissions_mask(
+                auth_data[4]["user_id"], server_id
+            ),
+            auth_data[5],
+        )
+        server_permissions = self.controller.server_perms.get_permissions(mask)
+        if EnumPermissionsServer.SCHEDULE not in server_permissions:
+            return self.finish_json(
+                400,
+                {
+                    "status": "error",
+                    "error": "NOT_AUTHORIZED",
+                    "error_data": self.helper.translation.translate(
+                        "validators", "insufficientPerms", auth_data[4]["lang"]
+                    ),
+                },
+            )
+        schedules = [
+            model_to_dict(schedule, recurse=False)
+            for schedule in self.controller.management.get_schedules_by_server(
+                server_id
+            )
+        ]
+        self.finish_json(200, {"status": "ok", "data": schedules})
 
     def post(self, server_id: str):
         auth_data = self.authenticate_user()
@@ -163,6 +202,22 @@ class ApiServersServerTasksIndexHandler(BaseApiHandler):
         data["server_id"] = server_id
         if not data.get("start_time"):
             data["start_time"] = "00:00"
+        # Fill in optional fields so a minimal request does not fail later
+        data.setdefault("enabled", True)
+        data.setdefault("command", None)
+        data.setdefault("one_time", False)
+        data.setdefault("cron_string", "")
+        data.setdefault("delay", 0)
+        for key in ("name", "action", "interval", "interval_type"):
+            if key not in data:
+                return self.finish_json(
+                    400,
+                    {
+                        "status": "error",
+                        "error": "INVALID_JSON_SCHEMA",
+                        "error_data": f"{key} is required",
+                    },
+                )
 
         # validate cron string
         if "cron_string" in data:

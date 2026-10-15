@@ -4,6 +4,7 @@ import json
 import logging
 
 from croniter import croniter
+from peewee import DoesNotExist
 from jsonschema import ValidationError, validate
 from app.classes.models.server_permissions import EnumPermissionsServer
 
@@ -96,6 +97,22 @@ task_patch_schema = {
 
 
 class ApiServersServerTasksTaskIndexHandler(BaseApiHandler):
+    def _get_server_task(self, server_id: str, task_id: str):
+        """Return the schedule if it exists and belongs to this server.
+
+        Otherwise send a 404 and return None. Without this check, a user
+        with schedule rights on one server could read, change or delete
+        another server's schedules by id.
+        """
+        try:
+            task = self.controller.management.get_scheduled_task(task_id)
+        except DoesNotExist:
+            task = None
+        if not task or str(task["server_id"]["server_id"]) != server_id:
+            self.finish_json(404, {"status": "error", "error": "SCHEDULE_NOT_FOUND"})
+            return None
+        return task
+
     def get(self, server_id: str, task_id: str):
         auth_data = self.authenticate_user()
         if not auth_data:
@@ -119,7 +136,10 @@ class ApiServersServerTasksTaskIndexHandler(BaseApiHandler):
                     ),
                 },
             )
-        self.finish_json(200, self.controller.management.get_scheduled_task(task_id))
+        task = self._get_server_task(server_id, task_id)
+        if task is None:
+            return
+        self.finish_json(200, task)
 
     def delete(self, server_id: str, task_id: str):
         auth_data = self.authenticate_user()
@@ -145,12 +165,18 @@ class ApiServersServerTasksTaskIndexHandler(BaseApiHandler):
                 },
             )
 
+        if self._get_server_task(server_id, task_id) is None:
+            return
         try:
             self.tasks_manager.remove_job(task_id)
         except Exception as why:
             return self.finish_json(
                 400,
-                {"status": "error", "error": "NO SCHEDULE FOUND", "error_data": why},
+                {
+                    "status": "error",
+                    "error": "NO SCHEDULE FOUND",
+                    "error_data": str(why),
+                },
             )
         self.controller.management.add_to_audit_log(
             auth_data[4]["user_id"],
@@ -225,6 +251,9 @@ class ApiServersServerTasksTaskIndexHandler(BaseApiHandler):
                     ),
                 },
             )
+
+        if self._get_server_task(server_id, task_id) is None:
+            return
 
         # Checks to make sure some doofus didn't actually make the newly
         # created task a child of itself.
