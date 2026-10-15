@@ -366,10 +366,13 @@ class ApiAuthLoginHandler(BaseApiHandler):
             expire_days = "5"
 
         if user_id is not None:
+            # SameSite=Lax: the API does not check XSRF tokens, so other
+            # sites must not be able to send requests with this cookie.
             self.set_cookie(
                 "token",
                 token,
                 expires_days=int(expire_days),
+                samesite="Lax",
             )
         else:
             self.clear_cookie("token")

@@ -181,7 +181,8 @@ class ApiAuthPasskeyLoginVerifyHandler(BaseApiHandler):
         if not expire_days:
             expire_days = "30"
 
-        self.set_cookie("token", token, expires_days=int(expire_days))
+        # SameSite=Lax: see login.py
+        self.set_cookie("token", token, expires_days=int(expire_days), samesite="Lax")
 
         return self.finish_json(
             200,
