@@ -247,6 +247,41 @@
     .server-stat-wide {
         margin-top: 0.5rem;
     }
+
+    /* Compact header on phones: the server name is already in the top bar */
+    .server-title-row {
+        display: none;
+    }
+
+    .server-overview-head {
+        margin-bottom: 0.75rem;
+    }
+
+    .server-overview:not(.details-open) .server-stat-extra {
+        display: none;
+    }
+
+    .server-stat-label {
+        font-size: 0.68rem;
+        margin-bottom: 0.15rem;
+    }
+
+    .server-stat-value {
+        font-size: 1rem;
+    }
+
+    .server-stat-sub {
+        display: none;
+    }
+}
+
+.server-details-toggle {
+    display: flex;
+    align-items: center;
+    gap: 0.3rem;
+    margin: 0.5rem auto 0;
+    padding: 0.25rem 0.5rem;
+    color: var(--info);
 }
 
 .server-stat-label {

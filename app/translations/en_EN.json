@@ -639,7 +639,9 @@
     "serverOverview": {
         "controls": "Server controls",
         "killConfirm": "This will kill the server process and all of its subprocesses. Killing a process can corrupt files, so only do this if the server is not responding to Stop. Are you sure you want to continue?",
+        "lessDetails": "Fewer details",
         "moreActions": "More actions",
+        "moreDetails": "More details",
         "requestFailed": "The request could not be completed. Please try again.",
         "restarting": "Restarting...",
         "serverType": "Server type",

@@ -122,7 +122,7 @@
             <div class="server-stat-value" id="players">{% if srv['int_ping_results'] in (True, 'True') %}{{
               srv['online'] }} / {{ srv['max'] }}{% else %}&mdash;{% end %}</div>
           </div>
-          <div class="server-stat">
+          <div class="server-stat server-stat-extra">
             <div class="server-stat-label"><i class="ph ph-tag" aria-hidden="true"></i>{{ translate('serverStats',
               'version', data['lang']) }}</div>
             <div class="server-stat-value server-stat-text" id="version">{% if srv['version'] not in ('False', '',
@@ -130,7 +130,7 @@
               data['lang']) }}{% end %}</div>
           </div>
         </div>
-        <div class="server-stat server-stat-wide">
+        <div class="server-stat server-stat-wide server-stat-extra">
           <div class="server-stat-label"><i class="ph ph-chat-centered-text" aria-hidden="true"></i>{{
             translate('serverStats', 'description', data['lang']) }}</div>
           <div class="server-stat-value server-stat-text">
@@ -139,12 +139,19 @@
           </div>
         </div>
 
-        <div class="server-overview-meta">
+        <div class="server-overview-meta server-stat-extra">
           <span><i class="ph ph-globe-hemisphere-west" aria-hidden="true"></i>
             {{ translate('serverStats', 'serverTimeZone', data['lang']) }}: {{ data.get('serverTZ', '') }}</span>
           <span class="server-overview-uuid" title="UUID"><i class="ph ph-fingerprint" aria-hidden="true"></i>
             <code>{{ srv_id }}</code></span>
         </div>
+        <!-- Phones show the main numbers first; the rest is one tap away -->
+        <button type="button" class="btn btn-sm btn-link server-details-toggle d-sm-none" aria-expanded="false"
+          data-more="{{ translate('serverOverview', 'moreDetails', data['lang']) }}"
+          data-less="{{ translate('serverOverview', 'lessDetails', data['lang']) }}">
+          <i class="ph ph-caret-down" aria-hidden="true"></i>
+          <span>{{ translate('serverOverview', 'moreDetails', data['lang']) }}</span>
+        </button>
       </div>
     </div>
   </div>
@@ -154,6 +161,13 @@
 <script src="/static/assets/vendors/moment/moment.min.js" type="text/javascript" charset="utf-8"></script>
 <script src="/static/assets/js/motd.js"></script>
 <script>
+  $(".server-details-toggle").on("click", function () {
+    const open = $("#server-overview").toggleClass("details-open").hasClass("details-open");
+    $(this).attr("aria-expanded", String(open))
+      .find("span").text(open ? this.dataset.less : this.dataset.more);
+    $(this).find("i").toggleClass("ph-caret-down", !open).toggleClass("ph-caret-up", open);
+  });
+
   // Compact uptime, e.g. "2d 4h", "3h 12m", "1m 25s"
   function durationToHumanizedString(duration) {
     const total = Math.max(0, Math.floor(duration.asSeconds()));
