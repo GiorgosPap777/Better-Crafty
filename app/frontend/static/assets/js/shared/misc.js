@@ -9,6 +9,57 @@ function escapeHtml(value) {
 		.replace(/'/g, "&#39;");
 }
 
+// On/off switches in the schedule and webhook lists. A switch only flips once
+// the server has saved the change, and every switch for the same item (wide
+// table, phone table, details popup) is kept in step.
+function bindEnabledSwitches(selector, idAttr, stateAttr, urlFor, errorTitle) {
+	const saved = {};
+	function show(el, enabled) {
+		el.setAttribute(stateAttr, enabled ? "true" : "false");
+		if (el.type === "checkbox") {
+			el.checked = enabled;
+		} else {
+			el.classList.toggle("active", enabled);
+			el.setAttribute("aria-pressed", enabled ? "true" : "false");
+		}
+	}
+	function sync() {
+		$(selector).each(function () {
+			const id = this.getAttribute(idAttr);
+			show(this, id in saved ? saved[id] : this.getAttribute(stateAttr) === "true");
+		});
+	}
+	sync();
+	// Tables redraw rows when paging or sorting
+	$(document).on("draw.dt", sync);
+	$(document).on("click", selector, async function () {
+		const id = this.getAttribute(idAttr);
+		const enabled = this.getAttribute(stateAttr) !== "true";
+		const group = $(selector).filter(function () {
+			return this.getAttribute(idAttr) === id;
+		});
+		group.prop("disabled", true);
+		try {
+			const res = await fetch(urlFor(id), {
+				method: "PATCH",
+				headers: { "Content-Type": "application/json" },
+				body: JSON.stringify({ enabled }),
+			});
+			let data = {};
+			try { data = await res.json(); } catch (e) { /* not JSON */ }
+			if (!res.ok || data.status !== "ok") {
+				throw new Error(data.error_data || data.error || `HTTP ${res.status}`);
+			}
+			saved[id] = enabled;
+		} catch (e) {
+			bootbox.alert({ title: escapeHtml(errorTitle), message: escapeHtml(e.message) });
+		} finally {
+			group.prop("disabled", false);
+			sync();
+		}
+	});
+}
+
 var ChartColor = [
 	"#5D62B4",
 	"#54C3BE",

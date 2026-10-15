@@ -289,6 +289,7 @@
 
   const serverId = new URLSearchParams(document.location.search).get('id')
   const backup_id = new URLSearchParams(document.location.search).get('backup_id')
+  const backupText = {% raw json_encode({key: translate('serverBackups', key, data['lang']) for key in ['restore', 'restoreFailed', 'restoreSnapshotConfirm']}) %};
 
 
   //used to get cookies from browser - this is part of tornados xsrf protection - it's for extra security
@@ -340,28 +341,36 @@
   }
 
   async function restore_backup(filename, id, in_place) {
-    const token = getCookie("_xsrf")
     let contents = JSON.stringify({ "filename": filename, "inPlace": Boolean(parseInt(in_place)) })
-    var dialog = bootbox.dialog({
+    const dialog = bootbox.dialog({
       message: "<i class='ph ph-spinner-gap ph-spin'></i> {{ translate('serverBackups', 'restoring', data['lang']) }}",
       closeButton: false
     });
-    let res = await fetch(`/api/v2/servers/${serverId}/backups/backup/${backup_id}/`, {
-      method: 'POST',
-      headers: {
-        'token': token,
-      },
-      body: contents
-    });
-    let responseData = await res.json();
+    const shown = new Promise(resolve => dialog.one('shown.bs.modal', resolve));
+    let responseData = {};
+    try {
+      const res = await fetch(`/api/v2/servers/${serverId}/backups/backup/${backup_id}/`, {
+        method: 'POST',
+        headers: {
+          'X-XSRFToken': getCookie("_xsrf"),
+        },
+        body: contents
+      });
+      try { responseData = await res.json(); } catch (e) { responseData = { error_data: `HTTP ${res.status}` }; }
+    } catch (e) {
+      responseData = { error_data: e.message };
+    }
     if (responseData.status === "ok") {
       window.location.href = `/panel/server_detail?id=${serverId}&subpage=term`;
-    } else {
-      bootbox.alert({
-        "title": responseData.status,
-        "message": responseData.error_data
-      })
+      return;
     }
+    // Take the spinner down before showing what went wrong
+    await shown;
+    dialog.one('hidden.bs.modal', () => bootbox.alert({
+      title: escapeHtml(backupText.restoreFailed),
+      message: escapeHtml(responseData.error_data || responseData.error || "")
+    }));
+    dialog.modal('hide');
   }
 
   $("#before-check").on("click", function () {
@@ -569,10 +578,25 @@
     $(".restore_button").click(function () {
       var file_to_restore = $(this).data("file");
       if ($(this).data("type") === "snapshot") {
-        restore_backup(file_to_restore, serverId, 1)
+        bootbox.confirm({
+          title: escapeHtml(`${backupText.restore} ${file_to_restore}`),
+          message: escapeHtml(backupText.restoreSnapshotConfirm),
+          buttons: {
+            cancel: {
+              label: '<i class="ph-bold ph-x"></i> {{ translate("serverBackups", "cancel", data['lang']) }}'
+            },
+            confirm: {
+              label: '<i class="ph-bold ph-check"></i> {{ translate("serverBackups", "restore", data['lang']) }}',
+              className: 'btn-outline-danger'
+            }
+          },
+          callback: function (result) {
+            if (result) restore_backup(file_to_restore, serverId, 1);
+          }
+        });
       } else {
         bootbox.dialog({
-          title: "{{ translate('serverBackups', 'restore', data['lang']) }} " + file_to_restore,
+          title: escapeHtml(`${backupText.restore} ${file_to_restore}`),
           message: `
       <div id="restore-box">
         <div class="custom-control custom-switch">
@@ -602,6 +626,7 @@
                 var selectedOption = $('input[name="restoreOption"]:checked').val();
                 if (!selectedOption || typeof (selectedOption) == "undefined") {
                   bootbox.alert(`{{ translate("serverBackups", "radioRequired", data['lang']) }}`)
+                  return false;
                 } else {
                   restore_backup(file_to_restore, serverId, selectedOption)
                 }

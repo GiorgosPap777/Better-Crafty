@@ -74,8 +74,9 @@
                           <td id="{{webhook.enabled}}" class="enabled">
                             <button type="button" class="btn btn-sm btn-info btn-toggle webhook-custom-toggle"
                               id="webhook_{{webhook.id}}" name="webhook_{{webhook.id}}" data-webhook-id="{{webhook.id}}"
-                              data-webhook-enabled="{{ 'true' if webhook.enabled else 'false' }}" data-toggle="button"
-                              aria-pressed="true" autocomplete="off">
+                              data-webhook-enabled="{{ 'true' if webhook.enabled else 'false' }}"
+                              aria-label="{{ translate('webhooks', 'enabled', data['lang']) }}: {{ webhook.name }}"
+                              aria-pressed="false" autocomplete="off">
                               <div class="handle"></div>
                             </button>
                           </td>
@@ -133,8 +134,9 @@
                           <td id="{{webhook.enabled}}" class="enabled">
                             <button type="button" class="btn btn-sm btn-info btn-toggle webhook-custom-toggle"
                               id="webhook_{{webhook.id}}" name="webhook_{{webhook.id}}" data-webhook-id="{{webhook.id}}"
-                              data-webhook-enabled="{{ 'true' if webhook.enabled else 'false' }}" data-toggle="button"
-                              aria-pressed="true" autocomplete="off">
+                              data-webhook-enabled="{{ 'true' if webhook.enabled else 'false' }}"
+                              aria-label="{{ translate('webhooks', 'enabled', data['lang']) }}: {{ webhook.name }}"
+                              aria-pressed="false" autocomplete="off">
                               <div class="handle"></div>
                             </button>
                           </td>
@@ -266,31 +268,11 @@
     };
   }
 
-  $(document).ready(function () {
-    $('.webhook-custom-toggle').each(function () {
-      const enabled = JSON.parse(this.getAttribute('data-webhook-enabled'));
-      if (enabled) {
-        this.classList.add("active");
-      }
-      else {
-        this.classList.remove("active");
-      }
-    })
-  });
   $(() => {
-    $('.webhook-custom-toggle').click(function () {
-      const id = this.getAttribute('data-webhook-id');
-      const enabled = !JSON.parse(this.getAttribute('data-webhook-enabled'));
-
-      fetch(`/api/v2/servers/{{data['server_id']}}/webhook/${id}`, {
-        method: 'PATCH',
-        body: JSON.stringify({ enabled }),
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      })
-    });
-  })
+    bindEnabledSwitches(".webhook-custom-toggle", "data-webhook-id", "data-webhook-enabled",
+      id => `/api/v2/servers/{{data['server_id']}}/webhook/${id}`,
+      {% raw json_encode(translate('error', 'error', data['lang'])) %});
+  });
 
   const serverId = new URLSearchParams(document.location.search).get('id')
 </script>

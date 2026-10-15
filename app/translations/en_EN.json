@@ -516,6 +516,8 @@
         "radioRequired": "You must choose an option to restore your backup",
         "replace": " Restore backup files and reset the server directory to be in the exact structure of the backup",
         "restore": "Restore",
+        "restoreFailed": "Restore failed",
+        "restoreSnapshotConfirm": "The server will be stopped and its folder replaced with this snapshot. Files added since the snapshot was taken will be deleted. This cannot be undone.",
         "restoring": "Restoring Backup. This may take a while. Please be patient.",
         "run": "Run Backup",
         "runNow": "Back up now",

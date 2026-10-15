@@ -249,17 +249,46 @@ for (let ev of event_types) {
     )
 }
 
+// Ctrl+S, the button and vim's :w can all fire while a save is still on its
+// way; a second save at the same time would be refused as a conflict.
+let saveInFlight = false;
+let saveQueued = false;
+
 async function save(overwrite = false) {
+    if (saveInFlight) {
+        saveQueued = true;
+        return;
+    }
+    saveInFlight = true;
+    try {
+        await saveNow(overwrite);
+    } finally {
+        saveInFlight = false;
+        if (saveQueued) {
+            saveQueued = false;
+            if (editor.session.getValue() !== serverFileContent) save();
+        }
+    }
+}
+
+async function saveNow(overwrite) {
     let text = editor.session.getValue();
 
     const token = getCookie("_xsrf");
-    let res = await fetch(`/api/v2/servers/${serverId}/files`, {
-        method: "PATCH",
-        headers: {
-            "X-XSRFToken": token,
-        },
-        body: JSON.stringify({ path: path, contents: text, modified_epoch: modified_epoch, overwrite: overwrite }),
-    });
+    let res;
+    let responseData = {};
+    try {
+        res = await fetch(`/api/v2/servers/${serverId}/files`, {
+            method: "PATCH",
+            headers: {
+                "X-XSRFToken": token,
+            },
+            body: JSON.stringify({ path: path, contents: text, modified_epoch: modified_epoch, overwrite: overwrite }),
+        });
+    } catch (e) {
+        bootbox.alert({ title: "Error", message: escapeHtml(e.message) });
+        return;
+    }
     if (res.status === 409) {
         bootbox.prompt({
             title: `${$("#editor-wrapper").attr("data-changeConflict")}`,
@@ -283,20 +312,22 @@ async function save(overwrite = false) {
                 }
             }
         });
+        return;
     }
-    let responseData = await res.json();
+    try { responseData = await res.json(); } catch (e) { responseData = { error_data: `HTTP ${res.status}` }; }
     if (responseData.status === "ok") {
         serverFileContent = text;
         modified_epoch = responseData.data.attributes.modified_epoch;
-        setSaveStatus(true);
+        // Typing while the save was on its way leaves newer changes unsaved
+        setSaveStatus(editor.session.getValue() === text);
         $("#file_size_sm").text(responseData.data.attributes.size);
         $("#file_type_sm").text(responseData.data.attributes.mime);
         $("#file_modified_sm").text(responseData.data.attributes.modified);
 
     } else {
         bootbox.alert({
-            title: responseData.error,
-            message: responseData.error_data
+            title: escapeHtml(responseData.error || "Error"),
+            message: escapeHtml(responseData.error_data || "")
         });
     }
 }
@@ -405,7 +436,8 @@ function setKeyboard(target) {
 
 globalThis.addEventListener('beforeunload', (e) => {
     if (!is_saved) {
+        // Browsers show their own "leave page?" prompt; alerts are blocked here
         e.preventDefault();
-        globalThis.alert('You have unsaved changes. Are you sure you want to leave?');
+        e.returnValue = "";
     }
 });
