@@ -327,10 +327,11 @@
     "notify": {
         "accountSettings": "Account Settings",
         "activityLog": "Activity Logs",
-        "backupComplete": "Backup completed successfully for server {}",
-        "backupStarted": "Backup started for server {}",
+        "announcements": "Announcements",
         "backup_desc": "We detected the backup migration may have partially or fully failed. Please confirm your backup records on the backups tab.",
         "backup_title": "Backup Migration Warning",
+        "backupComplete": "Backup completed successfully for server {}",
+        "backupStarted": "Backup started for server {}",
         "downloadLogs": "Download Support Logs?",
         "finishedPreparing": "We've finished preparing your support logs. Please click download to download",
         "logout": "Logout",

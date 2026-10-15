@@ -1,6 +1,7 @@
 <ul class="navbar-nav ml-auto">
   <li class="nav-item dropdown notif-li">
-    <a class="nav-link count-indicator dropdown-toggle" id="notifDropdown" href="#" aria-expanded="false">
+    <a class="nav-link count-indicator dropdown-toggle" id="notifDropdown" href="#" aria-expanded="false"
+      aria-label="{{ translate('notify', 'announcements', data['lang']) }}">
       <i class="ph-fill ph-cell-tower
         {% if data.get('update_available') %}
             text-danger
@@ -154,6 +155,8 @@
   function updateAnnouncements(data) {
     console.log(data);
     const container = document.querySelector("#announcements");
+    // Rebuilt on every refresh, so start from an empty list
+    container.innerHTML = "";
     for (let value of data) {
       let annc_item = createAnnouncementItem(value)
       container.appendChild(annc_item);
@@ -166,7 +169,7 @@
       $("#announcements").html(`<li><p class='my-3 text-center'><i class="ph-fill ph-bell-slash" aria-hidden="true"></i></p></li>`);
       $("#notif-count").hide()
     }
-    $(".clear-button").on("click", function (event) {
+    $(".clear-button").off("click").on("click", function (event) {
       console.log("CLEAR BUTTON")
       event.stopPropagation();
       let uuid = event.target.getAttribute("data-id");
@@ -184,19 +187,24 @@
     });
   }
   async function getAnnouncements() {
-    var token = getCookie("_xsrf");
-    let res = await fetch(`/api/v2/crafty/announcements/`, {
-      method: 'GET',
-      headers: {
-        'X-XSRFToken': token
-      },
-    });
-    let responseData = await res.json();
-    console.log(responseData);
+    // Schedule the next poll first so one failed request doesn't stop polling
     setTimeout(function () {
       getAnnouncements();
     }, 1800000); //Wait 30 minutes in miliseconds
-    console.log("Registered annoucement fetch event in 30 minutes.")
+    var token = getCookie("_xsrf");
+    let responseData;
+    try {
+      let res = await fetch(`/api/v2/crafty/announcements/`, {
+        method: 'GET',
+        headers: {
+          'X-XSRFToken': token
+        },
+      });
+      responseData = await res.json();
+    } catch (e) {
+      console.warn("Could not fetch announcements", e);
+      return;
+    }
     if (responseData.status === "ok") {
       updateAnnouncements(responseData.data)
     } else {
@@ -229,6 +237,8 @@
 
   /* Open / Close with Button */
   $('li.dropdown.notif-li a').on('click', function (event) {
+    // The bell is href="#": don't jump to the top of the page
+    if (this.id === 'notifDropdown') event.preventDefault();
     $(this).parent().toggleClass("show");
     $('div.notif-div').toggleClass("show");
     if ($('li.dropdown.notif-li a').attr('aria-expanded') === 'false') {

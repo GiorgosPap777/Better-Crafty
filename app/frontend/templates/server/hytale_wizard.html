@@ -83,7 +83,7 @@
                     <div class="form-group">
                       <label for="port">{{ translate('serverWizard', 'serverPort', data['lang']) }}</label>
                       <input type="number" class="form-control" id="port" name="port" value="5520" step="1" min="1"
-                        max="65535 " required>
+                        max="65535" required>
                     </div>
                   </div>
                 </div>
@@ -215,7 +215,7 @@
                   <div class="form-group">
                     <label for="port1">{{ translate('serverWizard', 'serverPort', data['lang']) }}</label>
                     <input type="number" class="form-control" id="port1" name="port" value="5520" step="1" min="1"
-                      max="65535 " required>
+                      max="65535" required>
                   </div>
                 </div>
               </div>
@@ -294,6 +294,12 @@
 <script>
 
   function eula_confirm() {
+    // The form is submitted via jQuery below, which skips the browser's own
+    // required/min/max checks, so run them before asking about the EULA.
+    const createForm = document.getElementById("download_exe");
+    if (createForm && !createForm.reportValidity()) {
+      return;
+    }
     bootbox.confirm({
       title: `${$("#creation-wrapper").attr("data-eulaTitle")}`,
       message: `${$("#creation-wrapper").attr("data-eulaMsg")}<a href='https://hytale.com/eula' target='_blank'>Hytale EULA</a>&nbsp;`,
@@ -342,6 +348,11 @@
     }
   });
   function replacer(key, value) {
+    // Free-text fields must stay strings even when they look like numbers
+    // (a server named "2024", or an empty field turning into 0).
+    if (["name", "jarfile", "archive_name", "executable", "command", "stop_command", "log_location"].includes(key)) {
+      return value;
+    }
     if (key === "roles" || key === "archive_internal_path") {
       return value
     }
@@ -363,29 +374,41 @@
     });
     return combinedValues;
   }
+  let creatingServer = false;
   async function send_server(data, create_type = null) {
+    // Ignore a second submit while the first request is still running
+    if (creatingServer) return;
+    creatingServer = true;
     let token = getCookie("_xsrf")
-    console.log(data)
-    console.log(token)
-    let res = await fetch(`/api/v2/servers/`, {
-      method: 'POST',
-      headers: {
-        'X-XSRFToken': token
-      },
-      body: data,
-    });
-    let responseData = await res.json();
-    if (responseData.status === "ok" && create_type != "download_exe") {
-      globalThis.location.href = `/panel/server_detail?id=${responseData.data.new_server_id}&subpage=term`;
-    } else if (responseData.status === "error") {
-      // Close the "be patient..." dialogue box
-      $('.bootbox-close-button').click();
-      // Alert the user that there was an issue.
-      bootbox.alert({
-        title: responseData.error,
-        message: responseData.error_data
+    let responseData;
+    try {
+      let res = await fetch(`/api/v2/servers/`, {
+        method: 'POST',
+        headers: {
+          'X-XSRFToken': token
+        },
+        body: data,
       });
+      responseData = await res.json();
+    } catch (e) {
+      // Network failure or a non-JSON (e.g. proxy timeout) response
+      responseData = { status: "error", error: "Error", error_data: String(e) };
     }
+    if (responseData.status === "ok" && create_type === "download_exe") {
+      // Downloads finish asynchronously; the websocket takes over from here
+      return;
+    }
+    if (responseData.status === "ok") {
+      globalThis.location.href = `/panel/server_detail?id=${responseData.data.new_server_id}&subpage=term`;
+      return;
+    }
+    creatingServer = false;
+    // Close the "be patient..." dialog, then explain what went wrong
+    bootbox.hideAll();
+    bootbox.alert({
+      title: responseData.error,
+      message: responseData.error_data
+    });
   }
   $(document).ready(function () {
 

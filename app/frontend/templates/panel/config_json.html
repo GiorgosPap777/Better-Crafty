@@ -233,6 +233,11 @@
 {% block js %}
 <script>
   function replacer(key, value) {
+    // List entries (keywords, mounts, proxies...) are text even when they look
+    // like numbers. JSON.stringify calls this with the array as `this`.
+    if (Array.isArray(this)) {
+      return value;
+    }
     if (key == "disabled_language_files" || key == "monitored_mounts" || key == "keywords" || key == "silent_notif_fields" || key == "trusted_proxies") {
       if (value == 0) {
         return []
@@ -322,7 +327,7 @@
     if (responseData.status === "ok") {
       $("#submit-status").html('<i class="ph-bold ph-check"></i>');
     } else {
-
+      $("#submit-status").html('');
       bootbox.alert({
         title: responseData.error,
         message: responseData.error_data

@@ -289,7 +289,12 @@ class PasskeyController:
         passkey = PasskeyData.get_or_none(PasskeyData.id == passkey_id)
         if not passkey or passkey.user.user_id != user_id:
             return False
-        return self.passkey_helper.delete_passkey(passkey_id)
+        result = self.passkey_helper.delete_passkey(passkey_id)
+        # Password login may only be disabled while a passkey exists, otherwise
+        # deleting the last passkey would lock the user out entirely.
+        if not HelperPasskey.get_user_passkeys(user_id).exists():
+            HelperUsers.update_user(user_id, {"disable_password_auth": False})
+        return result
 
     def purge_expired_challenges(self):
         logger.info("Purging expired passkey challenges")

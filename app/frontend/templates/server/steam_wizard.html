@@ -53,7 +53,7 @@
                         <select data-container="body" required
                           class="selectpicker form-control form-control-lg select-css" id="steam_server"
                           data-live-search="true" name="app_id">
-                          <option value="None">None</option>
+                          <option value="" disabled selected>None</option>
                           {% for s in data['servers'] %}
                           {% if data["windows"] and data["os"].WINDOWS in s.os %}
                           <option value="{{ s.id }}">{{ s.name.capitalize() }}</option>
@@ -360,25 +360,37 @@
 {% block js %}
 
 <script>
+  let creatingServer = false;
   async function send_server(data) {
+    // Ignore a second submit while the first request is still running
+    if (creatingServer) return;
+    creatingServer = true;
     let token = getCookie("_xsrf")
-    let res = await fetch(`/api/v2/servers/`, {
-      method: 'POST',
-      headers: {
-        'X-XSRFToken': token
-      },
-      body: data,
-    });
-    let responseData = await res.json();
+    let responseData;
+    try {
+      let res = await fetch(`/api/v2/servers/`, {
+        method: 'POST',
+        headers: {
+          'X-XSRFToken': token
+        },
+        body: data,
+      });
+      responseData = await res.json();
+    } catch (e) {
+      // Network failure or a non-JSON (e.g. proxy timeout) response
+      responseData = { status: "error", error: "Error", error_data: String(e) };
+    }
     if (responseData.status === "ok") {
       globalThis.location.href = '/panel/dashboard';
-    } else {
-
-      bootbox.alert({
-        title: responseData.error,
-        message: responseData.error_data
-      });
+      return;
     }
+    creatingServer = false;
+    // Close the "be patient..." dialog, then explain what went wrong
+    bootbox.hideAll();
+    bootbox.alert({
+      title: responseData.error,
+      message: responseData.error_data
+    });
   }
 
   async function refreshCache() {
@@ -440,6 +452,11 @@
     send_server(formDataJsonString);
   });
   function replacer(key, value) {
+    // Free-text fields must stay strings even when they look like numbers
+    // (a server named "2024", or an empty field turning into 0).
+    if (["name", "jarfile", "archive_name", "executable", "command", "stop_command", "log_location"].includes(key)) {
+      return value;
+    }
     if (key === "roles") {
       return value
     }

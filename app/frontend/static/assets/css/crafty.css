@@ -220,6 +220,18 @@ body {
     cursor: pointer;
 }
 
+/* Mobile server list: icon-only buttons in narrow cells. Without this the
+   default button padding pushes the icon out and leaves an ellipsis. */
+.accordion .card .card-header a.actions_serveritem.btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    padding: 0.6rem 0.25rem;
+    font-size: 1.15rem;
+    text-overflow: clip;
+}
+
 .corner {
     position: absolute;
     margin-top: 0;

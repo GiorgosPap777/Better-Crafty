@@ -351,7 +351,8 @@
     const roleId = new URLSearchParams(document.location.search).get('id');
     
     function replacer(key, value) {
-      if (key === "permissions"){
+      // Role names are text even when they look like numbers ("2024")
+      if (key === "permissions" || key === "name"){
         return value;
       }
       if (key === "servers" && value.length === 0){

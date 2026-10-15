@@ -320,9 +320,11 @@
             });
             let responseData = await res.json();
             if (responseData.status === "ok") {
+                // HTML-escape the key name (escape() URL-encoded it: "My%20Key")
+                const safeKeyName = $('<span>').text(keyName).html();
                 bootbox.alert({
-                    title: `API token for ${escape(keyName)}`,
-                    message: `Here is an API token for ${escape(keyName)}:\n<pre class="api-key">${responseData.data}</pre>`
+                    title: `API token for ${safeKeyName}`,
+                    message: `Here is an API token for ${safeKeyName}:\n<pre class="api-key">${responseData.data}</pre>`
                 });
             } else {
 

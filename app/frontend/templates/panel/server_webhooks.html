@@ -228,14 +228,14 @@
       'order': [2, 'asc']
     }
     );
-    document.getElementById('webhook_table_mini_wrapper').hidden = true;
+    $('#webhook_table_mini_wrapper').prop('hidden', true);
   });
   $(document).ready(function () {
     $('[data-toggle="popover"]').popover();
     if ($(window).width() < 1000) {
       $('.too_small').popover("show");
-      document.getElementById('webhook_table_wrapper').hidden = true;
-      document.getElementById('webhook_table_mini_wrapper').hidden = false;
+      $('#webhook_table_wrapper').prop('hidden', true);
+      $('#webhook_table_mini_wrapper').prop('hidden', false);
     }
 
   });
@@ -248,13 +248,13 @@
     // This will execute whenever the window is resized
     if ($(window).width() < 1000) {
       $('.too_small').popover("show");
-      document.getElementById('webhook_table_wrapper').hidden = true;
-      document.getElementById('webhook_table_mini_wrapper').hidden = false;
+      $('#webhook_table_wrapper').prop('hidden', true);
+      $('#webhook_table_mini_wrapper').prop('hidden', false);
     }
     else {
       $('.too_small').popover("hide");
-      document.getElementById('webhook_table_wrapper').hidden = false;
-      document.getElementById('webhook_table_mini_wrapper').hidden = true;
+      $('#webhook_table_wrapper').prop('hidden', false);
+      $('#webhook_table_mini_wrapper').prop('hidden', true);
     } // New width
   });
 

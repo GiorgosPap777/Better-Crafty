@@ -111,8 +111,8 @@
                             {% if len(list(user.totp_user)) != 0 %}
                             <span data-translate="{{translate('otp', 'backupCodes', data['lang'])}}"
                               data-toggle="tooltip" title="{{ translate('otp', 'renewRecovery', data['lang'])}}"
-                              class="clickable" data-name="{{user.username}}" data-id="{{user.user_id}}"
-                              id="renewCodes"><i class="ph-fill ph-shield"></i></span>
+                              class="clickable renew-codes" data-name="{{user.username}}" data-id="{{user.user_id}}"><i
+                                class="ph-fill ph-shield"></i></span>
                             {% end %}
                             &nbsp;&nbsp;<span data-translate="{{translate('userConfig', 'userName', data['lang'])}}"
                               data-toggle="tooltip" title="{{ translate('userConfig', 'userName', data['lang'])}}"
@@ -401,7 +401,7 @@
     if (responseData.status === "ok") {
       return
     } else {
-
+      $("#submit-status").html('');
       bootbox.alert({
         title: responseData.error,
         message: responseData.error_data

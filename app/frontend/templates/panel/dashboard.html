@@ -16,8 +16,8 @@
         <h4 class="page-title">{{ translate('dashboard', 'dashboard', data['lang']) }}
           {% if data['server_stats']['running'] != 0 %}
           <span id="sync" class="ml-5"><i class="ph-fill ph-arrows-clockwise"></i></span>
+          {% end %}
         </h4>
-        {% end %}
       </div>
     </div>
 
@@ -122,7 +122,7 @@
                           <div class="progress-bar
                         {% if item['percent_used'] <= 58 %}
                         bg-success
-                        {% elif 59 <= item['percent_used'] <= 75 %}
+                        {% elif item['percent_used'] <= 75 %}
                         bg-warning
                         {% else %}
                         bg-danger
@@ -295,7 +295,7 @@
                       <div class="progress-bar
                       {% if server['stats']['cpu'] <= 33 %}
                       bg-success
-                      {% elif 34 <= server['stats']['cpu'] <= 66 %}
+                      {% elif server['stats']['cpu'] <= 66 %}
                       bg-warning
                       {% else %}
                       bg-danger
@@ -311,7 +311,7 @@
                       <div class="progress-bar
                       {% if server['stats']['mem_percent'] <= 33 %}
                       bg-success
-                      {% elif 34 <= server['stats']['mem_percent'] <= 66 %}
+                      {% elif server['stats']['mem_percent'] <= 66 %}
                       bg-warning
                       {% else %}
                       bg-danger
@@ -331,12 +331,12 @@
                     {{ server['stats']['world_size'] }}
                   </td>
                   <td class="col-players" draggable="false">
-                    {% if server['stats']['int_ping_results'] %}
                     <span id="server_desc_{{server['server_data']['server_id']}}">
+                      {% if server['stats']['int_ping_results'] %}
                       {{ server['stats']['online'] }} / {{ server['stats']['max'] }} {{ translate('dashboard', 'max',
                       data['lang']) }}
+                      {% end %}
                     </span>
-                    {% end %}
                     <span class="server-player-totals" id="server_players_{{server['server_data']['server_id']}}"
                       data-serverId="{{server['server_data']['server_id']}}"
                       data-players="{{ server['stats']['online']}}" data-max="{{ server['stats']['max'] }}"
@@ -439,7 +439,7 @@
                       </a>
                     </div>
                     <div class="col-8 col-lg-3 mx-0 px-0">
-                      <div id="controls{{server['server_data']['server_id']}}" class="container overflow-hidden">
+                      <div id="m_controls{{server['server_data']['server_id']}}" class="container overflow-hidden">
                         {% if server['user_command_permission'] %}
                         {% if server['stats']['running'] %}
                         <div class="row">
@@ -534,7 +534,7 @@
                           <div class="progress-bar
                     {% if server['stats']['cpu'] <= 33 %}
                     bg-success
-                    {% elif 34 <= server['stats']['cpu'] <= 66 %}
+                    {% elif server['stats']['cpu'] <= 66 %}
                     bg-warning
                     {% else %}
                     bg-danger
@@ -553,7 +553,7 @@
                           <div class="progress-bar
                     {% if server['stats']['mem_percent'] <= 33 %}
                     bg-success
-                    {% elif 34 <= server['stats']['mem_percent'] <= 66 %}
+                    {% elif server['stats']['mem_percent'] <= 66 %}
                     bg-warning
                     {% else %}
                     bg-danger
@@ -635,41 +635,60 @@
     };
   }
 
+  // "Scroll the table sideways" hint. Only relevant while the wide table is
+  // shown with a horizontal scrollbar (phones get a list instead), and only
+  // until it has been dismissed once in this browser.
+  const SCROLL_HINT_KEY = 'crafty.dashboard.scrollHintSeen';
+  let scrollHintVisible = false;
+
+  function scrollHintSeen() {
+    try { return localStorage.getItem(SCROLL_HINT_KEY) === '1'; } catch (e) { return false; }
+  }
+
+  function tableScrollsSideways() {
+    const width = $(window).width();
+    return width >= 576 && width < 1000;
+  }
+
+  function updateScrollHint() {
+    const show = !scrollHintSeen() && tableScrollsSideways();
+    if (show !== scrollHintVisible) {
+      $('.too_small').popover(show ? "show" : "hide");
+      scrollHintVisible = show;
+    }
+  }
+
   $(document).ready(function () {
     $('[data-toggle="popover"]').popover();
-    if ($(window).width() < 1000) {
-      $('.too_small').popover("show");
-    }
-  });
-
-  $(window).ready(function () {
-    $('body').click(function () {
-      $('.too_small').popover("hide");
+    updateScrollHint();
+    $('body').on('click', function () {
+      if (!scrollHintVisible) return;
+      try { localStorage.setItem(SCROLL_HINT_KEY, '1'); } catch (e) { /* private mode */ }
+      updateScrollHint();
     });
   });
 
-  $(window).resize(function () {
-    // This will execute whenever the window is resized
-    if ($(window).width() < 1000) {
-      $('.too_small').popover("show");
-    }
-    else {
-      $('.too_small').popover("hide");
-    } // New width
-  });
+  $(window).on('resize', updateScrollHint);
 </script>
 <script>
 
   async function send_command(server_id, command) {
     /* this getCookie function is in base.html */
     const token = getCookie("_xsrf");
-    let res = await fetch(`/api/v2/servers/${server_id}/action/${command}`, {
-      method: 'POST',
-      headers: {
-        'token': token,
-      },
-    });
-    let responseData = await res.json();
+    let responseData;
+    try {
+      const res = await fetch(`/api/v2/servers/${server_id}/action/${command}`, {
+        method: 'POST',
+        headers: {
+          'X-XSRFToken': token,
+        },
+      });
+      responseData = await res.json();
+    } catch (e) {
+      // Network failure or a non-JSON (e.g. proxy) response: don't leave the
+      // "sending your command" dialog spinning forever.
+      responseData = { status: "error", error: "{{ translate('dashboard', 'sendingCommand', data['lang']) }}", error_data: String(e) };
+    }
     if (responseData.status === "ok") {
       if (command === "clone_server") {
         window.location.reload()
@@ -728,7 +747,28 @@
       parentEl.classList.add(className);
     }
 
-    document.querySelector('.dynamicMsg').appendChild(parentEl);
+    // The "sending command" dialog may already have been closed
+    const target = document.querySelector('.dynamicMsg');
+    if (target) target.appendChild(parentEl);
+  }
+
+  function update_player_totals() {
+    let all_total_players = 0;
+    let all_total_max_players = 0;
+    document.querySelectorAll(".server-player-totals").forEach(function (el) {
+      const counted = String(el.getAttribute('data-count')).toLowerCase() !== 'false';
+      $(`#server_desc_${el.getAttribute("data-serverId")}`).toggleClass("gray", !counted);
+      if (counted) {
+        all_total_players += parseInt(el.getAttribute('data-players'), 10) || 0;
+        all_total_max_players += parseInt(el.getAttribute('data-max'), 10) || 0;
+      }
+    });
+    const total = document.getElementById('total_players');
+    const max = document.getElementById('max_players');
+    const sync = document.getElementById('sync');
+    if (total) total.innerHTML = all_total_players;
+    if (max) max.innerHTML = all_total_max_players;
+    if (sync) sync.innerHTML = '';
   }
 
   function update_one_server_status(server) {
@@ -782,8 +822,8 @@
       total_mem = server.mem;
     }
 
-    server_mem.innerHTML = `<div class="progress mb-1" data-toggle="tooltip" data-placement="top" title="` + server_mem + `"><div class="progress-bar ` + mem_status + `" role="progressbar" style="width: ` + server.mem_percent + `%" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100"></div></div>` + server.mem_percent + `% - ` + total_mem;
-    m_server_mem.innerHTML = `<div class="progress mb-1" data-toggle="tooltip" data-placement="top" title="` + server_mem + `"><div class="progress-bar ` + mem_status + `" role="progressbar" style="width: ` + server.mem_percent + `%" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100"></div></div>` + server.mem_percent + `% - ` + total_mem;
+    server_mem.innerHTML = `<div class="progress mb-1" data-toggle="tooltip" data-placement="top" title="` + total_mem + `"><div class="progress-bar ` + mem_status + `" role="progressbar" style="width: ` + server.mem_percent + `%" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100"></div></div>` + server.mem_percent + `% - ` + total_mem;
+    m_server_mem.innerHTML = `<div class="progress mb-1" data-toggle="tooltip" data-placement="top" title="` + total_mem + `"><div class="progress-bar ` + mem_status + `" role="progressbar" style="width: ` + server.mem_percent + `%" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100"></div></div>` + server.mem_percent + `% - ` + total_mem;
 
     /* Update World Infos */
     server_world.innerHTML = server.world_size
@@ -805,45 +845,19 @@
       m_server_version.innerHTML = server.version;
     }
 
-    /* Update Server Infos */
-    if (server.int_ping_results) {
-      /* Update Players */
-      if (server.players) {
-        server_desc.innerHTML = server.online + ` / ` + server.max + ` {{ translate('dashboard', 'max', data['lang']) }}`
-        m_server_desc.innerHTML = server.online + ` / ` + server.max + ` {{ translate('dashboard', 'max', data['lang']) }}`
-
-        server_players.setAttribute('data-players', server.online);
-        server_players.setAttribute('data-max', server.max);
-        server_players.setAttribute('data-count', server.count_players)
-        let servers = Array.from(document.getElementsByClassName("server-player-totals"));
-        let all_total_players = 0;
-        let all_total_max_players = 0;
-
-        servers.forEach(server => {
-          try {
-            $(`#server_desc_${server.getAttribute("data-serverId")}`).toggleClass("gray", server.getAttribute('data-count') === 'false')
-            if (server.getAttribute('data-count') === 'true') {
-              all_total_players += parseInt(server.getAttribute('data-players'));
-              all_total_max_players += parseInt(server.getAttribute('data-max'));
-            }
-          } catch {
-            console.log("Player totals are not of type int");
-          }
-        })
-
-        total_players.innerHTML = all_total_players;
-        document.getElementById('max_players').innerHTML = all_total_max_players;
-        document.getElementById('sync').innerHTML = '';
-
-
-        server_infos = "";
-        m_server_infos = "";
-        server_infos = server.online + " / " + server.max + " {{ translate('dashboard', 'max', data['lang']) }}"
-        m_server_infos = server.online + " / " + server.max + " {{ translate('dashboard', 'max', data['lang']) }}"
-      }
-      server_desc.innerHTML = server_infos;
-      m_server_desc.innerHTML = m_server_infos;
+    /* Update Players */
+    const pinged = server.int_ping_results === true || server.int_ping_results === 'True';
+    const server_infos = pinged
+      ? server.online + " / " + server.max + " {{ translate('dashboard', 'max', data['lang']) }}"
+      : "";
+    if (server_desc) server_desc.innerHTML = server_infos;
+    if (m_server_desc) m_server_desc.innerHTML = server_infos;
+    if (server_players) {
+      server_players.setAttribute('data-players', pinged ? server.online : 0);
+      server_players.setAttribute('data-max', pinged ? server.max : 0);
+      server_players.setAttribute('data-count', server.count_players);
     }
+    update_player_totals();
 
     /* Update Icon */
     if (server_icon) {
@@ -962,7 +976,7 @@
                           <div class="progress-bar`;
             if (hostStats.disk_usage[i].percent_used <= 58) {
               storage_html += ` bg-success`;
-            } else if (hostStats.disk_usage[i].percent_used <= 75 && hostStats.disk_usage[i].percent_used >= 59) {
+            } else if (hostStats.disk_usage[i].percent_used <= 75) {
               storage_html += ` bg-warning`;
             } else {
               storage_html += ` bg-danger`;
@@ -992,10 +1006,12 @@
         let serverId = updateButton.server_id;
         let message = updateButton.string;
         let updating = updateButton.isUpdating;
-        let id = 'controls' + serverId;
         if (updating) {
-          console.log(updating)
-          document.getElementById(id).innerHTML = message;
+          // Desktop row and mobile card each have their own controls cell
+          for (const id of ['controls' + serverId, 'm_controls' + serverId]) {
+            const el = document.getElementById(id);
+            if (el) el.innerHTML = message;
+          }
         }
         else {
           window.location.reload()
@@ -1072,6 +1088,11 @@
                   message: responseData.error_data
                 });
               }
+            }).catch(function (e) {
+              bootbox.alert({
+                title: '{% raw translate("dashboard", "sendingCommand", data["lang"]) %}',
+                message: String(e)
+              });
             });
           }
         }

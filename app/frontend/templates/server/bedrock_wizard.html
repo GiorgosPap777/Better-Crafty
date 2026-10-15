@@ -155,7 +155,7 @@
                 </p>
                 {% include "../panel/parts/role_select.html" %}
               </div>
-              <div class="modal fade" id="dir_upload_select" tabindex="-1" role="dialog" aria-labelledby="dir_select"
+              <div class="modal fade" id="dir_select" tabindex="-1" role="dialog" aria-labelledby="dir_select"
                 aria-hidden="true">
                 <div class="modal-dialog" role="document">
                   <div class="modal-content">
@@ -209,6 +209,12 @@
 <script>
 
   function eula_confirm() {
+    // The form is submitted via jQuery below, which skips the browser's own
+    // required/min/max checks, so run them before asking about the EULA.
+    const createForm = document.getElementById("download_exe");
+    if (createForm && !createForm.reportValidity()) {
+      return;
+    }
     bootbox.confirm({
       title: `${$("#creation-wrapper").attr("data-eulaTitle")}`,
       message: `${$("#creation-wrapper").attr("data-eulaMsg")}<a href='https://www.minecraft.net/en-us/eula' target='_blank'>Minecraft EULA</a>&nbsp; ${$("#creation-wrapper").attr("data-privMsg")}<a target='_blank' href='https://privacy.microsoft.com/en-us/privacystatement'>Microsoft Privacy Policy</a>`,
@@ -264,6 +270,11 @@
     }
   });
   function replacer(key, value) {
+    // Free-text fields must stay strings even when they look like numbers
+    // (a server named "2024", or an empty field turning into 0).
+    if (["name", "jarfile", "archive_name", "executable", "command", "stop_command", "log_location"].includes(key)) {
+      return value;
+    }
     if (key === "roles" || key === "archive_internal_path") {
       return value
     }
@@ -288,28 +299,37 @@
     });
     return combinedValues;
   }
+  let creatingServer = false;
   async function send_server(data) {
+    // Ignore a second submit while the first request is still running
+    if (creatingServer) return;
+    creatingServer = true;
     let token = getCookie("_xsrf")
-    console.log(token)
-    let res = await fetch(`/api/v2/servers/`, {
-      method: 'POST',
-      headers: {
-        'X-XSRFToken': token
-      },
-      body: data,
-    });
-    let responseData = await res.json();
+    let responseData;
+    try {
+      let res = await fetch(`/api/v2/servers/`, {
+        method: 'POST',
+        headers: {
+          'X-XSRFToken': token
+        },
+        body: data,
+      });
+      responseData = await res.json();
+    } catch (e) {
+      // Network failure or a non-JSON (e.g. proxy timeout) response
+      responseData = { status: "error", error: "Error", error_data: String(e) };
+    }
     if (responseData.status === "ok") {
       window.location.href = '/panel/dashboard';
-    } else {
-      // Close the "be patient..." dialogue box
-      $('.bootbox-close-button').click();
-      // Alert the user that there was an issue.
-      bootbox.alert({
-        title: responseData.error,
-        message: responseData.error_data
-      });
+      return;
     }
+    creatingServer = false;
+    // Close the "be patient..." dialog, then explain what went wrong
+    bootbox.hideAll();
+    bootbox.alert({
+      title: responseData.error,
+      message: responseData.error_data
+    });
   }
   $(document).ready(function () {
 

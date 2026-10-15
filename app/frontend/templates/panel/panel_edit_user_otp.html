@@ -230,7 +230,7 @@
                     $(".bb-close-button").removeAttr("disabled");
                     $("#verify-input").removeClass("wrong");
                     $("#verify-input").addClass("verified");
-                    $("#verify-input").attr("disabled")
+                    $("#verify-input").prop("disabled", true)
                     $("#verify-input").data("verified", "True");
                     $("#verify").remove();
                     registerCopyFunction();
@@ -240,7 +240,7 @@
                     if (responseData.error === "INVALID_JSON_SCHEMA") {
                         bootbox.hideAll()
                         setTimeout(
-                            bootbox.alert(responseData.error_data),
+                            () => bootbox.alert(responseData.error_data),
                             2000)
                     }
                     $("#verify-status").html(`<i class="ph-fill ph-warning"></i>`);

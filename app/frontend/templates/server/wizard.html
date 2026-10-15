@@ -41,7 +41,7 @@
           <br />
           <p class="card-description">
 
-          <form method="post" id="download_jar">
+          <form method="post" id="download_jar" class="server-wizard">
             {% if data["server_api"] and data["online"] %}
             <fieldset>
               {% else %}
@@ -89,7 +89,7 @@
                       <label for="port1">{{ translate('serverWizard', 'serverPort', data['lang']) }} <small> - {{
                           translate('serverWizard', 'defaultPort', data['lang']) }}</small></label>
                       <input type="number" class="form-control" id="port1" name="port" value="25565" step="1" min="1"
-                        max="65535 " required>
+                        max="65535" required>
                     </div>
                   </div>
                   <div class="col-sm-12">
@@ -270,6 +270,11 @@
     $('.missing').popover("hide");
   });
   function replacer(key, value) {
+    // Free-text fields must stay strings even when they look like numbers
+    // (a server named "2024", or an empty field turning into 0).
+    if (["name", "jarfile", "archive_name", "executable", "command", "stop_command", "log_location"].includes(key)) {
+      return value;
+    }
     if (key === "roles" || key == "archive_internal_path") {
       return value
     }
@@ -294,31 +299,37 @@
     });
     return combinedValues;
   }
+  let creatingServer = false;
   async function send_server(data) {
+    // Ignore a second submit while the first request is still running
+    if (creatingServer) return;
+    creatingServer = true;
     let token = getCookie("_xsrf")
-    console.log(data)
-    let res = await fetch(`/api/v2/servers/`, {
-      method: 'POST',
-      headers: {
-        'X-XSRFToken': token
-      },
-      body: data,
-    });
-    let responseData = await res.json();
+    let responseData;
+    try {
+      let res = await fetch(`/api/v2/servers/`, {
+        method: 'POST',
+        headers: {
+          'X-XSRFToken': token
+        },
+        body: data,
+      });
+      responseData = await res.json();
+    } catch (e) {
+      // Network failure or a non-JSON (e.g. proxy timeout) response
+      responseData = { status: "error", error: "Error", error_data: String(e) };
+    }
     if (responseData.status === "ok") {
       window.location.href = '/panel/dashboard';
-    } else {
-      var classList = $('.waitMsg').first().attr('class').split(/\s+/);
-
-      // Loop through classes and remove all elements with any of them
-      classList.forEach(function (cls) {
-        $('.' + cls).remove();
-      });
-      bootbox.alert({
-        title: responseData.error,
-        message: responseData.error_data
-      });
+      return;
     }
+    creatingServer = false;
+    // Close the "be patient..." dialog, then explain what went wrong
+    bootbox.hideAll();
+    bootbox.alert({
+      title: responseData.error,
+      message: responseData.error_data
+    });
   }
   $(document).ready(function () {
 
@@ -417,8 +428,8 @@
     let forms = $('form.server-wizard');
     forms.each(function (i, formEl) {
       let form = $(formEl);
-      let min = form.find('[name=min_memory]');
-      let max = form.find('[name=max_memory]');
+      let min = form.find('[name=mem_min]');
+      let max = form.find('[name=mem_max]');
       console.log(form, min, max)
       min.change(function () {
         check_sizes(max, min, 'min');

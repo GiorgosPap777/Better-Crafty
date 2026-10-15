@@ -447,6 +447,12 @@ data['lang']) }}{% end %}
       let password = null;
       if(!userId){
         password = validateForm();
+        if (password === ""){
+          // Both fields empty: new users need a password, say so instead of doing nothing
+          bootbox.alert("{{ translate('validators', 'passProp', data['lang']) }}");
+          $("#password0").focus();
+          return;
+        }
         if (!password){
           return;
         }

@@ -1,9 +1,10 @@
-$("#renewCodes").click(async function () {
-    if (typeof userId === "undefined") {
-        userId = $(this).data("id"); //This may be defined in the outter scope where
-        // this function is called. cannot redefine the variable here like sonar wants.
-    }
-    let res = await fetch(`/api/v2/users/${userId}/totp/recovery/renew/`, {
+// "#renewCodes" is the single button on a user's MFA page (which defines
+// userId); ".renew-codes" is one icon per row in the Panel Config user list.
+$(document).on("click", "#renewCodes, .renew-codes", async function () {
+    const targetUserId = $(this).data("id") !== undefined
+        ? $(this).data("id")
+        : userId;
+    let res = await fetch(`/api/v2/users/${targetUserId}/totp/recovery/renew/`, {
         method: 'GET',
         headers: {
             'X-XSRFToken': token

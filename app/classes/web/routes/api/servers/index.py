@@ -966,18 +966,14 @@ class ApiServersIndexHandler(BaseApiHandler):
                     "error_data": f"{str(err)}",
                 },
             )
-        # Check to make sure port is allowable
-        if data["monitoring_type"] == "minecraft_java":
-            try:
-                port = data["minecraft_java_monitoring_data"]["port"]
-            except:
-                port = 25565
-        else:
-            try:
-                port = data["minecraft_bedrock_monitoring_data"]["port"]
-            except:
-                port = 19132
-        if port > 65535 or port < 1:
+        # Check to make sure port is allowable. Each monitoring type keeps its
+        # port in its own "<type>_monitoring_data" section.
+        default_ports = {"minecraft_java": 25565, "minecraft_bedrock": 19132}
+        monitoring_data = data.get(f"{data['monitoring_type']}_monitoring_data", {})
+        port = monitoring_data.get(
+            "port", default_ports.get(data["monitoring_type"], 25565)
+        )
+        if not isinstance(port, int) or port > 65535 or port < 1:
             self.finish_json(
                 405,
                 {

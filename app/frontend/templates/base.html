@@ -181,20 +181,6 @@
       $('[data-toggle="tooltip"]').tooltip()
     })
 
-    // Notify
-    $(document).ready(function () {
-      $("#notificationDropdown").click(function () {
-        $.get("/ajax/announcements", function (data) {
-          console.log(data);
-          bootbox.alert({
-            title: "Notifications",
-            message: data,
-
-          });
-        });
-      });
-    });
-
     let usingWebSockets = false;
     let webSocket = null;
     let websocketTimeoutId = null;
@@ -295,6 +281,7 @@
 
     // Managing Connexions for Multi Tab opened to reduce bandwith usage
     document.addEventListener("visibilitychange", () => {
+      if (!webSocket) return;
       if (document.visibilityState == "hidden") {
         websocketTimeoutId = setTimeout(() => {
           webSocket.close(1000, "Closed due to Inactivity");
@@ -382,13 +369,12 @@
       });
 
       webSocket.on('support_status_update', function (logs) {
-        if (logs.percent >= 100) {
-          document.getElementById('logs_progress_bar').innerHTML = '100%';
-          document.getElementById('logs_progress_bar').style.width = '100%';
-        } else {
-          document.getElementById('logs_progress_bar').innerHTML = logs.percent + '%';
-          document.getElementById('logs_progress_bar').style.width = logs.percent + '%';
-        }
+        // The bar is only rendered if logs were already being prepared at page load
+        const bar = document.getElementById('logs_progress_bar');
+        if (!bar) return;
+        const percent = Math.min(logs.percent, 100) + '%';
+        bar.innerHTML = percent;
+        bar.style.width = percent;
       });
       webSocket.on('send_logs_bootbox', function (server_id) {
         var x = document.querySelector('.bootbox');
@@ -567,7 +553,9 @@
       </div>
       `
     }
-    webSocket.on('notification', notify);
+    if (webSocket) {
+      webSocket.on('notification', notify);
+    }
 
     document.addEventListener('alpine:init', () => {
       console.log('%c[Crafty Controller] %cAlpine.js pre-initialization!', 'font-weight: 900; color: #800080;', 'color: #eee;');

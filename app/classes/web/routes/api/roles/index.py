@@ -212,7 +212,7 @@ class ApiRolesIndexHandler(BaseApiHandler):
             )
 
         role_id = self.controller.roles.add_role_advanced(
-            role_name, servers, manager, data["mfa_required"]
+            role_name, servers, manager, data.get("mfa_required", False)
         )
 
         self.controller.management.add_to_audit_log(

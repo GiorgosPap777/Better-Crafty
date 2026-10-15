@@ -84,10 +84,6 @@
   <!-- endinject -->
   <script>
     $(document).ready(function () {
-      let login_opacity_div = document.getElementById("login_opacity");
-      let opacity = login_opacity_div.getAttribute("data-value");
-      document.getElementById("login-form-background").style.background =
-        "rgb(34, 36, 55, " + opacity / 100 + ")";
       //Register Service worker for mobile app
       if ("serviceWorker" in navigator) {
         navigator.serviceWorker
