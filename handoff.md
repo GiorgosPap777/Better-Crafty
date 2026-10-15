@@ -9,7 +9,8 @@ temporary, so only what is committed here survives).
 - A fork of **Crafty Controller 4.11.0** (Python Tornado + peewee/SQLite;
   jQuery + Bootstrap 4.3.1 + bootbox front end; Phosphor icons).
 - Repo: `giorgospap777/better-crafty`. **All work is on branch
-  `claude/login-server-admin-improvements-ctbqdu`.** `main` is empty.
+  `claude/login-server-admin-improvements-ctbqdu`.** It is the only branch
+  on GitHub and the repo default, so the README shows on the front page.
 - Push with `git push -u origin claude/login-server-admin-improvements-ctbqdu`.
   Do **not** open a PR unless the owner explicitly asks.
 - Commit messages end with the attribution lines the session supplies.
@@ -35,12 +36,11 @@ temporary, so only what is committed here survives).
 ### Questions still waiting on the owner
 
 - Should a PR to `main` be opened? (Explained what it means; not opened.)
-- The token cookie has no `SameSite` and the API turns XSRF checks off, so
-  in browsers that send cookies on cross-site POSTs (Firefox) another site
-  could call the API as the logged-in user. Setting `samesite="Lax"` in
-  `api/auth/login.py` and `api/auth/passkey.py` fixes it, but would break
-  showing Crafty inside an iframe on another site (e.g. a Home Assistant
-  panel). Raised with the owner; **not changed** until they decide.
+- (Answered in session 5.) The token cookie is now `SameSite=Lax`
+  (`api/auth/login.py`, `api/auth/passkey.py`): the API turns XSRF checks
+  off, so without it another site could call the API as the logged-in user.
+  The owner does not embed Crafty in iframes on other sites, which is the
+  one thing this breaks.
 - `show_errors` defaults to true, so tracebacks reach the browser. Upstream
   choice.
 
@@ -62,7 +62,9 @@ temporary, so only what is committed here survives).
 | `54455760` | Compact server header on phones |
 | `c44b0f88` | Logs tab: filter above the log, empty state, link with Terminal |
 | `1b91543a` | On/off switches, restore errors, snapshot confirm, editor double save |
-| (this commit) | Handoff notes for sessions 2-4, test scripts |
+| `e409e2fc` | Handoff notes for sessions 2-4, test scripts |
+| `0374b193` | Login cookie `SameSite=Lax` |
+| (this commit) | README for visitors with before/after screenshots |
 
 ### 1. Login (`d3946c3f`)
 
@@ -245,6 +247,31 @@ have the details; the notes below are what is useful when changing the code.
 - Dashboard accessibility and hard-coded English strings.
 - Wizard nits: `roles_select` scoping, duplicate ids, bedrock "Server Upload"
   string.
+
+## Session 5: README and screenshots
+
+- The owner asked for a README that explains the fork to other people, with
+  pictures. `README.md` now has: summary table, before/after screenshots per
+  area, bug and security fix lists, install from source (the upstream Docker
+  images do not include these changes), credits and license.
+- Screenshots live in `docs/screenshots/<name>-before|after.png|jpg`
+  (`docs/` is in `.dockerignore`). To retake them:
+  1. Make an upstream copy:
+     `cp -a /home/crafty/run /home/crafty/run_before`, then
+     `git archive fe65b372 | tar -x -C /home/crafty/run_before` (fe65b372 is
+     the plain Crafty 4.11.0 commit), `chown -R crafty:crafty` it.
+  2. Stop the fork, start the copy with `start_before.sh`, run
+     `node readme_shots.js before <dir>`; then stop it, start the fork with
+     `start.sh` and run `node readme_shots.js after <dir>`. Start server 1
+     first in both so the header shows live numbers.
+  3. Both start scripts unset `JAVA_TOOL_OPTIONS`/`JDK_JAVA_OPTIONS`: in the
+     cloud sandbox Java prints them into the console, which would put
+     sandbox details into the Terminal screenshots. Look at every image
+     before committing it.
+  4. Use clean test data (normal player names and files); the XSS test
+     files and players look odd in a README.
+  5. Shrink: `convert X.png -strip -define png:compression-level=9`, and
+     JPEG (`-quality 84`) for the login shots (photo background).
 
 ## Rebuilding the test setup
 

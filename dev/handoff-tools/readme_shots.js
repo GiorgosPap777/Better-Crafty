@@ -1,0 +1,68 @@
+// README screenshots. Usage: node readme_shots.js <before|after> <outdir> [name...]
+const { chromium } = require('/opt/node22/lib/node_modules/playwright');
+const fs = require('fs');
+const BASE = 'https://localhost:8443';
+const TOKEN = fs.readFileSync(__dirname + '/token', 'utf8').trim();
+const S1 = '669ae1ce-61fa-498d-9782-6f3bb1804313';
+const B1 = 'be668426-9dad-4194-92f2-87d0d4fd6575';
+const [which, outDir, ...only] = process.argv.slice(2);
+const DESK = { width: 1280, height: 800 }, PHONE = { width: 390, height: 844 };
+const server = sub => `/panel/server_detail?id=${S1}&subpage=${sub}`;
+
+// Scroll so the server tab bar sits just under the top navbar
+const toTabs = async p => p.evaluate(() => {
+  const tabs = document.querySelector('.tab-simple-styled');
+  if (!tabs) return;
+  // The Files page scrolls an inner panel instead of the window
+  const panel = document.querySelector('.main-panel');
+  if (panel && panel.scrollHeight > panel.clientHeight + 1 && getComputedStyle(panel).overflowY === 'auto') {
+    panel.scrollTop += tabs.getBoundingClientRect().top - 80;
+  } else {
+    window.scrollTo(0, tabs.getBoundingClientRect().top + window.scrollY - 80);
+  }
+});
+
+const SHOTS = [
+  { name: 'login', url: '/login', vp: DESK, auth: false },
+  { name: 'login-phone', url: '/login', vp: PHONE, auth: false },
+  { name: 'dashboard', url: '/panel/dashboard', vp: DESK },
+  { name: 'terminal', url: server('term'), vp: DESK, prep: p => p.evaluate(() => window.scrollTo(0, 0)) },
+  { name: 'terminal-phone', url: server('term'), vp: PHONE, prep: p => p.evaluate(() => window.scrollTo(0, 0)) },
+  { name: 'config', url: server('config'), vp: DESK, prep: toTabs },
+  { name: 'config-game', url: server('config'), vp: DESK, afterOnly: true,
+    prep: p => p.evaluate(() => { const s = document.querySelector('#game-settings'); window.scrollTo(0, s.getBoundingClientRect().top + window.scrollY - 80); }) },
+  { name: 'players', url: server('admin_controls'), vp: DESK, prep: toTabs },
+  { name: 'backups', url: server('backup'), vp: DESK, prep: toTabs },
+  { name: 'backup-files', url: `/panel/edit_backup?id=${S1}&backup_id=${B1}`, vp: DESK,
+    prep: p => p.evaluate(() => { const t = document.querySelector('.restore_button'); if (t) window.scrollTo(0, t.closest('table, .card').getBoundingClientRect().top + window.scrollY - 120); }) },
+  { name: 'files', url: server('files'), vp: DESK, prep: toTabs },
+  { name: 'files-phone', url: server('files'), vp: PHONE, prep: toTabs },
+  { name: 'metrics', url: server('metrics'), vp: DESK, prep: toTabs },
+  { name: 'logs', url: server('logs'), vp: DESK, prep: toTabs },
+  { name: 'schedules', url: server('schedules'), vp: DESK, prep: toTabs },
+];
+
+(async () => {
+  fs.mkdirSync(outDir, { recursive: true });
+  const browser = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium-1194/chrome-linux/chrome' });
+  for (const shot of SHOTS) {
+    if (only.length && !only.includes(shot.name)) continue;
+    if (shot.afterOnly && which !== 'after') continue;
+    const ctx = await browser.newContext({ viewport: shot.vp, deviceScaleFactor: 1, ignoreHTTPSErrors: true, isMobile: shot.vp === PHONE, hasTouch: shot.vp === PHONE });
+    if (shot.auth !== false) await ctx.addCookies([{ name: 'token', value: TOKEN, domain: 'localhost', path: '/', secure: true }]);
+    const p = await ctx.newPage();
+    await p.goto(BASE + shot.url, { waitUntil: 'load' });
+    await p.waitForTimeout(3500);
+    // Sandbox-only "no internet" popups and toasts are not part of the UI being shown
+    await p.evaluate(() => {
+      document.querySelectorAll('.bootbox, .modal-backdrop, .popover, .toast').forEach(e => e.remove());
+      document.body.classList.remove('modal-open');
+    });
+    if (shot.prep) await shot.prep(p);
+    await p.waitForTimeout(600);
+    await p.screenshot({ path: `${outDir}/${shot.name}-${which}.png` });
+    console.log('shot', shot.name);
+    await ctx.close();
+  }
+  await browser.close();
+})().catch(e => { console.error('ERROR', e); process.exit(1); });

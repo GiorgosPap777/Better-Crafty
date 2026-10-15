@@ -23,4 +23,7 @@ CHANGELOG.md
 CONTRIBUTING.md
 DBCHANGES.md
 README.md
+handoff.md
+docs/
+dev/handoff-tools/
 sonar-project.properties
