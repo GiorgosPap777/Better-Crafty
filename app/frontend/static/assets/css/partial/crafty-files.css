@@ -328,3 +328,88 @@ body {
     background-color: var(--card-banner-bg);
     overflow: hidden;
 }
+/* Folder path above the list */
+.table-nav {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 4px 6px;
+    margin-bottom: 12px;
+    font-size: 1rem;
+}
+
+.tree-crumb {
+    padding: 2px 6px;
+    border-radius: 6px;
+    overflow-wrap: anywhere;
+}
+
+button.tree-crumb {
+    background: transparent;
+    border: none;
+    color: var(--info);
+}
+
+button.tree-crumb:hover,
+button.tree-crumb:focus-visible {
+    background: var(--card-banner-bg);
+    text-decoration: underline;
+}
+
+.tree-crumb.current {
+    font-weight: 600;
+}
+
+.tree-sep {
+    opacity: 0.6;
+}
+
+.tree-refresh {
+    margin-left: 4px;
+    color: inherit;
+    border: 1px solid var(--outline);
+    border-radius: 6px;
+    line-height: 1;
+}
+
+.files-drop-hint {
+    margin-top: -4px;
+}
+
+.files-empty td {
+    text-align: center;
+    opacity: 0.8;
+    cursor: default;
+}
+
+.files-row-meta {
+    margin-top: 2px;
+}
+
+.files-options-col {
+    width: 1%;
+}
+
+.files-options-btn {
+    color: inherit;
+    padding: 4px 10px;
+    font-size: 1.1rem;
+    line-height: 1;
+}
+
+.files-options-btn:hover,
+.files-options-btn:focus-visible {
+    background: var(--card-banner-bg);
+    color: inherit;
+}
+
+@media (max-width: 575.98px) {
+    .animated-table td,
+    .animated-table th {
+        padding: 10px 8px;
+    }
+
+    .animated-table .column-1 {
+        overflow-wrap: anywhere;
+    }
+}

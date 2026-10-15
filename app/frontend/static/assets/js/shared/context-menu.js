@@ -103,7 +103,13 @@ document.addEventListener("DOMContentLoaded", () => {
 
             const tr = ellipse.closest("tr");
             loadMenuContent(tr);
-            showMenu(event.clientX, event.clientY);
+            // Opened from the keyboard: place the menu by the button
+            if (event.clientX === 0 && event.clientY === 0) {
+                const rect = ellipse.getBoundingClientRect();
+                showMenu(rect.left, rect.bottom);
+            } else {
+                showMenu(event.clientX, event.clientY);
+            }
         });
     } catch {
         console.log("Could not find context area to set")

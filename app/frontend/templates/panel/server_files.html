@@ -38,9 +38,9 @@ end %} {% block content %}
                                 data-uploadTitle="{{ translate('serverFiles', 'uploadTitle', data['lang'])}}"
                                 data-upload="{{ translate('serverFiles', 'upload', data['lang']) }}"
                                 data-load-more="{{translate('serverFiles', 'more', data['lang'])}}">
-                                <div id="table-nav" class="table-nav">
-                                </div>
-                                <br />
+                                <nav id="table-nav" class="table-nav"
+                                    aria-label="{{ translate('serverFiles', 'pathLabel', data['lang']) }}">
+                                </nav>
                                 <div id="table-nav-buttons" data-dir='{{translate("serverFiles", "createDir" ,
                                     data["lang"])}}' data-file='{{translate("serverFiles", "createFile" ,
                                     data["lang"])}}' data-upload='{{translate("serverFiles", "upload" ,
@@ -51,6 +51,10 @@ end %} {% block content %}
                                         File</button>&nbsp;&nbsp;<button id="upload-file" class="btn btn-info">Upload
                                         File</button>
                                 </div>
+                                <p class="files-drop-hint small text-muted d-none d-md-block mb-0">
+                                    <i class="ph ph-cloud-arrow-up" aria-hidden="true"></i>
+                                    {{ translate('serverFiles', 'dropHint', data['lang']) }}
+                                </p>
                             </div>
                             <table class="table no-scroll animated-table" id="files_table"
                                 data-path="{{data['server_stats']['server_id']['path'] }}"
@@ -80,9 +84,9 @@ end %} {% block content %}
                                         <th class="d-none d-sm-table-cell" scope="col">{{translate("serverFiles",
                                             "permissions" ,
                                             data["lang"])}}</th>
-                                        <th class="d-none d-sm-table-cell" scope="col">{{translate("serverFiles",
-                                            "options" ,
-                                            data["lang"])}}</th>
+                                        <th scope="col" class="files-options-col"><span
+                                                class="d-none d-sm-inline">{{translate("serverFiles", "options",
+                                                data["lang"])}}</span></th>
                                     </tr>
                                 </thead>
                                 <tbody id="files-table-body">
@@ -113,6 +117,11 @@ end %} {% block content %}
 {% end %} {% block js %}
 <script>
     const serverId = new URLSearchParams(document.location.search).get("id");
+    const filesText = {% raw json_encode({key: translate('serverFiles', key, data['lang']) for key in [
+        'root', 'refresh', 'emptyFolder', 'selectedItems', 'canRead', 'canWrite', 'canExecute', 'options',
+        'typeFolder', 'typeFile', 'typeExt', 'typeText', 'typeLog', 'typeJson', 'typeJar', 'typeProperties',
+        'typeYaml', 'typeToml', 'typeConfig', 'typeArchive', 'typeImage', 'typeScript', 'typeGameData',
+        'typeLock']}) %};
 
     $(document).ready(function () {
         let rawDir = new URLSearchParams(document.location.search).get("dir"); //try to get dir from url

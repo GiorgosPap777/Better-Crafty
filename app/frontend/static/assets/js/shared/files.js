@@ -7,6 +7,7 @@ let move_copy_target = "";
 let modified_time = 1.5;
 let recent_response = {}
 let start_index;
+let files_loaded_once = false;
 const LOADING_TABLE = `<tr class="skeleton-row">
                                     <td>
                                         <div class="skeleton-line" style="width: 60%;"></div>
@@ -162,45 +163,61 @@ function fileIcon(value) {
     return '<i class="ph-fill ph-file-x text-danger"></i>';
 }
 
+// Friendly names for the Type column; the MIME type is kept as a tooltip
+const FILE_TYPES = {
+    txt: "typeText", md: "typeText", log: "typeLog",
+    json: "typeJson", json5: "typeJson", mcmeta: "typeJson",
+    jar: "typeJar", properties: "typeProperties",
+    yml: "typeYaml", yaml: "typeYaml", toml: "typeToml",
+    cfg: "typeConfig", conf: "typeConfig", ini: "typeConfig", config: "typeConfig",
+    zip: "typeArchive", gz: "typeArchive", tgz: "typeArchive", tar: "typeArchive",
+    "7z": "typeArchive", rar: "typeArchive", xz: "typeArchive",
+    png: "typeImage", jpg: "typeImage", jpeg: "typeImage", gif: "typeImage",
+    webp: "typeImage", ico: "typeImage", svg: "typeImage",
+    sh: "typeScript", bat: "typeScript", cmd: "typeScript", ps1: "typeScript",
+    dat: "typeGameData", dat_old: "typeGameData", mca: "typeGameData",
+    mcr: "typeGameData", nbt: "typeGameData", lock: "typeLock",
+};
+
+function fileTypeName(name, value) {
+    if (value.dir) return filesText.typeFolder;
+    const dot = name.lastIndexOf(".");
+    const ext = dot >= 0 ? name.slice(dot + 1).toLowerCase() : "";
+    if (FILE_TYPES[ext]) return filesText[FILE_TYPES[ext]];
+    if (value.mime && value.mime.startsWith("text/")) return filesText.typeText;
+    if (ext && ext.length <= 10) return filesText.typeExt.replace("{ext}", ext.toUpperCase());
+    return filesText.typeFile;
+}
+
 function setup_table_nav(response) {
-    let path = response.data.root_path.local_path;
-    path = path.split("\\").join("/"); //Remove \ marks
-    let path_list = path.split("/");
-    const container = document.querySelector("#table-nav"); // your container
-    $(container).html("") // clear previous content
-    $(container).attr("data-cur-path", path);
+    const path = response.data.root_path.local_path.split("\\").join("/");
+    const container = $("#table-nav").empty().attr("data-cur-path", path);
+    // Older links pass the full path on disk; show it from the server folder down
+    let shown = path;
+    const root = String($("#files_table").attr("data-path") || "").split("\\").join("/").replace(/\/+$/, "");
+    if (root && (shown === root || shown.startsWith(root + "/"))) shown = shown.slice(root.length);
+    const parts = shown.split("/").filter(part => part !== "");
 
-    const span = document.createElement("span");
-    span.className = "tree-nav";
-    let local_path = ""
-    span.dataset.path = local_path; // or set the actual path if needed
-    span.innerHTML = `<i class="ph-fill ph-hard-drives"></i>${path_list[0] === "" ? '&nbsp; <i class="ph-fill ph-arrow-clockwise"></i>' : ""}`; //Set root text as server icon
-    container.appendChild(span);
-    for (let [index, part] of path_list.entries()) {
-        if (!(part === "" && index === 0)) {
-            container.appendChild(document.createTextNode(" > "));
-            // Create the span
-            const span = document.createElement("span");
-            const refresh = document.createElement("span");
-            span.className = "tree-nav";
-            const previous = path_list.slice(0, index);
-            if (index === 0) {
-                local_path = previous.join("/") + part
-            } else {
-                local_path = previous.join("/") + "/" + part
-            }
-            span.dataset.path = local_path; // or set the actual path if needed // if we're on the first iteration and it's the server ID ignore it
-            span.textContent = part; // safe text;
-            if (index == path_list.length - 1) {
-                refresh.innerHTML = `&nbsp; <i class="ph-fill ph-arrow-clockwise"></i>`;
-                span.appendChild(refresh);
-            }
-
-
-            // Append the span
-            container.appendChild(span);
-        }
-    }
+    const crumb = (label, crumbPath, current) => {
+        const el = current
+            ? $('<span class="tree-crumb current" aria-current="page"></span>')
+            : $('<button type="button" class="tree-nav tree-crumb"></button>').attr("data-path", crumbPath);
+        return el.append(label);
+    };
+    const rootLabel = $("<span></span>").append('<i class="ph-fill ph-hard-drives" aria-hidden="true"></i> ')
+        .append(document.createTextNode(filesText.root));
+    container.append(crumb(rootLabel, "", parts.length === 0));
+    let crumbPath = "";
+    parts.forEach((part, index) => {
+        crumbPath = crumbPath ? `${crumbPath}/${part}` : part;
+        container.append('<i class="ph ph-caret-right tree-sep" aria-hidden="true"></i>');
+        container.append(crumb(document.createTextNode(part), crumbPath, index === parts.length - 1));
+    });
+    $('<button type="button" class="btn btn-sm tree-refresh"></button>')
+        .attr({ title: filesText.refresh, "aria-label": filesText.refresh })
+        .html('<i class="ph ph-arrow-clockwise" aria-hidden="true"></i>')
+        .on("click", () => getTreeView($("#table-nav").attr("data-cur-path")))
+        .appendTo(container);
 }
 
 function get_more_files() {
@@ -209,71 +226,70 @@ function get_more_files() {
     setup_table_listeners();
 }
 
+// Columns other than name and options are hidden on phones, matching the header
+const WIDE_ONLY = "d-none d-sm-table-cell";
+
+function permissionIcon(allowed, icon, label) {
+    if (!allowed) return "";
+    return $(`<i class="ph ${icon} mr-2" role="img"></i>`).attr({ title: label, "aria-label": label });
+}
+
 function setup_table_body(response) {
-    const tbody = document.querySelector("tbody");
-    const response_entries = Object.entries(response.data)
-    let end_index = start_index + 500;
-    if (response_entries.length < end_index) {
-        end_index = response_entries.length
+    const tbody = document.querySelector("#files-table-body");
+    const response_entries = Object.entries(response.data).filter(([key]) => key !== "root_path");
+    if (response_entries.length === 0) {
+        $(tbody).append($('<tr class="files-empty"></tr>').append(
+            $('<td colspan="7"></td>').text(filesText.emptyFolder)));
+        return;
     }
+    let end_index = Math.min(start_index + 500, response_entries.length);
     for (let i = start_index; i < end_index; i++) {
         let [key, value] = response_entries[i];
-        if (key === "root_path") continue;
 
         const $tr = $("<tr>")
             .addClass(value.dir ? "directory" : "file")
             .attr("data-path", value.path)
             .attr("data-can_open", value.can_open);
 
-        const $check_column = $("<td>").append($("<div>").append($("<input>").attr("type", "checkbox").addClass("row-select").attr("data-name", key)).addClass("custom-check").addClass("checkbox-lg")).addClass("justify-content-center");
+        const $check_column = $("<td>").addClass(WIDE_ONLY).addClass("justify-content-center")
+            .append($("<div>").addClass("custom-check checkbox-lg")
+                .append($("<input>").attr("type", "checkbox").addClass("row-select").attr("data-name", key)));
 
-        // Column 1: icon + filename
+        const typeName = fileTypeName(key, value);
+        // Column 1: icon + filename (+ size and date on phones)
         const $name_column = $("<td>")
             .addClass("column-1")
             .attr("data-name", key)
             .append($("<span>").html(fileIcon(value)))
             .append("\u00A0\u00A0\u00A0")
             .append(document.createTextNode(key));
+        $name_column.append($('<div class="files-row-meta small text-muted d-sm-none"></div>')
+            .text([typeName, value.size, value.modified].filter(Boolean).join(" · ")));
 
-        // Column 2: MIME or "Dir"
-        const $type_column = $("<td>");
-        if (value.mime || value.dir) {
-            $type_column.text(value.mime ? value.mime : "Dir");
-        } else {
-            $type_column.html('<i class="ph ph-question" aria-hidden="true"></i>');
-        }
+        const $type_column = $("<td>").addClass(WIDE_ONLY).text(typeName);
+        if (value.mime) $type_column.attr("title", value.mime);
 
-        // Column 3: modified date
-        const $modified_column = $("<td>").text(value.modified);
+        const $modified_column = $("<td>").addClass(WIDE_ONLY).text(value.modified);
+        const $size_column = $("<td>").addClass(WIDE_ONLY).text(value.size || "-");
 
-        // Column 4: size
-        const $size_column = $("<td>").text(value.size || "-");
+        const perms = value.permissions || {};
+        const $perms_column = $("<td>").addClass(WIDE_ONLY).append(
+            permissionIcon(perms.can_read, "ph-eyeglasses", filesText.canRead),
+            permissionIcon(perms.can_write, "ph-floppy-disk", filesText.canWrite),
+            permissionIcon(perms.can_execute, "ph-binary", filesText.canExecute));
 
-        const $can_read = $(value.permissions.can_read ? '<i class="ph ph-eyeglasses mr-2"></i>' : "");
+        // Column 7: actions menu (rename, delete, ...)
+        const $options_column = $("<td>").addClass("context-button text-align-center").append(
+            $('<button type="button" class="btn btn-link options files-options-btn"></button>')
+                .attr({ title: filesText.options, "aria-label": `${filesText.options}: ${key}` })
+                .html('<i class="ph-bold ph-dots-three options" aria-hidden="true"></i>'));
 
-        const $can_write = $(value.permissions.can_write ? '<i class="ph ph-floppy-disk mr-2"></i>' : "");
-
-        const $can_execute = $(value.permissions.can_execute ? '<i class="ph ph-binary mr-2"></i>' : "");
-
-        const $perms_column = $("<td>").append($can_read, $can_write, $can_execute)
-
-        // Column 5: context button
-        const $options_column = $("<td>")
-            .addClass("context-button").append($("<span>").addClass("options").html(`<i class="ph-bold ph-dots-three options"></i>`)).addClass("text-align-center");
-        if ($("#files_table thead tr:first th:visible").length > 1) {
-
-            // Append all columns to the row
-            $tr.append($check_column, $name_column, $type_column, $modified_column, $size_column, $perms_column, $options_column);
-        } else {
-            $tr.append($name_column)
-        }
-
-        // Append row to tbody (also as jQuery object)
+        $tr.append($check_column, $name_column, $type_column, $modified_column, $size_column, $perms_column, $options_column);
         $(tbody).append($tr);
     };
     start_index = end_index
     if (response_entries.length > end_index) {
-        const $tr = $("<tr>").attr("id", "get_more_container").addClass("text-align-center").append($("<td>").attr("colspan", 6).text($("#table-nav-container").attr("data-load-more")).attr("id", "get_more"));
+        const $tr = $("<tr>").attr("id", "get_more_container").addClass("text-align-center").append($("<td>").attr("colspan", 7).text($("#table-nav-container").attr("data-load-more")).attr("id", "get_more"));
         $(tbody).append($tr);
 
         $("#get_more").on("click", function () {
@@ -326,8 +342,11 @@ function process_tree_response(response) {
     $("#files-table-body").html("");
     setup_table_body(response);
     setup_table_listeners();
-    location.hash = "";
-    location.hash = "context-container"
+    if (files_loaded_once) {
+        const box = document.getElementById("context-container");
+        if (box && box.getBoundingClientRect().top < 0) box.scrollIntoView({ block: "start" });
+    }
+    files_loaded_once = true;
 }
 
 function loadMenuContent(tr) {
@@ -396,20 +415,8 @@ function add_rename_listener() {
                 if (!result) return;
                 if ($(selected_row).children(".column-1").attr("data-name") != result) {
                     let rename = await renameItem($(selected_row).attr("data-path"), result);
-                    if (rename === true) {
-                        const oldPath = $(selected_row).attr("data-path");
-                        const sep = Math.max(oldPath.lastIndexOf("/"), oldPath.lastIndexOf("\\"));
-                        $(selected_row).attr("data-path", oldPath.slice(0, sep + 1) + result);
-
-                        $(selected_row).children(".column-1").empty()
-                        let icon = '<i class="ph-fill ph-file-x text-danger"></i>'
-                        if ($(selected_row).hasClass("directory")) icon = '<i class="ph-fill ph-folder-simple text-info"></i>';
-                        if ($(selected_row).hasClass("file") && $(selected_row).data("can_open")) icon = '<i class="ph ph-file text-success"></i>';
-                        $(selected_row).children(".column-1").append($("<span>").html(icon))
-                            .append("\u00A0\u00A0\u00A0")
-                            .append(document.createTextNode(result));
-                        $(selected_row).children(".column-1").attr("data-name", result)
-                    }
+                    // Reload so the icon, type and links match the new name
+                    if (rename === true) getTreeView($("#table-nav").attr("data-cur-path"));
                 }
             },
         });
@@ -498,7 +505,7 @@ function setup_select_nav() {
             let selected_rows = $(".row-select:checked");
             bootbox.confirm({
                 size: "",
-                title: `${$("#table-nav-container").attr("data-deleteItemQuestion")} ${selected_rows.length} 📁!`,
+                title: escapeHtml(`${$("#table-nav-container").attr("data-deleteItemQuestion")} ${selected_rows.length} ${filesText.selectedItems}!`),
                 closeButton: false,
                 message: $("#table-nav-container").attr("data-deleteItemQuestionMessage"),
                 buttons: {
