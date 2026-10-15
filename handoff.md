@@ -159,6 +159,25 @@ the ones marked **confirmed** are real.
 Then: restart Crafty, run the crawl, `test_server.js`, black and pytest,
 commit, push, report to the owner.
 
+### Session 2 (screenshots for the owner)
+
+The owner said the login felt buggy in general (no single bug to name), asked
+to "not do too much" per run, and to use subagents sparingly (they cost a
+lot of usage). They asked for screenshots of every server management page so
+they can suggest changes. Those were sent; **wait for their suggestions
+before redesigning anything.** Bugs found while taking them:
+
+- Backups list: the "Backup Type" column actually prints `max_backups`
+  (`panel/server_backup.html` ~line 92).
+- Metrics: the zoom-help popover opens by itself on desktop and covers the
+  tab bar and date picker (`server_metrics.html` ~598).
+- API: `GET /api/v2/servers/{id}/tasks` returns a 500 (handler requires
+  `task_id`); `POST .../tasks/` returns a 500 when `command` or `one_time`
+  is missing (`tasks.py` `schedule_job` indexes keys directly).
+- Small: "Every 1 days"; player tables have no empty state; logs dropdown
+  empty with no message; version/description both say "Unable To Connect"
+  while the server can't be pinged.
+
 ### Deliberately not changed (checked, not bugs)
 
 - Hytale "download_exe" doesn't redirect after create: on purpose, the
