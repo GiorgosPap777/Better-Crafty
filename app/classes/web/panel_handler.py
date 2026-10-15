@@ -930,20 +930,10 @@ class PanelHandler(BaseHandler):
                 ):
                     if not superuser:
                         self.redirect("/panel/error?error=Unauthorized access")
-                page_data["banned_players"] = (
-                    self.controller.servers.get_banned_players(server_id)
+                        return
+                page_data["player_overview"] = (
+                    self.controller.servers.get_player_overview(server_id)
                 )
-                server_instance = self.controller.servers.get_server_instance_by_id(
-                    server_id
-                )
-                page_data["cached_players"] = server_instance.player_cache
-
-                for player in page_data["banned_players"]:
-                    player["banned"] = True
-                    temp_date = datetime.datetime.strptime(
-                        player["created"], "%Y-%m-%d %H:%M:%S %z"
-                    )
-                    player["banned_on"] = (temp_date).strftime("%Y/%m/%d %H:%M:%S")
 
             template = f"panel/server_{subpage}.html"
 

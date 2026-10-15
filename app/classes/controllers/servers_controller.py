@@ -7,6 +7,7 @@ import typing as t
 
 from app.classes.controllers.roles_controller import RolesController
 from app.classes.helpers.file_helpers import FileHelpers
+from app.classes.helpers import server_properties
 
 from app.classes.shared.singleton import Singleton
 from app.classes.shared.server import ServerInstance
@@ -630,19 +631,94 @@ class ServersController(metaclass=Singleton):
     @staticmethod
     def _get_minecraft_banned_players(server_path):
         """Read and return the entries from a Minecraft ``banned-players.json``."""
-        path = os.path.join(server_path, "banned-players.json")
+        return ServersController._read_json_list(
+            os.path.join(server_path, "banned-players.json")
+        )
 
+    @staticmethod
+    def _read_json_list(path) -> t.List[dict]:
+        """Read a JSON list of objects; [] if the file is missing or broken."""
         try:
             with open(
                 Helpers.get_os_understandable_path(path), encoding="utf-8"
             ) as file:
-                content = file.read()
-                file.close()
-        except Exception as ex:
-            logger.exception(ex)
-            return {}
+                content = json.load(file)
+        except FileNotFoundError:
+            return []
+        except (OSError, ValueError) as ex:
+            logger.warning(f"Could not read {path}: {ex}")
+            return []
+        if not isinstance(content, list):
+            return []
+        return [item for item in content if isinstance(item, dict)]
 
-        return json.loads(content)
+    @staticmethod
+    def get_player_overview(server_id) -> dict:
+        """Everything the player management page shows, as plain JSON data.
+
+        Whitelist and operators are only read for Java servers, the only
+        type whose files and console commands Crafty knows for them.
+        """
+        srv = ServersController().get_server_instance_by_id(server_id)
+        server_type = HelperServers.get_server_type_by_id(server_id)
+        server_path = srv.stats_helper.get_server_stats()["server_id"]["path"]
+
+        banned = []
+        try:
+            raw_banned = ServersController.get_banned_players(server_id)
+        except Exception as ex:
+            logger.warning(f"Could not read banned players for {server_id}: {ex}")
+            raw_banned = []
+        for entry in raw_banned or []:
+            if isinstance(entry, dict) and entry.get("name"):
+                banned.append(
+                    {
+                        key: str(entry.get(key) or "")
+                        for key in ("name", "source", "reason", "created", "expires")
+                    }
+                )
+
+        overview = {
+            "server_type": server_type,
+            "running": bool(srv.check_running()),
+            "players": [dict(player) for player in srv.player_cache],
+            "banned": banned,
+            "whitelist": None,
+            "whitelist_enabled": None,
+            "ops": None,
+        }
+        if server_type == "minecraft-java":
+            overview["whitelist"] = sorted(
+                (
+                    str(entry["name"])
+                    for entry in ServersController._read_json_list(
+                        os.path.join(server_path, "whitelist.json")
+                    )
+                    if entry.get("name")
+                ),
+                key=str.lower,
+            )
+            overview["ops"] = sorted(
+                (
+                    {"name": str(entry["name"]), "level": entry.get("level")}
+                    for entry in ServersController._read_json_list(
+                        os.path.join(server_path, "ops.json")
+                    )
+                    if entry.get("name")
+                ),
+                key=lambda op: op["name"].lower(),
+            )
+            properties = pathlib.Path(server_path, "server.properties")
+            if properties.is_file():
+                try:
+                    for setting in server_properties.read_settings(
+                        properties, server_type
+                    ):
+                        if setting["key"] == "white-list":
+                            overview["whitelist_enabled"] = setting["value"]
+                except OSError as ex:
+                    logger.warning(f"Could not read {properties}: {ex}")
+        return overview
 
     def check_for_old_logs(self):
         servers = HelperServers.get_all_defined_servers()

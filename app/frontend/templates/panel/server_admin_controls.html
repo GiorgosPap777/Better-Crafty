@@ -1,6 +1,8 @@
 {% extends ../base.html %}
 
 {% block meta %}
+<link rel="stylesheet" href="/static/assets/css/partial/crafty-config.css">
+<link rel="stylesheet" href="/static/assets/css/partial/crafty-players.css">
 {% end %}
 
 {% block title %}Crafty Controller - {{ translate('serverDetails', 'serverDetails', data['lang']) }}{% end %}
@@ -31,8 +33,6 @@
             {% include "parts/server_players.html %}
           </div>
 
-          <hr />
-
         </div>
       </div>
     </div>
@@ -47,103 +47,228 @@
 
 {% block js %}
 <script>
-  const serverId = new URLSearchParams(document.location.search).get('id')
+  const playerServerId = {% raw json_encode(data['server_stats']['server_id']['server_id']) %};
+  const playerText = {% raw json_encode({key: translate('serverPlayerManagement', key, data['lang']) for key in [
+    'ban', 'kick', 'unban', 'op', 'deop', 'remove', 'online', 'lastSeen', 'noPlayers', 'noBanned',
+    'noWhitelist', 'noOps', 'bannedBy', 'level', 'commandSent', 'commandFailed', 'invalidName',
+    'reasonPrompt', 'whitelistOn', 'offlineAction', 'operator']}) %};
+  let overview = {% raw json_encode(data['player_overview']) %};
+  let refreshTimer = null;
 
-  //used to get cookies from browser - this is part of tornados xsrf protection - it's for extra security
-  function getCookie(name) {
-    var r = document.cookie.match("\\b" + name + "=([^;]*)\\b");
-    return r ? r[1] : undefined;
+  // Player names come from the game's status ping and from files the game
+  // writes, so they are only ever put on the page as text.
+  function playerArg(name) {
+    name = String(name || "").trim();
+    if (!name || name.length > 32 || /[\u0000-\u001f"]/.test(name)) return null;
+    if (/\s/.test(name)) return overview.server_type === "minecraft-bedrock" ? `"${name}"` : null;
+    return name;
   }
 
-  function ban_kick_with_reason(action, player) {
+  function showStatus(kind, text) {
+    $("#players_status").removeClass("d-none alert-success alert-danger").addClass("alert-" + kind).text(text);
+  }
+
+  async function sendCommand(command) {
+    const res = await fetch(`/api/v2/servers/${playerServerId}/stdin`, {
+      method: "POST",
+      headers: { "X-XSRFToken": getCookie("_xsrf") },
+      body: command,
+    });
+    let data = {};
+    try { data = await res.json(); } catch (e) { /* not JSON */ }
+    if (!res.ok || data.status !== "ok") {
+      showStatus("danger", `${playerText.commandFailed}: ${data.error_data || data.error || res.status}`);
+      return false;
+    }
+    showStatus("success", `${playerText.commandSent}: ${command}`);
+    // The game writes its lists a moment after running the command
+    clearTimeout(refreshTimer);
+    refreshTimer = setTimeout(refreshOverview, 1500);
+    return true;
+  }
+
+  // action: "ban" | "kick" | "unban" | "op" | "deop" | "whitelist add" | "whitelist remove"
+  function playerCommand(action, name, reason) {
+    const arg = playerArg(name);
+    if (arg === null) {
+      showStatus("danger", playerText.invalidName);
+      return Promise.resolve(false);
+    }
+    const hytale = overview.server_type === "hytale";
+    const verbs = {
+      ban: "ban", kick: "kick", unban: hytale ? "unban" : "pardon",
+      op: hytale ? "op add" : "op", deop: hytale ? "op remove" : "deop",
+    };
+    let command = `${verbs[action] || action} ${arg}`;
+    reason = String(reason || "").replace(/[\r\n]+/g, " ").trim();
+    if (reason && (action === "ban" || action === "kick")) command += ` ${reason}`;
+    return sendCommand(command);
+  }
+
+  function askReason(action, name) {
     bootbox.prompt({
-      title: "{{ translate('serverPlayerManagement', 'reasonPrompt', data['lang']) }}",
+      title: escapeHtml(`${playerText[action]} ${name}`),
+      placeholder: playerText.reasonPrompt,
       callback: function (reason) {
-        if (reason === null) {
-          // Dialog cancelled — take no action.
-          return;
-        }
-        // Strip newlines so a reason can't inject a second console command,
-        // then trim surrounding whitespace.
-        reason = reason.replace(/[\r\n]+/g, ' ').trim();
-        const command = reason ? `${action} ${player} ${reason}` : `${action} ${player}`;
-        send_command_to_server(command);
-        // Optimistically reflect a ban in the banned list for instant feedback;
-        // the next page load reconciles against the server's banned-players.json.
-        if (action === 'ban') {
-          add_banned_row(player, reason);
-        }
+        if (reason === null) return;
+        playerCommand(action, name, reason);
       }
     });
   }
 
-  // Unban a player and optimistically drop them from the banned list so the UI
-  // updates immediately instead of waiting for a page refresh. Hytale and
-  // Minecraft spell the command differently (unban vs pardon).
-  function unban_player(player) {
-    const command = SERVER_TYPE === "hytale" ? "unban" : "pardon";
-    send_command_to_server(`${command} ${player}`);
-    remove_banned_rows(player);
+  async function refreshOverview() {
+    try {
+      const res = await fetch(`/api/v2/servers/${playerServerId}/players`);
+      const data = await res.json();
+      if (data.status === "ok") {
+        overview = data.data;
+        renderAll();
+      }
+    } catch (e) {
+      console.error("Could not refresh players", e);
+    }
   }
 
-  // Remove every banned-table row (desktop + mobile) matching a player name.
-  function remove_banned_rows(player) {
-    $('#banned-body tr, #banned-body-mobile tr').filter(function () {
-      return $(this).attr('data-player') === player;
-    }).remove();
+  function actionButton(label, kind, onClick) {
+    return $('<button type="button" class="btn btn-sm"></button>').addClass(kind).text(label)
+      .prop("disabled", !overview.running).attr("title", overview.running ? null : playerText.offlineAction)
+      .on("click", onClick);
   }
 
-  // Append an optimistic banned-table row for a player. Markup mirrors the
-  // server-rendered rows in server_players.html; text is set via .text()/text
-  // nodes so player names and reasons can't break out of the markup.
-  function add_banned_row(player, reason) {
-    remove_banned_rows(player);
-    const reasonText = reason || 'None';
-    const bannedOn = moment().format('YYYY/MM/DD HH:mm:ss');
-    const unbanButton = () => $('<button>', {
-      type: 'button', class: 'btn btn-danger', text: 'Unban'
-    }).on('click', () => unban_player(player));
-
-    $('#banned-body').append(
-      $('<tr>', { class: 'playerItem--', 'data-player': player }).append(
-        $('<td>').append($('<strong>').text(' ' + player)),
-        $('<td>').text('Banned on ' + bannedOn),
-        $('<td>').append(
-          document.createTextNode('Banned by :  '),
-          $('<br>'),
-          document.createTextNode('Reason : ' + reasonText)
-        ),
-        $('<td>', { class: 'buttons' }).append(unbanButton())
-      )
-    );
-
-    $('#banned-body-mobile').append(
-      $('<tr>', { class: 'playerItem--', 'data-player': player }).append(
-        $('<td>').append($('<strong>').text(' ' + player)),
-        $('<td>', { class: 'buttons' }).append(unbanButton())
-      )
-    );
+  function emptyRow(text, columns) {
+    return $('<tr class="players-empty"></tr>').append($("<td></td>").attr("colspan", columns).text(text));
   }
 
-  async function send_command_to_server(command) {
-    console.log(command)
-    const token = getCookie("_xsrf")
-    console.log('sending command: ' + command)
+  function renderPlayers() {
+    const body = $("#player-body").empty();
+    const players = Array.isArray(overview.players) ? overview.players : [];
+    if (players.length === 0) {
+      body.append(emptyRow(playerText.noPlayers, 3));
+      return;
+    }
+    const opNames = new Set((overview.ops || []).map(op => op.name.toLowerCase()));
+    const sorted = [...players].sort((a, b) =>
+      (a.status === "Online" ? 0 : 1) - (b.status === "Online" ? 0 : 1) || a.name.localeCompare(b.name));
+    for (const player of sorted) {
+      const name = String(player.name);
+      const row = $("<tr></tr>");
+      const nameCell = $("<td></td>").append($("<strong></strong>").text(name));
+      if (opNames.has(name.toLowerCase())) {
+        nameCell.append(" ", $('<span class="badge badge-warning"></span>').text(playerText.operator));
+      }
+      row.append(nameCell);
+      const status = $("<td></td>");
+      if (player.status === "Online") {
+        status.append($('<span class="text-success"><i class="ph ph-cell-signal-full" aria-hidden="true"></i> </span>')
+          .append(document.createTextNode(playerText.online)));
+      } else {
+        status.append($('<span class="text-muted"></span>').text(`${playerText.lastSeen}: ${player.last_seen || "—"}`));
+      }
+      row.append(status);
+      const actions = $('<div class="players-actions"></div>');
+      if (playerArg(name) !== null) {
+        if (player.status === "Online") {
+          actions.append(actionButton(playerText.kick, "btn-outline-danger", () => askReason("kick", name)));
+        }
+        if (overview.server_type !== "minecraft-bedrock") {
+          actions.append(actionButton(playerText.ban, "btn-danger", () => askReason("ban", name)));
+        }
+        if (opNames.has(name.toLowerCase())) {
+          actions.append(actionButton(playerText.deop, "btn-outline-warning", () => playerCommand("deop", name)));
+        } else {
+          actions.append(actionButton(playerText.op, "btn-outline-warning", () => playerCommand("op", name)));
+        }
+      }
+      row.append($('<td class="text-right players-actions-cell"></td>').append(actions));
+      body.append(row);
+    }
+  }
 
-    let res = await fetch(`/api/v2/servers/${serverId}/stdin`, {
-      method: 'POST',
-      headers: {
-        'X-XSRFToken': token
-      },
-      body: command,
+  function renderBanned() {
+    const body = $("#banned-body").empty();
+    if (overview.banned.length === 0) {
+      body.append(emptyRow(playerText.noBanned, 2));
+      return;
+    }
+    for (const ban of overview.banned) {
+      const info = $("<td></td>").append($("<strong></strong>").text(ban.name));
+      const created = moment(ban.created, "YYYY-MM-DD HH:mm:ss Z");
+      const details = [];
+      if (created.isValid()) details.push(created.format("YYYY-MM-DD HH:mm"));
+      if (ban.source) details.push(`${playerText.bannedBy} ${ban.source}`);
+      if (details.length) info.append($('<div class="small text-muted"></div>').text(details.join(" · ")));
+      if (ban.reason) info.append($('<div class="small"></div>').text(ban.reason));
+      const unban = actionButton(playerText.unban, "btn-outline-success", () => playerCommand("unban", ban.name));
+      body.append($("<tr></tr>").append(info, $('<td class="text-right"></td>').append(unban)));
+    }
+  }
+
+  function renderNameList(selector, entries, emptyText, removeAction, extra) {
+    const body = $(selector).empty();
+    if (entries.length === 0) {
+      body.append(emptyRow(emptyText, 2));
+      return;
+    }
+    for (const entry of entries) {
+      const name = typeof entry === "string" ? entry : entry.name;
+      const cell = $("<td></td>").append($("<strong></strong>").text(name));
+      if (extra) cell.append(extra(entry));
+      const remove = actionButton(playerText.remove, "btn-outline-danger", () => playerCommand(removeAction, name));
+      body.append($("<tr></tr>").append(cell, $('<td class="text-right"></td>').append(remove)));
+    }
+  }
+
+  function renderAll() {
+    $("#players_offline").prop("hidden", overview.running);
+    $(".players-add-form").find("input, button").prop("disabled", !overview.running);
+    renderPlayers();
+    $("#banned_col").prop("hidden", overview.server_type === "minecraft-bedrock");
+    renderBanned();
+
+    $("#whitelist_col").prop("hidden", overview.whitelist === null);
+    if (overview.whitelist !== null) {
+      const enabled = overview.whitelist_enabled;
+      // Only say "On" here; when it is off the hint below explains it
+      $("#whitelist_state").prop("hidden", enabled !== true).addClass("badge-success").text(playerText.whitelistOn);
+      $("#whitelist_off_hint").prop("hidden", enabled !== false);
+      renderNameList("#whitelist-body", overview.whitelist, playerText.noWhitelist, "whitelist remove");
+    }
+    $("#ops_col").prop("hidden", overview.ops === null);
+    if (overview.ops !== null) {
+      renderNameList("#ops-body", overview.ops, playerText.noOps, "deop", op =>
+        op.level ? $('<span class="small text-muted ml-2"></span>').text(`${playerText.level} ${op.level}`) : "");
+    }
+  }
+
+  function bindForm(selector, action) {
+    $(selector).on("submit", async function (e) {
+      e.preventDefault();
+      const form = this;
+      const button = $(form).find("button").prop("disabled", true);
+      const ok = await playerCommand(action, form.elements.name.value,
+        form.elements.reason ? form.elements.reason.value : "");
+      button.prop("disabled", !overview.running);
+      if (ok) form.reset();
     });
-
-    let responseData = await res.text();
-    console.log("got response:");
-    console.log(responseData);
   }
 
-
+  $(function () {
+    bindForm("#ban_form", "ban");
+    bindForm("#whitelist_form", "whitelist add");
+    bindForm("#ops_form", "op");
+    renderAll();
+    // Live updates from the shared server header (details_stats.html)
+    window.onServerDetails = function (server) {
+      const wasRunning = overview.running;
+      overview.running = Boolean(server.running);
+      if (Array.isArray(server.players_cache)) overview.players = server.players_cache;
+      if (wasRunning !== overview.running) {
+        refreshOverview();
+      } else {
+        renderPlayers();
+      }
+    };
+  });
 </script>
 
 {% end %}

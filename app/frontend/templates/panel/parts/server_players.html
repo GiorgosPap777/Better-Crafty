@@ -1,68 +1,107 @@
-<div class="col-xl-6 col-lg-12 col-md-12 col-sm-12">
-    <h2>{{ translate('serverPlayerManagement', 'players', data['lang']) }}:</h2>
-    <div class="table-responsive ">
-        <table class="table no-scroll">
-            <thead class="thead">
-                <tr>
-                    <th scope="col-5">Player</th>
-                    <th scope="col-4">Status</th>
-                    <th scope="col-3">Actions</th>
-                </tr>
-            </thead>
-            <!-- Rows are rendered client-side by renderPlayers() in details_stats.html,
-                 both on page load and on every websocket stats push. -->
-            <tbody id="player-body">
-            </tbody>
-        </table>
+<div class="col-12">
+    <div class="alert alert-info" id="players_offline" hidden>
+        <i class="ph ph-info" aria-hidden="true"></i>
+        {{ translate('serverPlayerManagement', 'offlineNote', data['lang']) }}
     </div>
+    <div class="alert d-none" id="players_status" role="status"></div>
 </div>
-<div class="col-xl-6 col-lg-12 no-scroll">
-    <h2>{{ translate('serverPlayerManagement', 'bannedPlayers', data['lang']) }}:</h2>
-    <div class="d-none d-lg-block table-responsive">
-        <table class="table no-scroll w-100">
-            <thead class="thead">
-                <tr>
-                    <th scope="col">Player</th>
-                    <th scope="col">Status</th>
-                    <th scope="col">Reason</th>
-                    <th scope="col">Actions</th>
-                </tr>
-            </thead>
-            <tbody id="banned-body">
-                {% for player in data['banned_players'] %}
-                <tr data-player="{{ player['name'] }}" class="playerItem--">
-                    <td><strong> {{ player['name'] }}</strong></td>
-                    <td>Banned on {{ player['banned_on'] }}</td>
-                    <td>Banned by : {{ player.get('source', '') }} <br />Reason : {{ player.get('reason', 'None') }}
-                    </td>
-                    <td class="buttons">
-                        <button onclick="unban_player(`{{ player['name'] }}`)" type="button"
-                            class="btn btn-danger">Unban</button>
-                    </td>
-                </tr>
-                {% end %}
-            </tbody>
-        </table>
-    </div>
-    <div class="d-block d-lg-none table-responsive">
-        <table class="table no-scroll">
-            <thead class="thead ">
-                <tr>
-                    <th scope="col">Player</th>
-                    <th scope="col">Actions</th>
-                </tr>
-            </thead>
-            <tbody id="banned-body-mobile">
-                {% for player in data['banned_players'] %}
-                <tr data-player="{{ player['name'] }}" class="playerItem--">
-                    <td><strong> {{ player['name'] }}</strong></td>
-                    <td class="buttons">
-                        <button onclick="unban_player(`{{ player['name'] }}`)" type="button"
-                            class="btn btn-danger">Unban</button>
-                    </td>
-                </tr>
-                {% end %}
-            </tbody>
-        </table>
-    </div>
+
+<div class="col-xl-6 col-12">
+    <section class="config-section">
+        <div class="config-section-head">
+            <h3><i class="ph ph-users" aria-hidden="true"></i>{{ translate('serverPlayerManagement', 'players',
+                data['lang']) }}</h3>
+            <p class="text-muted small">{{ translate('serverPlayerManagement', 'playersDesc', data['lang']) }}</p>
+        </div>
+        <div class="table-responsive">
+            <table class="table players-table">
+                <thead>
+                    <tr>
+                        <th scope="col">{{ translate('serverPlayerManagement', 'player', data['lang']) }}</th>
+                        <th scope="col">{{ translate('serverPlayerManagement', 'status', data['lang']) }}</th>
+                        <th scope="col" class="text-right">{{ translate('serverPlayerManagement', 'actions',
+                            data['lang']) }}</th>
+                    </tr>
+                </thead>
+                <tbody id="player-body"></tbody>
+            </table>
+        </div>
+    </section>
+</div>
+
+<div class="col-xl-6 col-12" id="banned_col" hidden>
+    <section class="config-section">
+        <div class="config-section-head">
+            <h3><i class="ph ph-prohibit" aria-hidden="true"></i>{{ translate('serverPlayerManagement',
+                'bannedPlayers', data['lang']) }}</h3>
+            <p class="text-muted small">{{ translate('serverPlayerManagement', 'banDesc', data['lang']) }}</p>
+        </div>
+        <form class="players-add-form" id="ban_form" autocomplete="off">
+            <input type="text" class="form-control" name="name" maxlength="32" required
+                aria-label="{{ translate('serverPlayerManagement', 'playerName', data['lang']) }}"
+                placeholder="{{ translate('serverPlayerManagement', 'playerName', data['lang']) }}">
+            <input type="text" class="form-control" name="reason" maxlength="200"
+                aria-label="{{ translate('serverPlayerManagement', 'reasonPrompt', data['lang']) }}"
+                placeholder="{{ translate('serverPlayerManagement', 'reasonPrompt', data['lang']) }}">
+            <button type="submit" class="btn btn-danger"><i class="ph ph-prohibit" aria-hidden="true"></i>
+                {{ translate('serverPlayerManagement', 'ban', data['lang']) }}</button>
+        </form>
+        <div class="table-responsive">
+            <table class="table players-table">
+                <tbody id="banned-body"></tbody>
+            </table>
+        </div>
+    </section>
+</div>
+
+<div class="col-xl-6 col-12" id="whitelist_col" hidden>
+    <section class="config-section">
+        <div class="config-section-head">
+            <h3><i class="ph ph-list-checks" aria-hidden="true"></i>{{ translate('serverPlayerManagement',
+                'whitelist', data['lang']) }}
+                <span class="badge" id="whitelist_state" hidden></span>
+            </h3>
+            <p class="text-muted small">{{ translate('serverPlayerManagement', 'whitelistDesc', data['lang']) }}</p>
+        </div>
+        <p class="small text-warning" id="whitelist_off_hint" hidden>
+            <i class="ph ph-warning" aria-hidden="true"></i>
+            {{ translate('serverPlayerManagement', 'whitelistOffHint', data['lang']) }}
+            <a href="/panel/server_detail?id={{ data['server_stats']['server_id']['server_id'] }}&subpage=config#game-settings">{{
+                translate('serverPlayerManagement', 'openGameSettings', data['lang']) }}</a>
+        </p>
+        <form class="players-add-form" id="whitelist_form" autocomplete="off">
+            <input type="text" class="form-control" name="name" maxlength="32" required
+                aria-label="{{ translate('serverPlayerManagement', 'playerName', data['lang']) }}"
+                placeholder="{{ translate('serverPlayerManagement', 'playerName', data['lang']) }}">
+            <button type="submit" class="btn btn-primary"><i class="ph ph-plus" aria-hidden="true"></i>
+                {{ translate('serverPlayerManagement', 'add', data['lang']) }}</button>
+        </form>
+        <div class="table-responsive">
+            <table class="table players-table">
+                <tbody id="whitelist-body"></tbody>
+            </table>
+        </div>
+    </section>
+</div>
+
+<div class="col-xl-6 col-12" id="ops_col" hidden>
+    <section class="config-section">
+        <div class="config-section-head">
+            <h3><i class="ph ph-crown-simple" aria-hidden="true"></i>{{ translate('serverPlayerManagement',
+                'operators', data['lang']) }}</h3>
+            <p class="text-muted small">{{ translate('serverPlayerManagement', 'operatorsDesc', data['lang']) }}</p>
+        </div>
+        <form class="players-add-form" id="ops_form" autocomplete="off">
+            <input type="text" class="form-control" name="name" maxlength="32" required
+                aria-label="{{ translate('serverPlayerManagement', 'playerName', data['lang']) }}"
+                placeholder="{{ translate('serverPlayerManagement', 'playerName', data['lang']) }}">
+            <button type="submit" class="btn btn-warning"><i class="ph ph-plus" aria-hidden="true"></i>
+                {{ translate('serverPlayerManagement', 'add', data['lang']) }}</button>
+        </form>
+        <div class="table-responsive">
+            <table class="table players-table">
+                <tbody id="ops-body"></tbody>
+            </table>
+        </div>
+    </section>
 </div>

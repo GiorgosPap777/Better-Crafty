@@ -1,0 +1,81 @@
+/**************************************************************/
+/* Player management: player lists and add-by-name forms      */
+/**************************************************************/
+.players-add-form {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-bottom: 0.75rem;
+}
+
+.players-add-form .form-control {
+    flex: 1 1 10rem;
+    width: auto;
+}
+
+.players-table {
+    margin-bottom: 0.75rem;
+}
+
+.table.players-table td,
+.table.players-table th {
+    vertical-align: middle;
+    white-space: normal;
+    line-height: 1.4;
+    height: auto;
+}
+
+.table.players-table td:first-child {
+    overflow-wrap: anywhere;
+}
+
+.players-actions {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: 0.35rem;
+}
+
+.players-empty td {
+    text-align: center;
+    color: var(--gray-light);
+    padding: 1.5rem 0.75rem;
+}
+
+/* Phones: one block per player, buttons on their own line */
+@media (max-width: 575.98px) {
+    .table.players-table thead {
+        display: none;
+    }
+
+    .table.players-table tr {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        border-top: 1px solid var(--outline);
+    }
+
+    .table.players-table td {
+        display: block;
+        flex: 1 1 0;
+        border-top: 0;
+        padding: 0.6rem 0.25rem;
+    }
+
+    .table.players-table td.text-right {
+        flex: 0 0 auto;
+    }
+
+    .table.players-table td.players-actions-cell {
+        flex: 1 1 100%;
+        padding-top: 0;
+    }
+
+    .players-actions-cell .players-actions {
+        justify-content: flex-start;
+    }
+
+    .players-empty td {
+        flex-basis: 100%;
+    }
+}

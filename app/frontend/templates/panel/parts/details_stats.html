@@ -169,43 +169,10 @@
 
   // Server type is fixed for the lifetime of the page, so bake it into a JS
   // const once and let the player renderer branch on it client-side.
-  const SERVER_TYPE = "{{ data['server_stats']['server_type'] }}";
 
   // Single source of truth for the active-player table. Both the initial page
   // load and every websocket stats push render rows through here so the markup
   // can never drift between a server-side and a client-side copy.
-  function renderPlayers(players, running) {
-    if (!Array.isArray(players)) return;
-    let text = "";
-    for (let i = 0; i < players.length; i++) {
-      text += `<tr id="playerItem-${players[i]["name"]}" class="playerItem-- text-center">`;
-      text += `<td class="no-scroll col-5"><strong>${players[i]["name"]}</strong></td>`;
-      if (players[i]["status"] === "Online") {
-        text += `<td class="col-4"><span class="text-success"><i class="ph ph-cell-signal-full"></i> ${players[i]['status']}</span></td>`
-      } else {
-        text += `<td class="col-4"><span class="text-warning"><i class="ph-fill ph-x-circle"></i><span class="offline-status">&nbsp;${players[i]['status']}</span><span class="conn-break"> Last connection :<br> ${players[i]['last_seen']}</span></td>`
-      }
-      if (running) {
-        text += `<td class="col-3">
-                    <div class="row">
-                      <div class="col"><button onclick="ban_kick_with_reason('ban', '${players[i]['name']}')" type="button" class="btn btn-danger">Ban</button></div>
-                      <div class="col"><button onclick="ban_kick_with_reason('kick', '${players[i]['name']}')" type="button" class="btn btn-outline-danger">Kick</button></div>`
-        if (SERVER_TYPE === "hytale") {
-          text += `<div class="col"><button onclick="send_command_to_server('op add ${players[i]['name']}')" type="button" class="btn btn-warning">OP Add</button></div>
-                      <div class="col"><button onclick="send_command_to_server('op remove ${players[i]['name']}')" type="button" class="btn btn-outline-warning">OP Remove</button></div>`
-        } else {
-          text += `<div class="col"><button onclick="send_command_to_server('op ${players[i]['name']}')" type="button" class="btn btn-warning">OP</button></div>
-                      <div class="col"><button onclick="send_command_to_server('deop ${players[i]['name']}')" type="button" class="btn btn-outline-warning">De-OP</button></div>`
-        }
-        text += `</div>
-                  </td>`
-      } else {
-        text += `<td><div><span> Unavailable<br> (Server Offline)</span></div></td>`
-      }
-    }
-    $("#player-body").html(text);
-  }
-
   //used to get cookies from browser - this is part of tornados xsrf protection - it's for extra security
   function getCookie(name) {
     var r = document.cookie.match("\\b" + name + "=([^;]*)\\b");
@@ -447,17 +414,11 @@
 
   function update_server_details(server) {
     serverOverview.applyStats(server);
-    renderPlayers(server.players_cache, server["running"]);
+    // Sub pages that show live data (e.g. player management) hook in here
+    if (typeof window.onServerDetails === "function") window.onServerDetails(server);
   }
 
   $(window).ready(function () {
-    // Render the active-player table from the data baked into the page so the
-    // list is populated on first paint instead of waiting for the first
-    // websocket push (which would otherwise leave the table empty for ~1s).
-    // details_stats.html is shared by many server subpages; only the player
-    // management page provides cached_players, so default to an empty list.
-    renderPlayers({% raw json_encode(data.get('cached_players', [])) %}, {% raw json_encode(data['server_stats']['running']) %});
-
     if (typeof webSocket !== "undefined" && webSocket) {
       webSocket.on('update_server_details', update_server_details);
     }
