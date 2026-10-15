@@ -1,38 +1,155 @@
+.console-panel {
+    padding-top: 1rem;
+}
+
+.console-toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem 1rem;
+    padding: 0.5rem 0.75rem;
+    border: 1px solid var(--outline);
+    border-bottom: 0;
+    border-radius: 0.5rem 0.5rem 0 0;
+    background-color: var(--deep-bg);
+}
+
+.console-title {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    font-weight: 600;
+}
+
+.console-tools {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.console-tools .custom-control-label {
+    font-size: 0.85rem;
+    cursor: pointer;
+}
+
+.console-frame {
+    position: relative;
+}
+
+#virt_console {
+    font-family: "Atkinson Hyperlegible Mono", Consolas, Monaco, Lucida Console, Liberation Mono, DejaVu Sans Mono, Bitstream Vera Sans Mono, Courier New, monospace;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+    width: 100%;
+    font-size: .8em;
+    line-height: 1.5;
+    padding: 0.5rem 0.75rem;
+    border: 1px solid var(--outline);
+    border-radius: 0 0 0.5rem 0.5rem;
+    background-color: var(--card-banner-bg);
+    height: 60vh;
+    min-height: 320px;
+    max-height: 720px;
+    overflow-y: auto;
+    overflow-x: hidden;
+    /* Thin, visible scrollbar so it's clear where you are in the log */
+    scrollbar-width: thin;
+    scrollbar-color: var(--outline) transparent;
+}
+
 #virt_console::-webkit-scrollbar {
+    width: 8px;
+}
+
+#virt_console::-webkit-scrollbar-thumb {
+    background-color: var(--outline);
+    border-radius: 4px;
+}
+
+#virt_console::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+#virt_console:empty::before {
+    content: attr(data-empty);
+    display: block;
+    padding-top: 1rem;
+    text-align: center;
+    opacity: 0.5;
+    font-family: var(--font-family-sans-serif);
+}
+
+#virt_console:focus {
+    outline: none;
+    border-color: var(--primary);
+}
+
+.console-jump {
+    position: absolute;
+    right: 1.25rem;
+    bottom: 1rem;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    border-radius: 999px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.35);
+}
+
+.console-jump[hidden] {
     display: none;
 }
 
-/* Hide scrollbar for IE, Edge and Firefox */
-#virt_console {
-    -ms-overflow-style: none;
-    /* IE and Edge */
-    scrollbar-width: none;
-    /* Firefox */
-    font-family: "Atkinson Hyperlegible Mono", Consolas, Monaco, Lucida Console, Liberation Mono, DejaVu Sans Mono, Bitstream Vera Sans Mono, Courier New, monospace;
-    white-space: pre-wrap;
-    width: 100%;
-    font-size: .8em;
-    padding: 5px 10px;
-    border: 1px solid var(--outline);
-    background-color: var(--card-banner-bg);
-    height: 500px;
-    overflow: scroll;
-}
-
-#to-bottom {
-    visibility: hidden;
-    float: right;
-}
-
-.term-btn {
-    max-width: 12rem;
-    white-space: nowrap;
-}
-
-div.server_command {
+.console-command {
+    display: flex;
+    flex-wrap: wrap;
     gap: 0.5rem;
+    margin-top: 0.75rem;
+}
+
+.console-input {
+    position: relative;
+    flex: 1 1 16rem;
+    min-width: 0;
+}
+
+.console-prompt {
+    position: absolute;
+    left: 0.75rem;
+    top: 50%;
+    transform: translateY(-50%);
+    font-family: var(--font-family-monospace);
+    font-weight: 700;
+    opacity: 0.6;
+    pointer-events: none;
 }
 
 input.server_command {
-    min-width: 10rem;
+    height: 2.5rem;
+    padding-left: 1.75rem;
+    font-family: var(--font-family-monospace);
+}
+
+.console-command .btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    height: 2.5rem;
+}
+
+@media (max-width: 575.98px) {
+    .console-command .btn {
+        flex: 1 1 100%;
+        justify-content: center;
+    }
+
+    #virt_console {
+        height: 55vh;
+    }
+}
+
+.console-hint {
+    display: block;
+    margin-top: 0.4rem;
+    opacity: 0.6;
 }

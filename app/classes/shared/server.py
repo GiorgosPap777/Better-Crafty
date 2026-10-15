@@ -53,6 +53,25 @@ SERVER_DETAIL_URL = "/panel/server_detail"
 EULA_FILE = "eula.txt"
 
 
+def is_eula_accepted(eula_path) -> bool:
+    """Check whether an eula.txt file has the EULA set to true.
+
+    Minecraft writes comment lines before the setting (and a trailing newline),
+    so every line is checked rather than only the first one.
+    """
+    if not Helpers.check_file_exists(eula_path):
+        return False
+    accepted = False
+    with open(eula_path, "r", encoding="utf-8") as f:
+        for line in f:
+            key, sep, value = line.partition("=")
+            if line.lstrip().startswith("#") or not sep:
+                continue
+            if key.strip().lower() == "eula":
+                accepted = value.strip().lower() == "true"
+    return accepted
+
+
 def extract_backup_info(res) -> dict:
     if not isinstance(res, dict):
         return {}
@@ -777,18 +796,7 @@ class ServerInstance:
 
         # Checks for eula. Creates one if none detected.
         # If EULA is detected and not set to true we offer to set it true.
-        e_flag = False
-        if Helpers.check_file_exists(os.path.join(self.settings["path"], EULA_FILE)):
-            with open(
-                os.path.join(self.settings["path"], EULA_FILE), "r", encoding="utf-8"
-            ) as f:
-                line = f.readline().lower()
-                e_flag = line in [
-                    "eula=true",
-                    "eula = true",
-                    "eula= true",
-                    "eula =true",
-                ]
+        e_flag = is_eula_accepted(os.path.join(self.settings["path"], EULA_FILE))
         if not e_flag and self.settings["type"] == "minecraft-java":
             if user_id:
                 WebSocketManager().broadcast_user(
@@ -1087,6 +1095,7 @@ class ServerInstance:
         logger.info("Sending SIGKILL to parent")
         try:
             self.server_scheduler.remove_job("stats_" + str(self.server_id))
+            self.server_scheduler.remove_job("save_stats_" + str(self.server_id))
         except JobLookupError as e:
             logger.exception(
                 f"Could not remove job with id stats_{self.server_id} due"

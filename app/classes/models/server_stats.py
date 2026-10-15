@@ -336,9 +336,16 @@ class HelperServerStats:
 
         self.database.close()
         try:
-            return DatabaseShortcuts.get_data_obj(latest)
+            stats = DatabaseShortcuts.get_data_obj(latest)
         except IndexError:
             return {}
+        # Memory is stored as raw bytes (for the metrics graphs). Everything that
+        # displays the latest stats expects a human readable value, the same
+        # format the realtime websocket updates use.
+        mem_raw = stats.get("mem") or 0
+        stats["mem_raw"] = mem_raw
+        stats["mem"] = Helpers.human_readable_file_size(mem_raw) if mem_raw else 0
+        return stats
 
     def get_earliest_server_stats(self):
         self.database.connect(reuse_if_open=True)

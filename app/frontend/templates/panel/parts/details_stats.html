@@ -1,62 +1,150 @@
+{% set srv = data['server_stats'] %}
+{% set srv_id = srv['server_id']['server_id'] %}
+{% set can_command = 'permissions' in data and data['permissions']['Commands'] in data.get('user_permissions', []) %}
+{% if data.get('importing') and srv['running'] %}
+{% set busy_label = translate('serverTerm', 'installing', data['lang']) %}
+{% elif srv.get('updating') %}
+{% set busy_label = translate('serverTerm', 'updating', data['lang']) %}
+{% elif data.get('waiting_start') %}
+{% set busy_label = translate('serverTerm', 'starting', data['lang']) %}
+{% elif data.get('importing') %}
+{% set busy_label = translate('serverTerm', 'importing', data['lang']) %}
+{% else %}
+{% set busy_label = '' %}
+{% end %}
 <div class="row">
-  <div class="col-sm-12 grid-margin">
-    <div class="card">
-      <div class="card-body pt-3 pb-3">
-        <div class="row">
-          <div class="col-sm-4">
-            {% if data['server_stats']['running'] %}
-            <b>{{ translate('serverStats', 'serverStatus', data['lang']) }}:</b> <span id="status"
-              class="text-success">{{ translate('serverStats', 'online', data['lang']) }}</span><br />
-            <b>{{ translate('serverStats', 'serverStarted', data['lang']) }}:</b> <span id="started">{{
-              data['server_stats']['started'] }}</span><br />
-            <b>{{ translate('serverStats', 'serverUptime', data['lang']) }}:</b> <span id="uptime">{{
-              translate('serverStats', 'errorCalculatingUptime', data['lang']) }}</span>
-            {% elif data['server_stats']['crashed'] %}
-            <b>{{ translate('serverStats', 'serverStatus', data['lang']) }}:</b> <span id="status" class="text-danger"> <i class="ph-fill ph-warning"></i> {{ translate('dashboard', 'crashed', data['lang']) }}</span><br />
-            <b>{{ translate('serverStats', 'serverStarted', data['lang']) }}:</b> <span id="started" class="text-danger"> <i class="ph-fill ph-warning"></i> {{ translate('dashboard', 'crashed',data['lang']) }}</span><br />
-            <b>{{ translate('serverStats', 'serverUptime', data['lang']) }}:</b> <span id="uptime" class="text-danger"> <i class="ph-fill ph-warning"></i> {{ translate('dashboard', 'crashed', data['lang']) }}</span>
+  <div class="col-12 grid-margin">
+    <div class="card server-overview" id="server-overview" data-server-id="{{ srv_id }}"
+      data-busy="{{ 'true' if busy_label else 'false' }}"
+      data-msg-online="{{ translate('serverStats', 'online', data['lang']) }}"
+      data-msg-offline="{{ translate('serverStats', 'offline', data['lang']) }}"
+      data-msg-crashed="{{ translate('dashboard', 'crashed', data['lang']) }}"
+      data-msg-unable="{{ translate('serverStats', 'unableToConnect', data['lang']) }}"
+      data-msg-starting="{{ translate('serverOverview', 'starting', data['lang']) }}"
+      data-msg-stopping="{{ translate('serverOverview', 'stopping', data['lang']) }}"
+      data-msg-restarting="{{ translate('serverOverview', 'restarting', data['lang']) }}"
+      data-msg-killing="{{ translate('dashboard', 'killing', data['lang']) }}"
+      data-msg-updating="{{ translate('serverTerm', 'updating', data['lang']) }}"
+      data-msg-kill-confirm="{{ translate('serverOverview', 'killConfirm', data['lang']) }}"
+      data-msg-kill="{{ translate('dashboard', 'kill', data['lang']) }}"
+      data-msg-cancel="{{ translate('panelConfig', 'cancel', data['lang']) }}"
+      data-msg-request-failed="{{ translate('serverOverview', 'requestFailed', data['lang']) }}">
+      <div class="card-body">
+        <div class="server-overview-head">
+          <div class="server-overview-state">
+            {% if busy_label %}
+            <span id="server-state" class="server-state state-busy" role="status" aria-live="polite">
+              <i class="ph ph-spinner-gap ph-spin" aria-hidden="true"></i>
+              <span id="status">{{ busy_label }}</span>
+            </span>
+            {% elif srv['running'] %}
+            <span id="server-state" class="server-state state-online" role="status" aria-live="polite">
+              <span class="state-dot" aria-hidden="true"></span>
+              <span id="status">{{ translate('serverStats', 'online', data['lang']) }}</span>
+            </span>
+            {% elif srv.get('crashed') %}
+            <span id="server-state" class="server-state state-crashed" role="status" aria-live="polite">
+              <span class="state-dot" aria-hidden="true"></span>
+              <span id="status">{{ translate('dashboard', 'crashed', data['lang']) }}</span>
+            </span>
             {% else %}
-            <b>{{ translate('serverStats', 'serverStatus', data['lang']) }}:</b> <span id="status"
-              class="text-warning">{{ translate('serverStats', 'offline', data['lang']) }}</span><br />
-            <b>{{ translate('serverStats', 'serverStarted', data['lang']) }}:</b> <span id="started"
-              class="text-warning">{{ translate('serverStats', 'offline', data['lang']) }}</span><br />
-            <b>{{ translate('serverStats', 'serverUptime', data['lang']) }}:</b> <span id="uptime"
-              class="text-warning">{{ translate('serverStats', 'offline', data['lang']) }}</span>
+            <span id="server-state" class="server-state state-offline" role="status" aria-live="polite">
+              <span class="state-dot" aria-hidden="true"></span>
+              <span id="status">{{ translate('serverStats', 'offline', data['lang']) }}</span>
+            </span>
             {% end %}
-            <br>
-            <b>{{ translate('serverStats', 'serverTimeZone', data['lang']) }}:</b> <span class="text-info">{{
-              data['serverTZ'] }}</span>
+            <span class="server-type-badge" title="{{ translate('serverOverview', 'serverType', data['lang']) }}">
+              <i class="ph ph-cube" aria-hidden="true"></i> {{ srv['server_type'] }}
+            </span>
           </div>
 
-          <div class="col-sm-3">
-            <b>{{ translate('serverStats', 'cpuUsage', data['lang']) }}:</b> <span id="cpu">{{
-              data['server_stats']['cpu'] }}%</span> <br />
-            <b>{{ translate('serverStats', 'memUsage', data['lang']) }}:</b> <span id="mem">{{
-              data['server_stats']['mem'] }}</span> <br />
-            {% if data['server_stats']['int_ping_results'] %}
-            <b>{{ translate('serverStats', 'players', data['lang']) }}:</b> <span id="players">{{
-              data['server_stats']['online'] }} / {{ data['server_stats']['max'] }}</span><br />
-            {% else %}
-            <b>{{ translate('serverStats', 'players', data['lang']) }}:</b> <span id="players">0/0</span><br />
-            {% end %}
+          {% if can_command %}
+          <div class="server-actions" id="server-actions" role="group"
+            aria-label="{{ translate('serverOverview', 'controls', data['lang']) }}">
+            <button type="button" class="btn btn-sm btn-success server-action" data-action="start_server"
+              {% if busy_label or srv['running'] %}disabled{% end %}
+              {% if data.get('waiting_start') %}data-toggle="tooltip" title="{{ translate('serverTerm', 'delay-explained', data['lang']) }}"{% end %}>
+              <i class="ph-fill ph-play" aria-hidden="true"></i>
+              <span>{{ translate('serverTerm', 'start', data['lang']) }}</span>
+            </button>
+            <button type="button" class="btn btn-sm btn-outline-primary server-action" data-action="restart_server"
+              {% if busy_label or not srv['running'] %}disabled{% end %}>
+              <i class="ph-bold ph-arrow-clockwise" aria-hidden="true"></i>
+              <span>{{ translate('serverTerm', 'restart', data['lang']) }}</span>
+            </button>
+            <button type="button" class="btn btn-sm btn-danger server-action" data-action="stop_server"
+              {% if busy_label or not srv['running'] %}disabled{% end %}>
+              <i class="ph-fill ph-stop" aria-hidden="true"></i>
+              <span>{{ translate('serverTerm', 'stop', data['lang']) }}</span>
+            </button>
+            <div class="dropdown">
+              <button type="button" class="btn btn-sm btn-ghost server-more" data-toggle="dropdown"
+                aria-haspopup="true" aria-expanded="false"
+                aria-label="{{ translate('serverOverview', 'moreActions', data['lang']) }}"
+                title="{{ translate('serverOverview', 'moreActions', data['lang']) }}">
+                <i class="ph-bold ph-dots-three-vertical" aria-hidden="true"></i>
+              </button>
+              <div class="dropdown-menu dropdown-menu-right">
+                <button type="button" class="dropdown-item text-danger server-action" data-action="kill_server"
+                  {% if not srv['running'] %}disabled{% end %}>
+                  <i class="ph-fill ph-skull" aria-hidden="true"></i>
+                  {{ translate('dashboard', 'kill', data['lang']) }}
+                </button>
+              </div>
+            </div>
           </div>
+          {% end %}
+        </div>
 
-          <div class="col-sm-5">
-            {% if data['server_stats']['version'] != 'False' %}
-            <b>{{ translate('serverStats', 'version', data['lang']) }}:</b> <span id="version">{{
-              data['server_stats']['version'] }}</span><br />
-            <b>{{ translate('serverStats', 'description', data['lang']) }}:</b> <span id="input_motd"
-              class="input_motd">{{ translate('serverStats', 'loadingMotd', data['lang']) }}</span>
-            <br />
-            {% else %}
-            <b>{{ translate('serverStats', 'version', data['lang']) }}:</b> <span id="version">{{
-              translate('serverStats', 'unableToConnect', data['lang']) }}</span> <br />
-            <b>{{ translate('serverStats', 'description', data['lang']) }}:</b> <span id="input_motd"
-              class="input_motd">{{ translate('serverStats', 'unableToConnect', data['lang']) }}</span> <br />
-            {% end %}
-            <b>Server Type: <span class="text-info">{{data['server_stats']['server_type']}}</span></b>
-
+        <div class="server-stat-grid">
+          <div class="server-stat">
+            <div class="server-stat-label"><i class="ph ph-timer" aria-hidden="true"></i>{{ translate('serverStats',
+              'serverUptime', data['lang']) }}</div>
+            <div class="server-stat-value" id="uptime">{% if srv['running'] %}&hellip;{% else %}&mdash;{% end %}</div>
+            <div class="server-stat-sub">
+              {{ translate('serverStats', 'serverStarted', data['lang']) }}:
+              <span id="started">{% if srv['running'] %}{{ srv['started'] }}{% else %}&mdash;{% end %}</span>
+            </div>
           </div>
+          <div class="server-stat">
+            <div class="server-stat-label"><i class="ph ph-cpu" aria-hidden="true"></i>{{ translate('serverStats',
+              'cpuUsage', data['lang']) }}</div>
+            <div class="server-stat-value" id="cpu">{{ srv['cpu'] }}%</div>
+          </div>
+          <div class="server-stat">
+            <div class="server-stat-label"><i class="ph ph-memory" aria-hidden="true"></i>{{ translate('serverStats',
+              'memUsage', data['lang']) }}</div>
+            <div class="server-stat-value" id="mem">{% if srv['mem'] %}{{ srv['mem'] }}{% else %}0 MB{% end %}</div>
+          </div>
+          <div class="server-stat">
+            <div class="server-stat-label"><i class="ph ph-users-three" aria-hidden="true"></i>{{
+              translate('serverStats', 'players', data['lang']) }}</div>
+            <div class="server-stat-value" id="players">{% if srv['int_ping_results'] in (True, 'True') %}{{
+              srv['online'] }} / {{ srv['max'] }}{% else %}&mdash;{% end %}</div>
+          </div>
+          <div class="server-stat">
+            <div class="server-stat-label"><i class="ph ph-tag" aria-hidden="true"></i>{{ translate('serverStats',
+              'version', data['lang']) }}</div>
+            <div class="server-stat-value server-stat-text" id="version">{% if srv['version'] not in ('False', '',
+              False, None) %}{{ srv['version'] }}{% else %}{{ translate('serverStats', 'unableToConnect',
+              data['lang']) }}{% end %}</div>
+          </div>
+        </div>
+        <div class="server-stat server-stat-wide">
+          <div class="server-stat-label"><i class="ph ph-chat-centered-text" aria-hidden="true"></i>{{
+            translate('serverStats', 'description', data['lang']) }}</div>
+          <div class="server-stat-value server-stat-text">
+            <span id="input_motd" class="input_motd">{% if srv['version'] not in ('False', '', False, None) %}{{
+              translate('serverStats', 'loadingMotd', data['lang']) }}{% else %}{{ translate('serverStats',
+              'unableToConnect', data['lang']) }}{% end %}</span>
+          </div>
+        </div>
+
+        <div class="server-overview-meta">
+          <span><i class="ph ph-globe-hemisphere-west" aria-hidden="true"></i>
+            {{ translate('serverStats', 'serverTimeZone', data['lang']) }}: {{ data.get('serverTZ', '') }}</span>
+          <span class="server-overview-uuid" title="UUID"><i class="ph ph-fingerprint" aria-hidden="true"></i>
+            <code>{{ srv_id }}</code></span>
         </div>
       </div>
     </div>
@@ -67,50 +155,18 @@
 <script src="/static/assets/vendors/moment/moment.min.js" type="text/javascript" charset="utf-8"></script>
 <script src="/static/assets/js/motd.js"></script>
 <script>
+  // Compact uptime, e.g. "2d 4h", "3h 12m", "1m 25s"
   function durationToHumanizedString(duration) {
-    duration._data.months += duration._data.years * 12;
-    // 30.45833333333 = average month length, calculate with (31+28.5+31+30+31+30+31+31+30+31+30+31) / 12
-    duration._data.days += duration._data.months * 30.45833333333;
-    duration._data.hours += duration._data.days * 24;
-
-    let obj = {
-      hours: Math.round(duration._data.hours),
-      minutes: duration._data.minutes,
-      seconds: duration._data.seconds
-    }
-
-    if (Math.round(duration._data.days)) {
-      obj = {
-        days: Math.round(duration._data.days),
-        hours: Math.round(duration._data.hours -= duration._data.days * 24),
-        minutes: duration._data.minutes,
-        seconds: duration._data.seconds
-      }
-    }
-
-    output = Object.entries(obj)
-      .map(([type, num]) => {
-        // make them strings
-        returnData = num + ' ' + type;
-        // remove the s in the end if the data is -1 or 1
-        if (num == -1 || num == 1)
-          returnData = returnData.slice(0, -1)
-        return returnData;
-      })
-      .map((v, i, a) => // example input: [1,2,3], output: "1, 2 and 3"
-        v + (i !== a.length - 1
-          ? i !== a.length - 2
-            ? ', '
-            : ' and '
-          : '')).join('');
-    return output;
+    const total = Math.max(0, Math.floor(duration.asSeconds()));
+    const days = Math.floor(total / 86400);
+    const hours = Math.floor((total % 86400) / 3600);
+    const minutes = Math.floor((total % 3600) / 60);
+    const seconds = total % 60;
+    if (days) return `${days}d ${hours}h ${minutes}m`;
+    if (hours) return `${hours}h ${minutes}m ${seconds}s`;
+    if (minutes) return `${minutes}m ${seconds}s`;
+    return `${seconds}s`;
   }
-
-  let uptime = document.querySelector('#uptime');
-  let started = document.querySelector('#started');
-  let startedUTC;
-  let startedLocal;
-  let uptimeLoop;
 
   // Server type is fixed for the lifetime of the page, so bake it into a JS
   // const once and let the player renderer branch on it client-side.
@@ -120,6 +176,7 @@
   // load and every websocket stats push render rows through here so the markup
   // can never drift between a server-side and a client-side copy.
   function renderPlayers(players, running) {
+    if (!Array.isArray(players)) return;
     let text = "";
     for (let i = 0; i < players.length; i++) {
       text += `<tr id="playerItem-${players[i]["name"]}" class="playerItem-- text-center">`;
@@ -150,128 +207,251 @@
     $("#player-body").html(text);
   }
 
-  document.body.onload = (() => {
-    console.log('calculateTime');
-
-    startedUTC = "{{ data['server_stats']['started'] }}";
-    if (startedUTC != 'False') {
-      console.log('started utc:', startedUTC);
-      startedUTC = moment.utc(startedUTC, 'YYYY-MM-DD HH:mm:ss');
-
-      var browserUTCOffset = moment().utcOffset(); // This is in minutes
-
-      startedLocal = startedUTC.utcOffset(browserUTCOffset);
-      startedLocalFormatted = startedLocal.format('YYYY-MM-DD HH:mm:ss');
-
-      console.log('started local time:', startedLocalFormatted);
-
-      started.textContent = startedLocalFormatted
-    }
-
-    var calculateUptime = () => {
-      var msdiff = moment().diff(startedLocal);
-      var diff = moment.duration(msdiff);
-      uptime.textContent = durationToHumanizedString(diff);
-    }
-
-    if (uptime != null && started != null) {
-      console.log('startedLocal', startedLocal)
-      if (startedLocal) {
-        calculateUptime();
-        uptimeLoop = setInterval(calculateUptime, 1000);
-      }
-    }
-
-    initParser('input_motd', 'input_motd');
-
-  });
-
-  function update_server_details(server) {
-    server_status = document.getElementById('status');
-    server_started = document.getElementById('started');
-    server_uptime = document.getElementById('uptime');
-    server_cpu = document.getElementById('cpu');
-    server_mem = document.getElementById('mem');
-    server_players = document.getElementById('players');
-    server_version = document.getElementById('version');
-    server_input_motd = document.getElementById('input_motd');
-
-    /* TODO Update each element */
-    if (server.running) {
-      server_status.setAttribute("class", "text-success");
-      server_status.innerHTML = `{{ translate('serverStats', 'online', data['lang']) }}`;
-
-      startedUTC = server.started;
-      startedUTC = moment.utc(startedUTC, 'YYYY-MM-DD HH:mm:ss');
-      var browserUTCOffset = moment().utcOffset(); // This is in minutes
-      startedLocal = startedUTC.utcOffset(browserUTCOffset);
-      startedLocalFormatted = startedLocal.format('YYYY-MM-DD HH:mm:ss');
-      server_started.setAttribute("class", "");
-      server_started.innerHTML = startedLocalFormatted;
-      server_uptime.setAttribute("class", "");
-      if (!uptimeLoop) {
-        var calculateUptime = () => {
-          var msdiff = moment().diff(startedLocal);
-          var diff = moment.duration(msdiff);
-          uptime.textContent = durationToHumanizedString(diff);
-        }
-        uptimeLoop = setInterval(calculateUptime, 1000);
-      }
-    }
-    else {
-      if (server.crashed) {
-        server_status.setAttribute("class", "text-danger");
-        server_status.innerHTML = `<i class="ph-fill ph-warning"></i> {{ translate('dashboard', 'crashed', data['lang']) }}`;
-        server_started.setAttribute("class", "text-danger");
-        server_started.innerHTML = `<i class="ph-fill ph-warning"></i> {{ translate('dashboard', 'crashed', data['lang']) }}`;
-        clearInterval(uptimeLoop);
-        uptimeLoop = null;
-        server_uptime.setAttribute("class", "text-danger");
-        server_uptime.innerHTML = `<i class="ph-fill ph-warning"></i> {{ translate('dashboard', 'crashed', data['lang']) }}`;
-      } else {
-        server_status.setAttribute("class", "text-warning");
-        server_status.innerHTML = `{{ translate('serverStats', 'offline', data['lang']) }}`;
-        server_started.setAttribute("class", "text-warning");
-        server_started.innerHTML = `{{ translate('serverStats', 'offline', data['lang']) }}`;
-        clearInterval(uptimeLoop);
-        uptimeLoop = null;
-        server_uptime.setAttribute("class", "text-warning");
-        server_uptime.innerHTML = `{{ translate('serverStats', 'offline', data['lang']) }}`;
-      }
-    }
-
-    server_cpu.innerHTML = server.cpu + ` %`;
-    server_mem.innerHTML = server.mem;
-
-    if (server.int_ping_results) {
-      server_players.innerHTML = server.online + `/` + server.max;
-    }
-    else {
-      server_players.innerHTML = `0/0`;
-    }
-
-    if (server.version) {
-      server_version.innerHTML = server.version;
-      server_input_motd.innerText = server.desc;
-    }
-    else {
-      server_version.innerHTML = `{{ translate('serverStats', 'unableToConnect', data['lang']) }}`;
-      server_input_motd.innerHTML = `{{ translate('serverStats', 'unableToConnect', data['lang']) }}`;
-    }
-
-    initParser('input_motd', 'input_motd');
-    renderPlayers(server.players_cache, server["running"]);
-
-  }
   //used to get cookies from browser - this is part of tornados xsrf protection - it's for extra security
   function getCookie(name) {
     var r = document.cookie.match("\\b" + name + "=([^;]*)\\b");
     return r ? r[1] : undefined;
   }
   const token = getCookie("_xsrf")
-  $(window).ready(function () {
-    console.log("ready!");
 
+  // Shared server header: live status, stats and start / stop / restart / kill
+  // controls on every server sub page.
+  const serverOverview = (function () {
+    const root = document.getElementById("server-overview");
+    const msg = root.dataset;
+    const overviewServerId = msg.serverId;
+    const actionsEl = document.getElementById("server-actions");
+    const stateEl = document.getElementById("server-state");
+    const uptimeEl = document.getElementById("uptime");
+    const startedEl = document.getElementById("started");
+
+    // Pages rendered while importing / updating / delayed-starting need a full
+    // refresh once that finishes, everything else updates in place.
+    const renderedBusy = msg.busy === "true";
+    let running = {% raw json_encode(bool(data['server_stats']['running'])) %};
+    let crashed = {% raw json_encode(bool(data['server_stats'].get('crashed'))) %};
+    let startedUTC = null;
+    let uptimeLoop = null;
+    let pending = null; // {action, startedBefore, timer}
+    let updating = false; // an executable update started after page load
+
+    function setStarted(startedValue) {
+      clearInterval(uptimeLoop);
+      uptimeLoop = null;
+      if (!running || !startedValue || startedValue === "False") {
+        startedUTC = null;
+        uptimeEl.textContent = "—";
+        startedEl.textContent = "—";
+        return;
+      }
+      startedUTC = moment.utc(startedValue, "YYYY-MM-DD HH:mm:ss");
+      startedEl.textContent = startedUTC.clone().local().format("YYYY-MM-DD HH:mm:ss");
+      const tick = () => {
+        uptimeEl.textContent = durationToHumanizedString(moment.duration(moment().diff(startedUTC)));
+      };
+      tick();
+      uptimeLoop = setInterval(tick, 1000);
+    }
+
+    function setButtons() {
+      if (!actionsEl) return;
+      actionsEl.querySelectorAll(".server-action").forEach(function (btn) {
+        const action = btn.dataset.action;
+        let enabled;
+        if (pending || renderedBusy || updating) {
+          enabled = false;
+        } else if (action === "start_server") {
+          enabled = !running;
+        } else {
+          enabled = running;
+        }
+        btn.disabled = !enabled;
+        const spinning = pending && pending.action === action;
+        btn.classList.toggle("is-loading", Boolean(spinning));
+      });
+    }
+
+    function setState(className, text, spinner) {
+      if (renderedBusy) return;
+      stateEl.className = "server-state " + className;
+      stateEl.innerHTML = spinner
+        ? '<i class="ph ph-spinner-gap ph-spin" aria-hidden="true"></i>'
+        : '<span class="state-dot" aria-hidden="true"></span>';
+      const label = document.createElement("span");
+      label.id = "status";
+      label.textContent = text;
+      stateEl.appendChild(label);
+    }
+
+    function renderState() {
+      if (updating) {
+        setState("state-busy", msg.msgUpdating, true);
+      } else if (pending) {
+        const labels = {
+          start_server: msg.msgStarting,
+          stop_server: msg.msgStopping,
+          restart_server: msg.msgRestarting,
+          kill_server: msg.msgKilling,
+        };
+        setState("state-busy", labels[pending.action], true);
+      } else if (running) {
+        setState("state-online", msg.msgOnline);
+      } else if (crashed) {
+        setState("state-crashed", msg.msgCrashed);
+      } else {
+        setState("state-offline", msg.msgOffline);
+      }
+      setButtons();
+    }
+
+    function clearPending() {
+      if (!pending) return;
+      clearTimeout(pending.timer);
+      pending = null;
+    }
+
+    // Decide whether the action the user asked for has visibly happened yet
+    function maybeResolvePending(stats) {
+      if (!pending) return;
+      const action = pending.action;
+      if (action === "start_server" && running) clearPending();
+      else if ((action === "stop_server" || action === "kill_server") && !running) clearPending();
+      else if (action === "restart_server" && running && stats.started && stats.started !== pending.startedBefore) clearPending();
+    }
+
+    // Accepts both the websocket payload and the /stats API payload
+    function applyStats(stats) {
+      if (!stats) return;
+      if (typeof stats.running === "boolean") running = stats.running;
+      if (typeof stats.crashed === "boolean") crashed = stats.crashed;
+      maybeResolvePending(stats);
+
+      if (startedUTC === null || !running || (stats.started && startedUTC.format("YYYY-MM-DD HH:mm:ss") !== stats.started)) {
+        setStarted(stats.started);
+      }
+
+      if (stats.cpu !== undefined) document.getElementById("cpu").textContent = stats.cpu + "%";
+      if (stats.mem !== undefined) document.getElementById("mem").textContent = stats.mem ? stats.mem : "0 MB";
+
+      const pinged = stats.int_ping_results === true || stats.int_ping_results === "True";
+      document.getElementById("players").textContent = pinged && running ? `${stats.online} / ${stats.max}` : "—";
+
+      const hasVersion = running && stats.version && stats.version !== "False";
+      document.getElementById("version").textContent = hasVersion ? stats.version : msg.msgUnable;
+      const motd = document.getElementById("input_motd");
+      motd.innerText = hasVersion ? (stats.desc || "") : msg.msgUnable;
+      initParser("input_motd", "input_motd");
+
+      renderState();
+    }
+
+    async function refresh() {
+      try {
+        const res = await fetch(`/api/v2/servers/${overviewServerId}/stats`, {
+          headers: { "X-XSRFToken": token },
+        });
+        const data = await res.json();
+        if (data.status === "ok") applyStats(data.data);
+      } catch (e) {
+        console.warn("Could not refresh server stats", e);
+      }
+      document.dispatchEvent(new CustomEvent("crafty:server-state", { detail: { running: running } }));
+    }
+
+    async function sendAction(action) {
+      const startedBefore = startedUTC ? startedUTC.format("YYYY-MM-DD HH:mm:ss") : null;
+      // Stopping can legitimately take as long as the shutdown timeout
+      const timeoutMs = action === "start_server" ? 45000 : 150000;
+      pending = {
+        action: action,
+        startedBefore: startedBefore,
+        timer: setTimeout(function () { clearPending(); refresh(); }, timeoutMs),
+      };
+      renderState();
+      try {
+        const res = await fetch(`/api/v2/servers/${overviewServerId}/action/${action}`, {
+          method: "POST",
+          headers: { "X-XSRFToken": token },
+        });
+        let data;
+        try {
+          data = await res.json();
+        } catch (e) {
+          data = { status: "error", error: res.status, error_data: msg.msgRequestFailed };
+        }
+        if (data.status !== "ok") {
+          clearPending();
+          renderState();
+          bootbox.alert({ title: data.error, message: data.error_data || msg.msgRequestFailed });
+        }
+      } catch (e) {
+        clearPending();
+        renderState();
+        bootbox.alert(msg.msgRequestFailed);
+      }
+    }
+
+    if (actionsEl) {
+      actionsEl.addEventListener("click", function (e) {
+        const btn = e.target.closest(".server-action");
+        if (!btn || btn.disabled) return;
+        const action = btn.dataset.action;
+        if (action === "kill_server") {
+          bootbox.confirm({
+            message: msg.msgKillConfirm,
+            buttons: {
+              confirm: { label: msg.msgKill, className: "btn-danger" },
+              cancel: { label: msg.msgCancel, className: "btn-secondary" },
+            },
+            callback: function (confirmed) {
+              if (confirmed) sendAction(action);
+            },
+          });
+          return;
+        }
+        sendAction(action);
+      });
+    }
+
+    $(function () {
+      $('#server-actions [data-toggle="tooltip"]').tooltip();
+      setStarted({% raw json_encode(data['server_stats']['started']) %});
+      initParser("input_motd", "input_motd");
+      if (typeof webSocket === "undefined" || !webSocket) return;
+      webSocket.on("send_start_reload", function () {
+        if (renderedBusy) {
+          location.reload();
+        } else {
+          refresh();
+        }
+      });
+      webSocket.on("update_button_status", function (update) {
+        if (update.server_id != overviewServerId) return;
+        if (update.isUpdating) {
+          updating = true;
+          renderState();
+        } else {
+          location.reload();
+        }
+      });
+      webSocket.on("send_eula_bootbox", function () { clearPending(); renderState(); });
+      webSocket.on("send_start_error", function () { clearPending(); refresh(); });
+    });
+
+    // The websocket is closed while the tab is hidden, catch up on return
+    document.addEventListener("visibilitychange", function () {
+      if (document.visibilityState === "visible") refresh();
+    });
+
+    return { applyStats: applyStats, refresh: refresh, isRunning: function () { return running; } };
+  })();
+
+  function update_server_details(server) {
+    serverOverview.applyStats(server);
+    renderPlayers(server.players_cache, server["running"]);
+  }
+
+  $(window).ready(function () {
     // Render the active-player table from the data baked into the page so the
     // list is populated on first paint instead of waiting for the first
     // websocket push (which would otherwise leave the table empty for ~1s).
@@ -279,13 +459,13 @@
     // management page provides cached_players, so default to an empty list.
     renderPlayers({% raw json_encode(data.get('cached_players', [])) %}, {% raw json_encode(data['server_stats']['running']) %});
 
-    //if (webSocket) {
-    webSocket.on('update_server_details', update_server_details);
+    if (typeof webSocket !== "undefined" && webSocket) {
+      webSocket.on('update_server_details', update_server_details);
+    }
     add_server_name();
-    //}
   });
   async function add_server_name() {
-    let res = await fetch(`/api/v2/servers/${serverId}`, {
+    let res = await fetch(`/api/v2/servers/{{ data['server_stats']['server_id']['server_id'] }}`, {
       method: 'GET',
       headers: {
         'X-XSRFToken': token
@@ -293,7 +473,6 @@
     });
     let responseData = await res.json();
     if (responseData.status === "ok") {
-      console.log(responseData)
       $("#server-name-nav").text(`${responseData.data['server_name']}`).html()
       $("#server-name-nav").toggleClass("d-none");
       if (responseData.data['status']['update_available'] && responseData.data["update_watcher"]) {

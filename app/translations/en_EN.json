@@ -605,6 +605,16 @@
         "serverDetails": "Server Details",
         "terminal": "Terminal"
     },
+    "serverOverview": {
+        "controls": "Server controls",
+        "killConfirm": "This will kill the server process and all of its subprocesses. Killing a process can corrupt files, so only do this if the server is not responding to Stop. Are you sure you want to continue?",
+        "moreActions": "More actions",
+        "requestFailed": "The request could not be completed. Please try again.",
+        "restarting": "Restarting...",
+        "serverType": "Server type",
+        "starting": "Starting...",
+        "stopping": "Stopping..."
+    },
     "serverFiles": {
         "cancel": "Cancel",
         "changeConflict": "Server State Conflict",
@@ -749,10 +759,15 @@
         "version": "Version"
     },
     "serverTerm": {
+        "autoScroll": "Auto-scroll",
+        "clearView": "Clear console view (does not affect the server log)",
         "commandInput": "Enter your command",
         "delay-explained": "The service/agent has recently started and is delaying the start of the Minecraft server instance",
+        "historyHint": "Tip: use the Up and Down arrow keys to go through your previous commands.",
         "importing": "Importing...",
         "installing": "Installing...",
+        "noOutput": "No console output yet. Start the server to see its output here.",
+        "notRunning": "The server is not running. Start it before sending commands.",
         "restart": "Restart",
         "sendCommand": "Send command",
         "start": "Start",

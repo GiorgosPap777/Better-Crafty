@@ -184,6 +184,10 @@ class TasksManager:
                         time.sleep(5)
                         svr.cleanup_server_object()
                         svr.record_server_stats()
+                        # Let open pages know the server is down, same as a stop
+                        WebSocketManager().broadcast_to_server_users(
+                            svr.server_id, "send_start_reload", {}
+                        )
                     except Exception as e:
                         logger.exception(
                             f"Could not find PID for requested termsig. Full error: {e}"

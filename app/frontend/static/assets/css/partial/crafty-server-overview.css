@@ -1,0 +1,311 @@
+/**************************************************************/
+/* Server page title + overview card (status, controls, stats) */
+/**************************************************************/
+.server-page-header .page-title {
+    display: flex;
+    flex-direction: column;
+    gap: 0.15rem;
+}
+
+.server-page-kicker {
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    opacity: 0.7;
+}
+
+.server-page-name {
+    font-size: 1.4rem;
+    font-weight: 600;
+    word-break: break-word;
+}
+
+.server-overview .card-body {
+    padding: 1.25rem 1.5rem;
+}
+
+.server-overview-head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem 1rem;
+    margin-bottom: 1.25rem;
+}
+
+.server-overview-state {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+/* Status pill */
+.server-state {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+    padding: 0.35rem 0.8rem;
+    border-radius: 999px;
+    font-weight: 600;
+    font-size: 0.9rem;
+    border: 1px solid currentColor;
+    line-height: 1.2;
+}
+
+.server-state .state-dot {
+    width: 0.55rem;
+    height: 0.55rem;
+    border-radius: 50%;
+    background: currentColor;
+}
+
+.server-state.state-online {
+    color: var(--success);
+    background: rgba(25, 216, 149, 0.1);
+}
+
+.server-state.state-online .state-dot {
+    box-shadow: 0 0 0 0 rgba(25, 216, 149, 0.6);
+    animation: server-state-pulse 2s infinite;
+}
+
+.server-state.state-offline {
+    color: var(--warning);
+    background: rgba(255, 175, 0, 0.1);
+}
+
+.server-state.state-crashed {
+    color: var(--danger);
+    background: rgba(255, 98, 88, 0.12);
+}
+
+.server-state.state-busy {
+    color: var(--info);
+    background: rgba(136, 98, 224, 0.12);
+}
+
+@keyframes server-state-pulse {
+    0% {
+        box-shadow: 0 0 0 0 rgba(25, 216, 149, 0.6);
+    }
+
+    70% {
+        box-shadow: 0 0 0 0.45rem rgba(25, 216, 149, 0);
+    }
+
+    100% {
+        box-shadow: 0 0 0 0 rgba(25, 216, 149, 0);
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .server-state.state-online .state-dot {
+        animation: none;
+    }
+}
+
+.server-type-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    padding: 0.3rem 0.65rem;
+    border-radius: 999px;
+    font-size: 0.8rem;
+    color: var(--base-text);
+    background: var(--deep-bg);
+    border: 1px solid var(--outline);
+}
+
+/* Neutral outline button that follows the theme text colour */
+.btn-ghost {
+    color: var(--base-text);
+    background: transparent;
+    border: 1px solid var(--outline);
+}
+
+.btn-ghost:hover,
+.btn-ghost:focus,
+.btn-ghost[aria-expanded="true"] {
+    color: var(--base-text);
+    background: var(--deep-bg);
+    border-color: var(--base-text);
+}
+
+/* Controls */
+.server-actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.server-actions .btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    min-height: 2.25rem;
+    padding: 0.4rem 0.9rem;
+    font-weight: 600;
+}
+
+.server-actions .btn:disabled,
+.server-actions .btn.disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+
+.server-actions .server-more {
+    padding: 0.4rem 0.6rem;
+}
+
+.server-actions .dropdown-item {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.server-actions .dropdown-item:disabled {
+    opacity: 0.5;
+    background: transparent;
+    cursor: not-allowed;
+}
+
+/* Swap the button icon for a spinner while its action is running */
+.server-action.is-loading i {
+    display: none;
+}
+
+.server-action.is-loading::before {
+    content: "";
+    width: 0.9rem;
+    height: 0.9rem;
+    border: 2px solid currentColor;
+    border-right-color: transparent;
+    border-radius: 50%;
+    animation: server-action-spin 0.75s linear infinite;
+}
+
+@keyframes server-action-spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+@media (max-width: 575.98px) {
+    .server-actions {
+        width: 100%;
+        flex-wrap: nowrap;
+    }
+
+    .server-actions > .btn {
+        flex: 1 1 0;
+        min-width: 0;
+        justify-content: center;
+        padding: 0.4rem 0.5rem;
+    }
+
+    /* Keep all controls on one row on phones */
+    .server-actions > .btn i {
+        display: none;
+    }
+}
+
+/* Stat tiles */
+.server-stat-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 0.75rem;
+}
+
+.server-stat {
+    min-width: 0;
+    padding: 0.75rem 0.9rem;
+    border-radius: 0.5rem;
+    background: var(--deep-bg);
+    border: 1px solid var(--outline);
+}
+
+.server-stat-wide {
+    margin-top: 0.75rem;
+}
+
+@media (max-width: 575.98px) {
+    .server-overview .card-body {
+        padding: 1rem;
+    }
+
+    .server-stat-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 0.5rem;
+    }
+
+    .server-stat {
+        padding: 0.6rem 0.7rem;
+    }
+
+    .server-stat-wide {
+        margin-top: 0.5rem;
+    }
+}
+
+.server-stat-label {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    margin-bottom: 0.3rem;
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    opacity: 0.75;
+}
+
+.server-stat-value {
+    font-size: 1.15rem;
+    font-weight: 600;
+    color: var(--base-text);
+    font-variant-numeric: tabular-nums;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.server-stat-text {
+    font-size: 0.95rem;
+    font-weight: 500;
+    white-space: normal;
+    overflow-wrap: anywhere;
+}
+
+.server-stat-sub {
+    margin-top: 0.2rem;
+    font-size: 0.75rem;
+    opacity: 0.7;
+}
+
+.server-overview-meta {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    gap: 0.25rem 1rem;
+    margin-top: 1rem;
+    font-size: 0.8rem;
+    opacity: 0.75;
+}
+
+.server-overview-meta span {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    min-width: 0;
+}
+
+.server-overview-uuid code {
+    color: inherit;
+    background: transparent;
+    padding: 0;
+    font-size: 0.8rem;
+    overflow-wrap: anywhere;
+}
+
+/**************************************************************/

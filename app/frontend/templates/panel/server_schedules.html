@@ -10,19 +10,7 @@
 <div class="content-wrapper">
 
   <!-- Page Title Header Starts-->
-  <div class="row page-title-header">
-    <div class="col-12">
-      <div class="page-header">
-        <h4 class="page-title">
-          {{ translate('serverDetails', 'serverDetails', data['lang']) }} - {{
-          data['server_stats']['server_id']['server_name'] }}
-          <br />
-          <small>UUID: {{ data['server_stats']['server_id']['server_id'] }}</small>
-        </h4>
-      </div>
-    </div>
-
-  </div>
+  {% include "parts/server_title.html" %}
   <!-- Page Title Header Ends-->
 
   {% include "parts/details_stats.html" %}
@@ -373,14 +361,14 @@
       'order': [2, 'asc']
     }
     );
-    document.getElementById('mini_schedule_table_wrapper').hidden = true;
+    $('#mini_schedule_table_wrapper').prop('hidden', true);
   });
   $(document).ready(function () {
     $('[data-toggle="popover"]').popover();
     if ($(globalThis).width() < 1000) {
       $('.too_small').popover("show");
-      document.getElementById('schedule_table_wrapper').hidden = true;
-      document.getElementById('mini_schedule_table_wrapper').hidden = false;
+      $('#schedule_table_wrapper').prop('hidden', true);
+      $('#mini_schedule_table_wrapper').prop('hidden', false);
     }
 
   });
@@ -393,13 +381,13 @@
     // This will execute whenever the globalThis is resized
     if ($(globalThis).width() < 1000) {
       $('.too_small').popover("show");
-      document.getElementById('schedule_table_wrapper').hidden = true;
-      document.getElementById('mini_schedule_table_wrapper').hidden = false;
+      $('#schedule_table_wrapper').prop('hidden', true);
+      $('#mini_schedule_table_wrapper').prop('hidden', false);
     }
     else {
       $('.too_small').popover("hide");
-      document.getElementById('schedule_table_wrapper').hidden = false;
-      document.getElementById('mini_schedule_table_wrapper').hidden = true;
+      $('#schedule_table_wrapper').prop('hidden', false);
+      $('#mini_schedule_table_wrapper').prop('hidden', true);
     } // New width
   });
 </script>

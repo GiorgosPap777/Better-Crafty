@@ -10,19 +10,7 @@
 <div class="content-wrapper">
 
   <!-- Page Title Header Starts-->
-  <div class="row page-title-header">
-    <div class="col-12">
-      <div class="page-header">
-        <h4 class="page-title">
-          {{ translate('serverDetails', 'serverDetails', data['lang']) }} - {{
-          data['server_stats']['server_id']['server_name'] }}
-          <br />
-          <small>UUID: {{ data['server_stats']['server_id']['server_id'] }}</small>
-        </h4>
-      </div>
-    </div>
-
-  </div>
+  {% include "parts/server_title.html" %}
   <!-- Page Title Header Ends-->
 
   {% include "parts/details_stats.html %}
@@ -355,12 +343,12 @@
 
   });
 
-  document.getElementById("modal-cancel").addEventListener("click", function () {
+  document.getElementById("modal-cancel")?.addEventListener("click", function () {
     document.getElementById("root_files_button").classList.remove('clicked');
     document.getElementById("main-tree-div").innerHTML = '<input type="checkbox" id="main-tree-input" name="root_path" value="" disabled><span id="main-tree" class="files-tree-title tree-caret-down root-dir" data-path=""><i class="ph-fill ph-folder"></i><i class="ph-fill ph-folder-open"></i>{{ translate("serverFiles", "files", data["lang"]) }}</span></input>'
   })
 
-  document.getElementById("root_files_button").addEventListener("click", function () {
+  document.getElementById("root_files_button")?.addEventListener("click", function () {
     if ($("#root_files_button").data('server_path') != "") {
       if (document.getElementById('root_files_button').classList.contains('clicked')) {
         show_file_tree();
