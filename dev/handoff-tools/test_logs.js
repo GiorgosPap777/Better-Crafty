@@ -1,0 +1,44 @@
+const { chromium } = require('/opt/node22/lib/node_modules/playwright');
+const fs = require('fs');
+const TOKEN = fs.readFileSync(__dirname + '/token', 'utf8').trim();
+const BASE = 'https://localhost:8443';
+const S1 = '669ae1ce-61fa-498d-9782-6f3bb1804313', S2 = '15673394-a460-4bc9-aee6-61150b6853c3';
+const ok = (c, m) => console.log((c ? 'PASS ' : 'FAIL ') + m);
+(async () => {
+  const b = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium-1194/chrome-linux/chrome' });
+  const ctx = await b.newContext({ viewport: { width: 1440, height: 900 }, ignoreHTTPSErrors: true });
+  await ctx.addCookies([{ name: 'token', value: TOKEN, domain: 'localhost', path: '/', secure: true }]);
+  const p = await ctx.newPage();
+  const errs = []; p.on('pageerror', e => { if (!/ServiceWorker/.test(e.message)) errs.push(e.message); });
+  await p.goto(`${BASE}/panel/server_detail?id=${S1}&subpage=logs`, { waitUntil: 'networkidle' });
+  await p.evaluate(() => localStorage.removeItem('words'));
+  await p.reload({ waitUntil: 'networkidle' });
+  await p.waitForSelector('#virt_console .box', { timeout: 10000 });
+  const text = await p.textContent('#virt_console');
+  ok(text.includes('<Steve> <img src=x'), 'chat line with HTML shown as text');
+  ok(await p.evaluate(() => !window.__xss), 'log line does not run script');
+  await p.fill('#searchbox', "Can't KEEP up");
+  await p.press('#searchbox', 'Enter');
+  await p.waitForTimeout(200);
+  const visible = await p.$$eval('#virt_console .box', bs => bs.filter(b => !b.classList.contains('is-hidden')).length);
+  ok(visible === 3, 'filter hides the matching line: ' + visible + ' visible');
+  ok((await p.textContent('#hidden_count')).includes('1'), 'hidden count shown: ' + await p.textContent('#hidden_count'));
+  ok(await p.textContent('#ignored-words') === "can't keep up", 'word with apostrophe accepted (no "Illegal character" popup)');
+  await p.reload({ waitUntil: 'networkidle' });
+  await p.waitForSelector('#virt_console .box');
+  await p.waitForTimeout(300);
+  ok(await p.$$eval('#virt_console .box.is-hidden', bs => bs.length) === 1, 'filter kept after reload');
+  await p.click('#ignored-words button');
+  ok(await p.$$eval('#virt_console .box.is-hidden', bs => bs.length) === 0 && (await p.textContent('#hidden_count')) === '', 'removing word shows line again');
+  await p.screenshot({ path: __dirname + '/shots/logs-desk.png' });
+  // No logs yet
+  await p.goto(`${BASE}/panel/server_detail?id=${S2}&subpage=logs`, { waitUntil: 'networkidle' });
+  await p.waitForTimeout(800);
+  const empty = await p.evaluate(() => document.getElementById('virt_console').innerHTML === '' ? getComputedStyle(document.getElementById('virt_console'), '::before').content : 'not empty');
+  ok(/No log files yet/.test(empty), 'friendly empty state: ' + empty);
+  // Terminal links to logs
+  await p.goto(`${BASE}/panel/server_detail?id=${S1}&subpage=term`, { waitUntil: 'networkidle' });
+  ok(await p.locator('.console-tools a[href*="subpage=logs"]').count() === 1, 'terminal has Older logs link');
+  ok(errs.length === 0, 'no page errors ' + errs.join(' | '));
+  await b.close();
+})();

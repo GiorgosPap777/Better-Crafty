@@ -23,14 +23,26 @@ temporary, so only what is committed here survives).
    questions or problems, ask me."
 3. "If you need to you can use haiku 5.5 subagents."
 4. Asked for this handoff file because they were near their usage limit.
+5. Session 2: the login felt "really buggy" in general (no single bug to
+   name). "Don't do too much in this run." Asked for screenshots of every
+   server management page so they could suggest changes, and said
+   **subagents use far more usage than expected, so use them sparingly.**
+6. Session 3: "Everything looks good. And the suggestions you said were more
+   than I have thought, and they are really good, we might as well so get
+   started." So the suggestions listed under Session 3 below were approved
+   and built.
 
 ### Questions still waiting on the owner
 
-- Which login bugs had they actually seen? (We fixed every one we found, but
-  never heard which ones they meant.)
-- Should a PR to `main` be opened?
-- What next: dashboard redesign, file manager, backups/schedules, renaming
-  the product to "Better Crafty"?
+- Should a PR to `main` be opened? (Explained what it means; not opened.)
+- The token cookie has no `SameSite` and the API turns XSRF checks off, so
+  in browsers that send cookies on cross-site POSTs (Firefox) another site
+  could call the API as the logged-in user. Setting `samesite="Lax"` in
+  `api/auth/login.py` and `api/auth/passkey.py` fixes it, but would break
+  showing Crafty inside an iframe on another site (e.g. a Home Assistant
+  panel). Raised with the owner; **not changed** until they decide.
+- `show_errors` defaults to true, so tracebacks reach the browser. Upstream
+  choice.
 
 ## Commits so far
 
@@ -38,7 +50,19 @@ temporary, so only what is committed here survives).
 |---|---|
 | `d3946c3f` | Login screen fixes and redesign |
 | `360b0f92` | Server administration pages (shared server header, console) |
-| (this commit) | UI pass 2: fixes across dashboard, settings, users, wizards, plus this handoff |
+| `bc6fb12b` | UI pass 2: fixes across dashboard, settings, users, wizards, plus this handoff |
+| `134253cf` | Handoff notes: screenshot review findings |
+| `a353b966` | Stored XSS in file/backup pages, file manager bugs, JSON replacers |
+| `e909ed94` | IDOR: schedules/webhooks/backups checked against the server; schedules API 500s |
+| `a80352ca` | Config tab: game settings (server.properties) editor, memory fields, sections |
+| `a65d5550` | Players tab: whitelist, operators, bans, names as text |
+| `62f7e098` | Backups tab: last backup, copies kept, labelled actions |
+| `386c539f` | File manager: readable types, path bar, phone actions |
+| `7027dda7` | Metrics: CPU, memory, players charts; quick time ranges |
+| `54455760` | Compact server header on phones |
+| `c44b0f88` | Logs tab: filter above the log, empty state, link with Terminal |
+| `1b91543a` | On/off switches, restore errors, snapshot confirm, editor double save |
+| (this commit) | Handoff notes for sessions 2-4, test scripts |
 
 ### 1. Login (`d3946c3f`)
 
@@ -75,7 +99,7 @@ temporary, so only what is committed here survives).
   open pages update (before, they never noticed).
 - Tests: `tests/classes/shared/test_eula.py`.
 
-### 3. UI pass 2 (this commit)
+### 3. UI pass 2 (`bc6fb12b`)
 
 Back end:
 - `api/roles/index.py`: role creation passed `mfa_required` wrongly; now
@@ -117,66 +141,92 @@ Everywhere else:
 - Small: `server_webhooks.html` table toggle, `denied.html` dead JS,
   `blank_base.html` duplicate script, `server_file_edit.html` title.
 
-## Unfinished: next steps, in order
+## Sessions 2-4
 
-Found by an audit of the server tabs. Each was checked by reading the code;
-the ones marked **confirmed** are real.
+Everything the first audit listed (XSS, file manager bugs, JSON replacers,
+false success messages, websocket crash, double submits, port max) and every
+bug found in the session 2 screenshots is now fixed. Commit messages above
+have the details; the notes below are what is useful when changing the code.
 
-1. **Stored XSS (confirmed), fix first.** File and folder names go into
-   `innerHTML` unescaped, so a file named `<img src=x onerror=...>` runs
-   script for whoever opens the page.
-   - `panel/server_backup_edit.html` ~710-724, `process_tree_response`
-     (`${dpath}`, `${filename}`).
-   - `panel/server_backup.html` ~434-449, same function.
-   - `static/assets/js/shared/files.js`: upload dialog title ~452
-     (`${path}`), delete title ~582 (`${path}`), unzip row ~648
-     (`${name}`), upload progress ~734 (`${file.name}`).
-   - Plan: add a small `escapeHtml()` (`& < > " '`) and wrap each value.
-     Attribute values decode entities, so `data-path` still holds the real
-     path. Note `id="${dpath}"` is also used as a lookup key; check
-     `getDirView`/`getElementById` callers still work.
-2. `files.js`: rows added by "load more" (~199-202) get no click handlers;
-   file names use `encodeURI` (~305) and `editor.js:3` decodes twice; rename
-   uses `.replace(oldName, newName)` on the whole path (~392), which breaks
-   when the name also appears in a parent folder; `hideUploadBox` is
-   undefined (~459); delete dialog labels read `attr("")` (~496/500/587/591);
-   ~126-139 doesn't check `res.ok`; upload headers break on non-Latin-1 names.
-3. Same JSON replacer bug as the wizards in `server_backup_edit.html`
-   ~384-401, `server_schedule_edit.html` ~221-240, `server_webhook_edit.html`
-   ~155-176 (also empty trigger becomes 0), `server_config.html` ~524-534.
-4. False success messages: schedule/webhook enable toggles don't update data
-   attributes or check the response; `server_admin_controls.html`
-   ban/kick/unban ignore `status` (the API returns 200 with
-   `status: "error"`); `server_schedules.html:444` checks
-   `statusText === "OK"`; server delete in `server_config.html` ignores
-   failures; restore spinner not closed on error; snapshot restore has no
-   confirmation.
-5. `server_backup_edit.html:426` unguarded `webSocket.on` (crashes on HTTP).
-6. Double submits: editor Ctrl+S, "backup now" button.
-7. `server_logs.html` filter words inserted as HTML;
-   `server_config.html:130` port `max="65566"` (should be 65535).
+### Security fixes
 
-Then: restart Crafty, run the crawl, `test_server.js`, black and pytest,
-commit, push, report to the owner.
+- `a353b966`: file and folder names were put into `innerHTML` unescaped
+  (stored XSS). New `escapeHtml()` in `static/assets/js/shared/misc.js`
+  (loaded on every page via `base.html` and `blank_base.html`). Use it for
+  any value built into HTML strings, including bootbox titles/messages
+  (bootbox treats them as HTML).
+- `e909ed94`: schedule, webhook and backup endpoints and edit pages loaded
+  items by id without checking the server in the URL (IDOR). They now 404.
+- `a65d5550`: player names from the status ping were HTML / inline onclick.
 
-### Session 2 (screenshots for the owner)
+### New APIs and helpers
 
-The owner said the login felt buggy in general (no single bug to name), asked
-to "not do too much" per run, and to use subagents sparingly (they cost a
-lot of usage). They asked for screenshots of every server management page so
-they can suggest changes. Those were sent; **wait for their suggestions
-before redesigning anything.** Bugs found while taking them:
+- `GET/PATCH /api/v2/servers/<id>/properties` (`api/servers/server/
+  properties.py`): reads/writes common server.properties keys, rewrites only
+  changed lines, `\uXXXX` for non-ASCII on Java.
+- Server PATCH accepts `mem_min` / `mem_max` (MiB); only `-Xms`/`-Xmx`
+  in the start command change.
+- `GET /api/v2/servers/<id>/players` (`players.py`): online/cached players,
+  banned, whitelist + whitelist on/off, ops (from the game's JSON files).
+- `GET /api/v2/servers/<id>/tasks` lists schedules (was a 500).
+- `misc.js`: `escapeHtml()`, `bindEnabledSwitches()` (schedule/webhook
+  on/off switches; flips only after the PATCH succeeds, keeps wide table,
+  phone table and details popup in step, re-syncs on DataTables redraw).
+- Translations: only `en_EN.json` is updated. Edit it with Python's `json`,
+  sort just the section you touched, write with `indent=4,
+  ensure_ascii=False` plus a trailing newline.
 
-- Backups list: the "Backup Type" column actually prints `max_backups`
-  (`panel/server_backup.html` ~line 92).
-- Metrics: the zoom-help popover opens by itself on desktop and covers the
-  tab bar and date picker (`server_metrics.html` ~598).
-- API: `GET /api/v2/servers/{id}/tasks` returns a 500 (handler requires
-  `task_id`); `POST .../tasks/` returns a 500 when `command` or `one_time`
-  is missing (`tasks.py` `schedule_job` indexes keys directly).
-- Small: "Every 1 days"; player tables have no empty state; logs dropdown
-  empty with no message; version/description both say "Unable To Connect"
-  while the server can't be pinged.
+### Session 3: what the owner approved, and how it was built
+
+- **Config tab** (`server_config.html`, `crafty-config.css`): sections
+  (General, Game settings, Startup, Status checks, Crashes and shutdown),
+  sticky save bar, unsaved-changes warning, danger zone. `#game-settings`
+  anchor is linked from the Players tab.
+- **Players tab** (`server_admin_controls.html`, `parts/server_players.html`,
+  `crafty-players.css`): commands go through `/stdin`; lists reload from
+  `/players` 1.5 s later. Hytale uses `op add/remove` and `unban`.
+- **Backups tab** (`server_backup.html`, `crafty-backup-list.css`,
+  `backup_mgr.py` summaries).
+- **File manager** (`files.js`, `server_files.html`, `crafty-files.css`):
+  `fileTypeName()` map; path bar crumbs use paths **relative** to the
+  server folder (a leading `/` is treated as absolute by the files API and
+  fails the traversal check); columns other than name/options are
+  `d-none d-sm-table-cell`, phones get a meta line instead; the options
+  button opens the context menu under itself when used from the keyboard
+  (`context-menu.js`).
+- **Metrics** (`server_metrics.html`): three Chart.js charts (CPU, memory,
+  players; players only for Java/Hytale) with zoom/pan kept in sync
+  (`syncTimeAxis`), preset ranges from `data['time_range_presets']`,
+  default last hour (`panel_handler.py`).
+- **Phone header** (`details_stats.html`, `crafty-server-overview.css`):
+  below 576px the title row and extra stats hide behind "More details".
+- **Logs** (`server_logs.html`): "Hide lines containing" filter with chips,
+  hidden count, empty state, link to the Terminal, and "Older logs" link
+  from the Terminal. **Not merged into the Terminal tab** as first
+  suggested: Logs and Terminal have separate permissions (LOGS vs
+  TERMINAL), so merging would change who can see what. Told the owner.
+- Session 4 (`1b91543a`): schedule/webhook switches, restore spinner on
+  error, snapshot restore confirmation (snapshot restore **deletes the
+  server folder** first, see `backup_mgr.snapshot_restore`), editor saves
+  one at a time (`editor.js` `save()` queues one follow-up save).
+
+### Template gotchas (cost time before)
+
+- Never wrap a `{{ ... }}` or `{% ... %}` expression across lines: Tornado
+  raises a SyntaxError on the whole page. Compute with `{% set x = ... %}`.
+- Check a template compiles before restarting:
+  `$SP/venv/bin/python -c "from tornado.template import Loader;
+  Loader('app/frontend/templates').load('panel/X.html')"`.
+- Pass strings to JS with
+  `{% raw json_encode({key: translate(section, key, data['lang']) for key in [...]}) %}`.
+- jQuery `.data()` caches values; change state with `.attr()` +
+  `getAttribute`, or `.data(key, value)`, never mix.
+
+### Still open
+
+- A 424 response shows in the console on the metrics and header pages; it
+  comes from a request unrelated to these changes (not investigated).
+- The editor page never reaches Playwright's `networkidle`; tests use `load`.
 
 ### Deliberately not changed (checked, not bugs)
 
@@ -195,8 +245,6 @@ before redesigning anything.** Bugs found while taking them:
 - Dashboard accessibility and hard-coded English strings.
 - Wizard nits: `roles_select` scoping, duplicate ids, bedrock "Server Upload"
   string.
-- `show_errors` defaults to true, so tracebacks reach the browser. Upstream
-  choice; worth raising with the owner.
 
 ## Rebuilding the test setup
 
@@ -215,7 +263,7 @@ the session scratchpad (`SP`), next to a `venv/`, a `token` file and a
    after editing a template, run stop, sync, start. CSS/JS only needs sync.
 3. Linters/tests: a separate venv in `$SP/venv` with black, pylint, pytest,
    pyotp, requests. Run `black --check app tests` and `pytest -q tests`
-   (79 passing at this commit).
+   (104 passing at this commit).
 4. Browser tests use Playwright at `/opt/node22/lib/node_modules/playwright`
    with Chromium at `/opt/pw-browsers/chromium-1194/chrome-linux/chrome`.
    - `crawl.js`: opens every panel page (desktop + mobile) and reports page
@@ -225,10 +273,19 @@ the session scratchpad (`SP`), next to a `venv/`, a `token` file and a
      Login cooldown is 3 failures / 3 minutes, then 5 minutes locked, so
      don't run it twice back to back. **All checks passed** at this commit.
    - `test_server.js`: start/stop/kill and console on a running server.
-   - `shot.js`, `panel.js`: screenshots.
+   - `shot.js`, `panel.js`, `shot_files.js`, `shot_metrics.js`,
+     `shot_header.js`: screenshots. `chk_metrics.js`: metrics zoom checks.
+   - `test_config.js`, `test_players.js`, `test_backups.js`,
+     `test_files.js`, `test_logs.js`, `test_audit.js`: E2E checks for each
+     tab (`test_audit.js` covers the session 4 fixes). Run with
+     `NODE_TLS_REJECT_UNAUTHORIZED=0 node X.js`.
+   - After `test_files.js`, rename `world/data/renamed.txt` back to
+     `world.txt` and delete `κόσμος.txt` in server 1.
 5. Test data to recreate (ids will change; update the constants at the top
    of the scripts): admin API token in `$SP/token`; two servers made with
-   "import server" from a zip containing a fake Java jar (the "custom"
+   "import server" from a zip containing a fake Java jar (server 2 has no
+   `logs` folder on purpose; server 1 has a `logs/latest.log` with an
+   HTML-looking chat line for the XSS check) (the "custom"
    server type is a stub upstream); a user `tester` / `TesterPass123`
    (id 3) with TOTP, set up by `mk_mfa_user.py "$SP"`; a role; a backup.
    Panel screenshots log in with the token cookie to avoid the login
