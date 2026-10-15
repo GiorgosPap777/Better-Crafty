@@ -37,6 +37,12 @@ const SHOTS = [
   { name: 'dashboard', url: '/panel/dashboard', vp: DESK },
   { name: 'terminal', url: server('term'), vp: DESK, prep: p => p.evaluate(() => window.scrollTo(0, 0)) },
   { name: 'terminal-phone', url: server('term'), vp: PHONE, prep: p => p.evaluate(() => window.scrollTo(0, 0)) },
+  { name: 'terminal-complete', url: server('term'), vp: DESK, afterOnly: true,
+    prep: async p => {
+      await p.evaluate(() => { const f = document.querySelector('#command-form'); window.scrollTo(0, f.getBoundingClientRect().bottom + window.scrollY - 720); });
+      await p.click('#server_command');
+      await p.keyboard.type('give ');
+    } },
   { name: 'config', url: server('config'), vp: DESK, prep: toTabs },
   { name: 'config-game', url: server('config'), vp: DESK, afterOnly: true,
     prep: p => p.evaluate(() => { const s = document.querySelector('#game-settings'); window.scrollTo(0, s.getBoundingClientRect().top + window.scrollY - 80); }) },

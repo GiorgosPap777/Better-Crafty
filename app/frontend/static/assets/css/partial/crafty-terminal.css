@@ -153,3 +153,89 @@ input.server_command {
     margin-top: 0.4rem;
     opacity: 0.6;
 }
+
+/* Command suggestions, shown above the command line like the game's chat */
+.cmd-suggest {
+    position: absolute;
+    bottom: calc(100% + 4px);
+    left: 0;
+    z-index: 30;
+    max-width: 100%;
+    min-width: 12rem;
+    border: 1px solid var(--outline);
+    border-radius: 0.4rem;
+    background-color: var(--dropdown-bg);
+    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.35);
+    font-family: var(--font-family-monospace);
+    font-size: 0.85rem;
+    overflow: hidden;
+}
+
+.cmd-suggest[hidden],
+.cmd-suggest-list[hidden],
+.cmd-suggest-usage[hidden] {
+    display: none;
+}
+
+.cmd-suggest-list {
+    max-height: calc(10 * 1.85rem);
+    overflow-y: auto;
+    scrollbar-width: thin;
+    scrollbar-color: var(--outline) transparent;
+}
+
+.cmd-option {
+    display: flex;
+    align-items: baseline;
+    gap: 1rem;
+    padding: 0.3rem 0.65rem;
+    line-height: 1.25rem;
+    white-space: nowrap;
+    cursor: pointer;
+}
+
+.cmd-option strong {
+    font-weight: 700;
+}
+
+.cmd-option:hover {
+    background-color: var(--outline);
+}
+
+.cmd-option.active {
+    background-color: var(--primary);
+    color: #fff;
+}
+
+.cmd-option-text {
+    flex: 0 1 auto;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* The description gives way first when space is short */
+.cmd-option-detail {
+    flex: 0 1000 auto;
+    min-width: 0;
+    margin-left: auto;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    font-family: var(--font-family-sans-serif);
+    font-size: 0.75rem;
+    opacity: 0.7;
+}
+
+.cmd-suggest-usage {
+    padding: 0.35rem 0.65rem;
+    opacity: 0.75;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+}
+
+@media (max-width: 575.98px) {
+    .cmd-suggest {
+        left: 0 !important;
+        right: 0;
+        min-width: 0;
+    }
+}

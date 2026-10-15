@@ -65,7 +65,15 @@
             {% if data['permissions']['Commands'] in data['user_permissions'] %}
             <form id="command-form" class="console-command" autocomplete="off"
               data-msg-not-running="{{ translate('serverTerm', 'notRunning', data['lang']) }}"
-              data-msg-failed="{{ translate('serverOverview', 'requestFailed', data['lang']) }}">
+              data-msg-failed="{{ translate('serverOverview', 'requestFailed', data['lang']) }}"
+              {% if data.get('command_versions') %}
+              data-command-versions="{{ json_encode(data['command_versions']) }}"
+              data-server-version="{{ data['server_stats'].get('version') or '' }}"
+              data-executable="{{ data['server_stats']['server_id'].get('executable') or '' }}"
+              data-players-allowed="{{ 'true' if data['permissions']['Players'] in data['user_permissions'] else '' }}"
+              data-completion-hint="{{ translate('serverTerm', 'completionHint', data['lang'], False) }}"
+              data-completion-text="{{ json_encode({key: translate('serverTerm', key, data['lang'], False) for key in ('selAll', 'selNearest', 'selRandom', 'selSelf', 'selEntities', 'selNearestEntity', 'selEveryScore', 'relative', 'local', 'online')}) }}"
+              {% end %}>
               <div class="console-input">
                 <span class="console-prompt" aria-hidden="true">&gt;</span>
                 <input type="text" class="form-control server_command" id="server_command" name="server_command"
@@ -78,7 +86,7 @@
                 <span>{{ translate('serverTerm', 'sendCommand', data['lang']) }}</span>
               </button>
             </form>
-            <small class="console-hint">{{ translate('serverTerm', 'historyHint', data['lang']) }}</small>
+            <small class="console-hint" id="console-hint">{{ translate('serverTerm', 'historyHint', data['lang']) }}</small>
             {% end %}
           </div>
         </div>
@@ -92,6 +100,7 @@
 {% end %}
 
 {% block js %}
+<script src="/static/assets/js/shared/command-complete.js"></script>
 <script>
 
   const serverId = new URLSearchParams(document.location.search).get('id')
@@ -100,6 +109,10 @@
   const autoScrollToggle = document.getElementById('console-autoscroll');
   // Keep the DOM bounded so long sessions don't slow the page down
   const MAX_CONSOLE_LINES = 2000;
+  // Shown the console's text as it arrives (the command suggestions read the
+  // server's start-up line from it)
+  let consoleTextHook = null;
+  const plainText = html => html.replace(/<[^>]*>/g, '');
 
   function isNearBottom() {
     return consoleEl.scrollHeight - consoleEl.scrollTop - consoleEl.clientHeight < 40;
@@ -134,6 +147,7 @@
         }
         consoleEl.innerHTML = html;
         trimConsole();
+        if (consoleTextHook) consoleTextHook(responseData.data.map(plainText).join('\n'));
         scrollConsole();
         updateJumpButton();
       } else {
@@ -151,6 +165,7 @@
     const follow = autoScrollToggle.checked && isNearBottom();
     consoleEl.insertAdjacentHTML('beforeend', data.line);
     trimConsole();
+    if (consoleTextHook) consoleTextHook(plainText(data.line));
     if (follow) {
       scrollConsole();
     }
@@ -214,11 +229,106 @@
       },
     };
 
+    // Suggestions as in the game's chat box (Minecraft Java servers)
+    let completer = null;
+    const formData = commandForm.dataset;
+    if (formData.commandVersions && window.CommandComplete) {
+      const known = { online: [], saved: [], banned: [], ops: [], whitelist: [] };
+      const lower = names => new Set(names.map(name => name.toLowerCase()));
+
+      // Player names for the command being typed, like the game offers them:
+      // banned players for "pardon", operators for "deop" and so on
+      function playersFor(path) {
+        const command = path[0];
+        if (command === 'pardon') return known.banned.map(name => ({ name: name }));
+        if (command === 'deop') return known.ops.map(name => ({ name: name }));
+        if (command === 'whitelist' && path[1] === 'remove') return known.whitelist.map(name => ({ name: name }));
+        let skip = new Set();
+        if (command === 'op') skip = lower(known.ops);
+        else if (command === 'ban') skip = lower(known.banned);
+        else if (command === 'whitelist' && path[1] === 'add') skip = lower(known.whitelist);
+        const online = lower(known.online);
+        const seen = new Set();
+        const list = [];
+        // Online players first, then everyone the server knows, A to Z
+        const saved = known.saved.slice().sort((a, b) => a.localeCompare(b, undefined, { sensitivity: 'base' }));
+        for (const name of known.online.concat(saved)) {
+          const key = name.toLowerCase();
+          if (seen.has(key) || skip.has(key)) continue;
+          seen.add(key);
+          list.push({ name: name, online: online.has(key) });
+        }
+        return list;
+      }
+
+      async function loadPlayers() {
+        if (!formData.playersAllowed) return;
+        try {
+          const res = await fetch(`/api/v2/servers/${serverId}/players`, {
+            headers: { 'X-XSRFToken': getCookie("_xsrf") },
+          });
+          const body = await res.json();
+          if (body.status !== 'ok') return;
+          const data = body.data;
+          const names = list => (list || []).map(p => typeof p === 'string' ? p : p && p.name).filter(Boolean).map(String);
+          known.saved = names(data.known).concat(names(data.players));
+          known.banned = names(data.banned);
+          known.ops = names(data.ops);
+          known.whitelist = names(data.whitelist);
+          const cachedOnline = (data.players || []).filter(p => p.status === 'Online').map(p => String(p.name));
+          if (!known.online.length) known.online = cachedOnline;
+        } catch (e) {
+          console.warn('Could not load player names', e);
+        }
+      }
+
+      const hintEl = document.getElementById('console-hint');
+      completer = CommandComplete.attach(commandInput, {
+        versions: JSON.parse(formData.commandVersions),
+        baseUrl: '/static/assets/data/commands/',
+        version: formData.serverVersion,
+        executable: formData.executable,
+        players: playersFor,
+        text: JSON.parse(formData.completionText),
+        onVersion: function (version) {
+          hintEl.textContent = formData.completionHint.replace('{version}', version);
+        },
+      });
+      loadPlayers();
+      document.addEventListener('crafty:server-state', loadPlayers);
+
+      // The server names its exact version when it starts. That is more
+      // reliable than the status ping, which plugins can change or turn off.
+      const STARTING = /\]: Starting minecraft server version (\S+)/gi;
+      let loggedVersion = null;
+      consoleTextHook = function (text) {
+        const found = Array.from(text.matchAll(STARTING)).pop();
+        if (!found) return;
+        loggedVersion = found[1];
+        completer.setVersion(loggedVersion);
+      };
+
+      // Live server details: the version (once it is running) and who is online
+      window.onServerDetails = function (server) {
+        if (!server || String(server.id) !== String(serverId)) return;
+        if (!loggedVersion && server.running && server.version && server.version !== 'False') {
+          completer.setVersion(server.version);
+        }
+        let online = server.players;
+        if (typeof online === 'string') {
+          try { online = JSON.parse(online); } catch (e) { online = []; }
+        }
+        if (online && !Array.isArray(online)) online = online.players;
+        known.online = Array.isArray(online) ? online.map(String) : [];
+      };
+    }
+
     async function sendConsoleCommand() {
       const serverCommand = commandInput.value.trim();
       if (!serverCommand) return;
       cmdHistory.push(serverCommand);
       commandInput.value = '';
+      if (completer) completer.close();
       try {
         const res = await fetch(`/api/v2/servers/${serverId}/stdin`, {
           method: 'POST',
@@ -251,12 +361,15 @@
     });
 
     commandInput.addEventListener('keydown', function (e) {
+      if (completer && completer.handleKey(e)) return;
       if (e.key === 'ArrowUp') {
         e.preventDefault();
         commandInput.value = cmdHistory.prev(commandInput.value);
+        if (completer) completer.close();
       } else if (e.key === 'ArrowDown') {
         e.preventDefault();
         commandInput.value = cmdHistory.next();
+        if (completer) completer.close();
       }
     });
   }

@@ -8,8 +8,8 @@ temporary, so only what is committed here survives).
 container. Paths like `$SP`, `/home/crafty/run` and `/opt/pw-browsers` existed
 only there; the scripts in `dev/handoff-tools/` need adapting to your machine.
 **"Session 6" below is unfinished** (Docker image and install docs; the
-owner said they will pick it up later). Session 7 (player management) is
-done.
+owner said they will pick it up later). Sessions 7 (player management)
+and 8 (command suggestions in the Terminal) are done.
 
 ## The project
 
@@ -52,6 +52,8 @@ done.
    session lacked the tools they normally use, and asked for this handoff.
 10. Session 7: "Ok I will do that later can you work on player management
     ( inventorys , statistics etc)". Done, see Session 7.
+11. Session 8: "Could we implement a auto complison in the command like
+    like in the game". Done, see Session 8.
 
 ### Questions still waiting on the owner
 
@@ -90,7 +92,8 @@ done.
 | `0374b193` | Login cookie `SameSite=Lax` |
 | `8806e7ec` | README for visitors with before/after screenshots |
 | `4e9e1244` | Dockerfile `ARG TARGETARCH` fix and fork labels; draft publish workflow; this handoff (session 6) |
-| (this commit) | Player management: every player, details window (inventory, ender chest, stats, advancements) (session 7) |
+| `b1e8df99` | Player management: every player, details window (inventory, ender chest, stats, advancements) (session 7) |
+| (this commit) | Terminal command suggestions like the game's chat box (session 8) |
 
 ### 1. Login (`d3946c3f`)
 
@@ -665,6 +668,95 @@ the server is stopped and changes nothing.
 - Editing inventories (would need the server stopped and NBT writing).
 - Item icons: names only, because Minecraft's textures cannot be shipped.
 
+## Session 8: command suggestions in the Terminal (done)
+
+The owner asked for "auto complison in the command like like in the game".
+Typing in the Terminal's command box now opens a list like the Minecraft
+Java chat box: commands, then arguments (players, selectors, items, blocks,
+effects, enchantments, game rules, coordinates...), with a usage hint such
+as `<item> [<count>]` when nothing can be listed (free text, numbers).
+
+### How it behaves
+
+- **Tab** takes the highlighted suggestion (adds a space when more can
+  follow); **Shift+Tab**, **↑**, **↓** move; **Enter** takes it only after
+  moving with the arrows, otherwise Enter sends what was typed; **Esc**
+  hides the list until Tab or more typing. With the list closed, ↑ and ↓
+  are the old command history.
+- Player names: online (from the live stats ping sample) first, then
+  everyone in the Players API (`known`, `players`), A to Z. Needs the
+  Players permission; without it only selectors are offered. As in the
+  game, `pardon` lists banned players, `deop` operators, `whitelist remove`
+  the whitelist; `op`, `ban`, `whitelist add` skip people already on that
+  list; `pardon/op/deop/whitelist add|remove` get no `@` selectors.
+- Version: the newest data file not newer than the server. Sources, best
+  first: the server's own log line `]: Starting minecraft server version X`
+  (the `]: ` keeps a chat message from spoofing it), the live stats version
+  while running, the jar name. Unknown means the newest data. Below 1.13 and
+  proxies (Velocity, BungeeCord, Waterfall, Travertine) get no suggestions;
+  only `minecraft-java` servers get the feature at all.
+- Plugin and mod commands are not known (there is no way to ask a running
+  server for its command tree from the console), so they get no
+  suggestions but are still sent.
+
+### Data files
+
+`app/frontend/static/assets/data/commands/java-<version>.json`, made by
+`dev/command-data/generate.py` from the game's own data generator
+(`--reports`): the Brigadier command tree plus ID lists. Shipped:
+1.16.5, 1.18.2, 1.19.4, 1.20.1, 1.20.4, 1.21.1, 1.21.4, 1.21.8, 1.21.10,
+1.21.11, 26.1, 26.3 (about 50-105 KB each). To add a version:
+
+```
+python dev/command-data/generate.py --java /path/to/java 26.4
+```
+
+It downloads the jar from Mojang (checks the sha1, resumes broken
+downloads). Java needed: 17 for 1.18-1.20.4, 21 for 1.20.5-1.21.11, 25 for
+26.x. Nothing else needs changing: `command_data.java_versions()` lists the
+folder (cached until restart).
+
+Format: `{"version", "root", "nodes", "ids"}`. A node is
+`[name, flags (1 argument, 2 executable), child ids, parser, properties,
+redirect path]` with trailing nulls dropped; identical branches are shared
+(26.3: 2475 nodes become 921). Game rules appear as `x` and `minecraft:x` in
+the report; one is kept. `execute run` has no children or redirect in the
+report, so it is stored as a redirect to the root (`[]`). Data-driven lists
+(enchantments, biomes, structures, damage types) come from the nested
+jar's `data/minecraft/<name>/` folder (plural folder names before 1.21).
+Lists over 400 entries are left out except items and blocks; recipe
+advancements, template pools and test instances are skipped.
+
+Version facts worth knowing: 1.21.11 renamed game rules to snake_case
+(`keep_inventory`); versions are year based from 26.1; `@n` exists from
+1.21.
+
+### Files
+
+- `app/frontend/static/assets/js/shared/command-complete.js` (new): the
+  parser and the popup. `CommandComplete.complete(tree, input, players,
+  text)` is pure and runs in node too; `attach(input, options)` builds the
+  popup (ARIA combobox/listbox) and returns `{handleKey, close, refresh,
+  setVersion}`.
+- `app/classes/helpers/command_data.py` (new), `panel_handler.py` (passes
+  `command_versions` on the `term` subpage for Java servers).
+- `panel/server_term.html`: data attributes on `#command-form`, the player
+  lists, version sources, key handling order (suggestions first, then
+  history). `crafty-terminal.css`: `.cmd-suggest` styles. 11 keys under
+  `serverTerm` in `en_EN.json`.
+- Tests: `tests/classes/helpers/test_command_data.py` (pytest);
+  `node dev/command-data/test_complete.js` (checks against the real data
+  files, no browser); `dev/handoff-tools/test_complete.js` and
+  `test_complete_phone.js` (browser, server S1).
+
+### Not done (ideas)
+
+- Plugin/mod commands: Paper could expose its tree through a plugin, which
+  is out of scope for a panel.
+- Bedrock: its command list is not published the same way.
+- Checking a whole command for errors before sending (the game underlines
+  mistakes in red).
+
 ## Rebuilding the test setup (cloud container; adapt on other machines)
 
 The helper scripts are saved in `dev/handoff-tools/`. They expect to live in
@@ -682,7 +774,7 @@ the session scratchpad (`SP`), next to a `venv/`, a `token` file and a
    after editing a template, run stop, sync, start. CSS/JS only needs sync.
 3. Linters/tests: a separate venv in `$SP/venv` with black, pylint, pytest,
    pyotp, requests. Run `black --check app tests` and `pytest -q tests`
-   (127 passing at this commit).
+   (130 passing at this commit).
 4. Browser tests use Playwright at `/opt/node22/lib/node_modules/playwright`
    with Chromium at `/opt/pw-browsers/chromium-1194/chrome-linux/chrome`.
    - `crawl.js`: opens every panel page (desktop + mobile) and reports page

@@ -22,6 +22,7 @@ from app.classes.models.server_permissions import EnumPermissionsServer
 from app.classes.models.crafty_permissions import EnumPermissionsCrafty
 from app.classes.models.management import HelpersManagement
 from app.classes.controllers.roles_controller import RolesController
+from app.classes.helpers import command_data
 from app.classes.helpers.helpers import Helpers, MASTER_CONFIG
 from app.classes.helpers.java_memory import read_memory
 from app.classes.shared.main_models import DatabaseShortcuts
@@ -712,6 +713,13 @@ class PanelHandler(BaseHandler):
             ):
                 return self.redirect(
                     f"/panel/error?error=Unauthorized access to {subpage}"
+                )
+
+            if subpage == "term":
+                page_data["command_versions"] = (
+                    list(command_data.java_versions())
+                    if page_data["server_data"].get("type") == "minecraft-java"
+                    else []
                 )
 
             if subpage == "schedules":

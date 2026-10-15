@@ -26,7 +26,7 @@ Please report problems with this fork here, not to them.
 |---|---|
 | **Login** | Rebuilt page: a separate two-factor step, show password, a countdown after too many failed tries, several login bugs fixed. |
 | **Server page header** | The same header on every server tab: status, Start / Restart / Stop, live uptime, CPU, memory, players and version. |
-| **Terminal** | Auto-scroll switch, command history with the ↑ and ↓ keys, a cap of 2,000 lines so the page stays fast, a link to older logs. |
+| **Terminal** | Command suggestions like the game's chat box (press Tab), auto-scroll switch, command history with the ↑ and ↓ keys, a cap of 2,000 lines so the page stays fast, a link to older logs. |
 | **Config** | Split into sections. Game settings (`server.properties`) and memory are normal form fields now, so no more editing the file or the Java command by hand. |
 | **Players** | Everyone who has ever joined, with play time and last seen. Each player opens to their inventory, armor, ender chest, statistics and advancements. Whitelist, operators and bans in one place. |
 | **Backups** | Shows the last backup (time and size) and how many copies are kept. Buttons have labels. Restore errors are shown, and restoring a snapshot asks first. |
@@ -59,6 +59,30 @@ buttons show "starting" and "stopping" while they work, and Kill sits in the
 | Before | After |
 |---|---|
 | ![Server terminal page in Crafty 4.11.0](docs/screenshots/terminal-before.png) | ![Server terminal page in Better Crafty](docs/screenshots/terminal-after.png) |
+
+### Command suggestions
+
+Typing a command in the Terminal works like the chat box in Minecraft Java:
+a list pops up with the commands, player names, items, blocks, effects,
+game rules and so on that fit, and a hint such as `<item> [<count>]` shows
+what comes next. **Tab** takes the highlighted suggestion, **↑** and **↓**
+move through the list, and **Esc** hides it.
+
+- The suggestions follow the server's version, from 1.13 up to 26.x, so a
+  1.21.10 server is offered `keepInventory` and a 26.3 server
+  `keep_inventory`. The version is read from the server's start-up line,
+  its status ping or the jar's name.
+- Player names come from the Players tab (online players first), and the
+  game's own rules apply: `pardon` offers banned players, `deop` offers
+  operators, `whitelist remove` offers whitelisted players.
+- Only vanilla commands are known. Commands added by plugins or mods are
+  still sent as typed, they just get no suggestions. Bedrock servers and
+  proxies (Velocity, BungeeCord) get none.
+- When a new Minecraft version comes out, `dev/command-data/generate.py`
+  builds its data file from the game's own command list (see the top of
+  that file for how to run it).
+
+![Command suggestions in the Better Crafty terminal](docs/screenshots/terminal-complete-after.png)
 
 ### Config
 
