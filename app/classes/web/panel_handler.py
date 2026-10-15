@@ -752,12 +752,21 @@ class PanelHandler(BaseHandler):
                 page_data["backups"] = self.controller.management.get_backups_by_server(
                     server_id, model=True
                 )
-                page_data["backing_up"] = (
-                    self.controller.servers.get_server_instance_by_id(
-                        server_id
-                    ).is_backingup
+                server_instance = self.controller.servers.get_server_instance_by_id(
+                    server_id
                 )
-                # makes it so relative path is the only thing shown
+                page_data["backing_up"] = server_instance.is_backingup
+                page_data["backup_summaries"] = {
+                    backup.backup_id: server_instance.backup_mgr.backup_summary(
+                        {
+                            "backup_id": backup.backup_id,
+                            "backup_location": backup.backup_location,
+                            "backup_type": backup.backup_type,
+                        },
+                        server_id,
+                    )
+                    for backup in page_data["backups"]
+                }
 
                 self.controller.servers.refresh_server_settings(server_id)
 

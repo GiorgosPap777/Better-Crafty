@@ -1,0 +1,132 @@
+/**************************************************************/
+/* Backups tab: one block per backup plan                     */
+/**************************************************************/
+.backup-head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    margin-bottom: 1.25rem;
+}
+
+.backup-head h3 {
+    font-size: 1.1rem;
+    font-weight: 600;
+    margin-bottom: 0.25rem;
+}
+
+.backup-empty {
+    text-align: center;
+    padding: 2rem 1rem;
+    border: 1px dashed var(--outline);
+    border-radius: 0.5rem;
+}
+
+.backup-empty .ph {
+    font-size: 2rem;
+}
+
+.backup-plan {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1rem;
+    justify-content: space-between;
+    border: 1px solid var(--outline);
+    border-radius: 0.5rem;
+    padding: 1rem 1.25rem;
+    margin-bottom: 1rem;
+}
+
+.backup-plan-main {
+    flex: 1 1 28rem;
+    min-width: 0;
+}
+
+.backup-plan-title {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 0.75rem;
+}
+
+.backup-plan-title h4 {
+    font-size: 1rem;
+    font-weight: 600;
+    margin: 0;
+    overflow-wrap: anywhere;
+}
+
+.backup-plan-title .badge {
+    border: 1px solid;
+    background: transparent;
+    cursor: default;
+}
+
+.backup-plan-title button.badge {
+    cursor: pointer;
+}
+
+.backup-progress {
+    width: 10rem;
+    height: 1.1rem;
+}
+
+.backup-facts {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr));
+    gap: 0.5rem 1.5rem;
+    margin: 0;
+    padding: 0;
+}
+
+.backup-facts > div,
+.backup-facts dt {
+    margin: 0;
+    padding: 0;
+}
+
+.backup-facts dt {
+    font-size: 0.75rem;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    opacity: 0.7;
+}
+
+.backup-facts dd {
+    margin: 0;
+}
+
+.backup-facts .backup-facts-wide {
+    grid-column: 1 / -1;
+}
+
+.backup-location {
+    font-family: monospace;
+    font-size: 0.85rem;
+    overflow-wrap: anywhere;
+}
+
+.backup-plan-actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-start;
+    align-content: flex-start;
+    gap: 0.5rem;
+}
+
+@media (max-width: 575.98px) {
+    .backup-plan {
+        padding: 0.85rem;
+    }
+
+    .backup-plan-actions {
+        width: 100%;
+    }
+
+    .backup-plan-actions .btn {
+        flex: 1 1 auto;
+    }
+}

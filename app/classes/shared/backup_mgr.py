@@ -378,20 +378,46 @@ class BackupManager:
             {"status": json.dumps({"status": "Failed", "message": f"{why}"})},
         )
 
+    @staticmethod
+    def backup_folder(backup_config: dict) -> str:
+        """Folder holding the files listed for a backup config."""
+        if backup_config["backup_type"] == "snapshot":
+            return os.path.join(
+                backup_config["backup_location"], "snapshot_backups", "manifests"
+            )
+        return os.path.join(
+            backup_config["backup_location"],
+            backup_config["backup_id"],
+        )
+
+    def backup_summary(self, backup_config: dict, server_id) -> dict:
+        """How many backups a config keeps and when the newest one was made."""
+        try:
+            files = self.list_backups(backup_config, server_id)
+        except OSError as why:
+            logger.warning(f"Could not list backups for {server_id}: {why}")
+            files = []
+        summary = {"count": len(files), "last_time": None, "last_size": ""}
+        if files:
+            newest = files[-1]
+            summary["last_size"] = newest["size"]
+            try:
+                summary["last_time"] = os.path.getmtime(
+                    Helpers.get_os_understandable_path(
+                        os.path.join(self.backup_folder(backup_config), newest["path"])
+                    )
+                )
+            except OSError:
+                pass
+        return summary
+
     def list_backups(self, backup_config: dict, server_id) -> list:
         if not backup_config:
             logger.info(
                 f"Error putting backup file list for server with ID: {server_id}"
             )
             return []
-        backup_location = os.path.join(
-            backup_config["backup_location"],
-            backup_config["backup_id"],
-        )
-        if backup_config["backup_type"] == "snapshot":
-            backup_location = os.path.join(
-                backup_config["backup_location"], "snapshot_backups", "manifests"
-            )
+        backup_location = self.backup_folder(backup_config)
         if not Helpers.check_path_exists(
             Helpers.get_os_understandable_path(backup_location)
         ):
