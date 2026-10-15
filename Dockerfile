@@ -1,5 +1,8 @@
 FROM ubuntu:24.04
 
+# Set by buildx/BuildKit; must be declared to be visible in RUN steps
+ARG TARGETARCH
+
 ENV DEBIAN_FRONTEND="noninteractive"
 
 # Security Patch for CVE-2021-44228
@@ -68,19 +71,19 @@ EXPOSE 25500-25600
 ENTRYPOINT ["/crafty/docker_launcher.sh"]
 CMD ["-d", "-i"]
 
-# Add meta labels
+# Add meta labels (Better Crafty is a fork of Crafty Controller by
+# Arcadia Technology, LLC: https://gitlab.com/crafty-controller/crafty-4)
 ARG BUILD_DATE
 ARG BUILD_REF
 ARG CRAFTY_VER
 LABEL \
-    maintainer="Zedifus <https://gitlab.com/zedifus>" \
+    maintainer="GiorgosPap777 <https://github.com/GiorgosPap777>" \
     org.opencontainers.image.created=${BUILD_DATE} \
     org.opencontainers.image.revision=${BUILD_REF} \
     org.opencontainers.image.version=${CRAFTY_VER} \
-    org.opencontainers.image.title="Crafty Controller" \
-    org.opencontainers.image.description="A Game Server Control Panel / Launcher" \
-    org.opencontainers.image.url="https://craftycontrol.com/" \
-    org.opencontainers.image.documentation="https://docs.craftycontrol.com" \
-    org.opencontainers.image.source="https://gitlab.com/crafty-controller/crafty-4" \
-    org.opencontainers.image.vendor="Arcadia Technology, LLC." \
+    org.opencontainers.image.title="Better Crafty" \
+    org.opencontainers.image.description="A fork of Crafty Controller, a game server control panel / launcher" \
+    org.opencontainers.image.url="https://github.com/GiorgosPap777/Better-Crafty" \
+    org.opencontainers.image.documentation="https://github.com/GiorgosPap777/Better-Crafty#install" \
+    org.opencontainers.image.source="https://github.com/GiorgosPap777/Better-Crafty" \
     org.opencontainers.image.licenses="GPL-3.0"

@@ -4,6 +4,11 @@ Read this first when picking the work back up. It records what has been done,
 what is half done, and how to rebuild the test setup (the cloud container is
 temporary, so only what is committed here survives).
 
+**Picking up on the owner's PC?** Sessions 1-6 ran in a temporary cloud
+container. Paths like `$SP`, `/home/crafty/run` and `/opt/pw-browsers` existed
+only there; the scripts in `dev/handoff-tools/` need adapting to your machine.
+**Start with "Session 6" below: it is unfinished and is the current task.**
+
 ## The project
 
 - A fork of **Crafty Controller 4.11.0** (Python Tornado + peewee/SQLite;
@@ -32,10 +37,25 @@ temporary, so only what is committed here survives).
    than I have thought, and they are really good, we might as well so get
    started." So the suggestions listed under Session 3 below were approved
    and built.
+7. Session 5: asked what the SameSite risk was ("I didn't understand it"),
+   said they don't embed Crafty in other sites, and asked for a README "in
+   such a way so that if another person other than me goes to the repo
+   understands what the changes are", with images. Done (see Session 5).
+8. Session 6: "Now that I see it, the readme.md has not been changed. Could
+   you also make a Docker image and publish it to Docker Hub? If you cannot
+   create a new repo on Docker Hub, tell me. also have instructions on how
+   to properly install it and run it, and how to migrate from the original
+   Crafty controller." **Half done, see Session 6.**
+9. Then moved the work to an agent on their own PC, because the cloud
+   session lacked the tools they normally use, and asked for this handoff.
 
 ### Questions still waiting on the owner
 
 - Should a PR to `main` be opened? (Explained what it means; not opened.)
+- Session 6: publish to Docker Hub only, or also to GitHub's registry
+  (`ghcr.io`)? They only asked for Docker Hub. And what is their Docker Hub
+  username (needed for the image name in the README)? Never ask them to
+  paste a password or token into the chat.
 - (Answered in session 5.) The token cookie is now `SameSite=Lax`
   (`api/auth/login.py`, `api/auth/passkey.py`): the API turns XSRF checks
   off, so without it another site could call the API as the logged-in user.
@@ -64,7 +84,8 @@ temporary, so only what is committed here survives).
 | `1b91543a` | On/off switches, restore errors, snapshot confirm, editor double save |
 | `e409e2fc` | Handoff notes for sessions 2-4, test scripts |
 | `0374b193` | Login cookie `SameSite=Lax` |
-| (this commit) | README for visitors with before/after screenshots |
+| `8806e7ec` | README for visitors with before/after screenshots |
+| (this commit) | Dockerfile `ARG TARGETARCH` fix and fork labels; draft publish workflow; this handoff (session 6) |
 
 ### 1. Login (`d3946c3f`)
 
@@ -273,7 +294,303 @@ have the details; the notes below are what is useful when changing the code.
   5. Shrink: `convert X.png -strip -define png:compression-level=9`, and
      JPEG (`-quality 84`) for the login shots (photo background).
 
-## Rebuilding the test setup
+## Session 6: Docker image, install and migration docs (UNFINISHED)
+
+The request is item 8 in "What the owner asked for". It was handed off
+part-way through.
+
+### Status
+
+Done (committed with this file):
+
+- `Dockerfile`: added `ARG TARGETARCH`. Upstream's apt step checks
+  `$TARGETARCH` to install `lib32gcc-s1` (needed by SteamCMD) on amd64, but
+  never declared the arg, so it was always empty and the library was never
+  installed. Meanwhile `docker_launcher.sh` tells amd64 users that SteamCMD
+  support is there. Also relabelled the image for the fork (title, url,
+  source, documentation, maintainer); the old labels pointed at upstream.
+- Built the image on amd64 (Docker 29, BuildKit): **the build succeeds**, and
+  the log shows `lib32gcc-s1` and `libc6-i386` being installed. In the
+  cloud sandbox pip needed the sandbox proxy's certificate, so that test
+  build used a throwaway copy of the Dockerfile with two extra lines. The
+  committed Dockerfile has no such lines and needs none elsewhere.
+- Draft publish workflow, parked at `dev/handoff-tools/docker-publish.yml`
+  so that it does not run before the owner agrees (details below).
+
+Not done:
+
+1. **The image has never been run.** Not yet checked: the panel starts,
+   `/login` returns 200, `config/default-creds.txt` appears, login works, a
+   server can be created and started, and `dpkg -s lib32gcc-s1` inside the
+   container. The arm64 image has not been built at all, although the
+   README already says the image works on arm64. Upstream builds arm64 the
+   same way, so it probably does, but it is unchecked.
+2. **Nothing is published.** The cloud session had no Docker Hub account or
+   credentials, so it could not create a Docker Hub repo or push to one.
+   The owner asked to be told if that was the case; **tell them plainly.**
+3. The README "Install" section has not been rewritten. There are no update
+   or migration instructions yet; the README has only a three-line "Moving
+   over" note.
+4. The owner thinks the README "has not been changed". It has: GitHub's
+   default branch shows commit `8806e7ec` with the new README (checked
+   through the GitHub API in session 6). Most likely a cached page, or they
+   judged by the top, which still opens with the same Crafty logo as
+   upstream. Tell them, give the link
+   https://github.com/GiorgosPap777/Better-Crafty, and make the top of the
+   README clearly different. Put the title and a one-line summary first,
+   with a screenshot instead of the Crafty logo. Opening with Crafty's logo
+   also makes the fork look official.
+
+### Next steps, in order
+
+1. Tell the owner about points 2 and 4 above, and ask the open questions
+   (Docker Hub username; Docker Hub only, or also `ghcr.io`).
+2. Run the image (adapt the paths on Windows):
+   ```sh
+   docker build -t better-crafty:test .
+   mkdir -p ~/bc-test && cd ~/bc-test
+   docker run -d --name bc-test -p 9443:8443 \
+     -v "$PWD/config:/crafty/app/config" -v "$PWD/servers:/crafty/servers" \
+     -v "$PWD/backups:/crafty/backups" -v "$PWD/logs:/crafty/logs" \
+     -v "$PWD/import:/crafty/import" better-crafty:test
+   docker logs -f bc-test      # wait until the web server is up
+   curl -k -o /dev/null -w '%{http_code}\n' https://localhost:9443/login   # expect 200
+   sudo cat config/default-creds.txt
+   docker exec bc-test dpkg -s lib32gcc-s1 | head -2
+   ```
+   Then log in, create or import a server, start it, and look at a few tabs.
+   Clean up with `docker rm -f bc-test`.
+3. Publish (see "Publishing" below).
+4. Rewrite the README (see "README plan" below), using the published image
+   name.
+5. Test the new instructions before pushing them (see "Testing the
+   instructions" below).
+6. Commit, push, and update this file.
+
+### Publishing
+
+Two ways. Let the owner choose; both can be used.
+
+**a. From the PC.** The owner runs `docker login` themselves (never handle
+their token in chat). Then:
+```sh
+docker buildx create --use --name bc        # once
+# Only on a plain Linux amd64 host (Docker Desktop already has this):
+docker run --privileged --rm tonistiigi/binfmt --install arm64
+docker buildx build --platform linux/amd64,linux/arm64 \
+  -t <dockerhub-user>/better-crafty:latest \
+  -t <dockerhub-user>/better-crafty:sha-$(git rev-parse --short HEAD) \
+  --push .
+```
+The first push to `<user>/better-crafty` creates the Docker Hub repo. Its
+visibility follows the account's default privacy setting, so check on
+hub.docker.com that it is public, and add a short description that links to
+the GitHub repo. The arm64 half builds under emulation and can be slow.
+
+**b. GitHub Actions** (`dev/handoff-tools/docker-publish.yml`; move it to
+`.github/workflows/` to turn it on):
+
+- Publishes only from the default branch and from `v*` tags; it can also be
+  run by hand. Pushes that change only `**.md`, `docs/**` or `dev/**` do not
+  trigger a build.
+- Always pushes to `ghcr.io/<owner, lower case>/better-crafty` using the
+  built-in `GITHUB_TOKEN` (`packages: write` is set in the file). It also
+  pushes to Docker Hub as `<DOCKERHUB_USERNAME>/better-crafty`, but only
+  when the repository secrets `DOCKERHUB_USERNAME` and `DOCKERHUB_TOKEN`
+  exist. The token is a Docker Hub personal access token with Read & Write
+  access (Docker Hub → Account settings → Personal access tokens). The
+  owner adds both under GitHub repo → Settings → Secrets and variables →
+  Actions.
+- Tags: `latest` from the default branch, `X.Y.Z` and `X.Y` from a `vX.Y.Z`
+  git tag, and `sha-<short>` always. The version label comes from
+  `app/config/version.json`. Builds amd64 and arm64 (QEMU), with the GitHub
+  Actions cache.
+- Checked so far: the YAML parses, and the image-name shell step was
+  dry-run in bash both with and without the Docker Hub secrets. (An earlier
+  version leaked a `::notice::` line into the image list; that is fixed.)
+  **It has never run on GitHub.**
+- New `ghcr.io` packages may start out private. To fix: GitHub profile →
+  Packages → better-crafty → Package settings → Change visibility → Public.
+- Pushing a file under `.github/workflows/` needs a git credential with
+  the `workflow` scope. If GitHub refuses the push, that is why.
+- If the owner wants Docker Hub only, remove the `ghcr.io` login step and
+  image line.
+
+### README plan
+
+- **Top:** `# Better Crafty`, a one-line summary, then a screenshot
+  (`docs/screenshots/terminal-after.png`). Move the Crafty logo out of the
+  top, or drop it.
+- **Contents line:** add Update and Moving from Crafty.
+- **Install**
+  - *What you need:* Linux on amd64 or arm64 (for example a Raspberry Pi 4
+    or 5 on a 64-bit OS) with Docker, or Python 3.9+ and Java for the way
+    without Docker. There is no Windows build. Keep the existing warning
+    about Docker on WSL / Docker Desktop corrupting worlds.
+  - *Docker Compose (recommended):* a `docker-compose.yml` with
+    `image: <published name>:latest`, plus the same ports and volumes as
+    `docker/docker-compose.yml`. Keep the container paths `/crafty/...`
+    exactly as they are. Run `docker compose up -d`, then get the admin
+    password from `config/default-creds.txt`, which is written on the first
+    start. It has mode 600 and is owned by the container's `crafty` user, so
+    the host may need `sudo cat` (not verified). Open
+    `https://<server-ip>:8443`, accept the warning about the self-signed
+    certificate, log in as `admin`, and change the password. Mention `TZ`.
+  - *docker run:* the same, using `-v "$(pwd)/config:/crafty/app/config"`
+    and so on.
+  - *Build it yourself:* the current text
+    (`cd Better-Crafty/docker && docker compose up -d --build`).
+  - *Without Docker (Linux):* use the same layout as Crafty's official
+    installer, so that the migration steps line up. **Untested:**
+    ```sh
+    sudo apt update
+    sudo apt install -y git python3 python3-venv python3-dev gcc
+    sudo apt install -y openjdk-21-jre-headless   # the Java your Minecraft version needs
+    sudo mkdir -p /var/opt/minecraft
+    sudo useradd --system --create-home --home-dir /var/opt/minecraft/crafty --shell /bin/bash crafty
+    cd /var/opt/minecraft/crafty
+    sudo -u crafty git clone https://github.com/GiorgosPap777/Better-Crafty.git crafty-4
+    sudo -u crafty python3 -m venv .venv
+    sudo -u crafty .venv/bin/pip install -r crafty-4/requirements.txt
+    ```
+    Then add `/etc/systemd/system/crafty.service`:
+    ```ini
+    [Unit]
+    Description=Better Crafty
+    After=network.target
+
+    [Service]
+    Type=simple
+    User=crafty
+    WorkingDirectory=/var/opt/minecraft/crafty/crafty-4
+    ExecStart=/var/opt/minecraft/crafty/.venv/bin/python main.py -d
+    Restart=on-failure
+
+    [Install]
+    WantedBy=multi-user.target
+    ```
+    Run `sudo systemctl daemon-reload && sudo systemctl enable --now crafty`.
+    The password is in
+    `/var/opt/minecraft/crafty/crafty-4/app/config/default-creds.txt`, and
+    the logs are in `journalctl -u crafty -f`. Mention opening 8443/tcp and
+    the game ports in the firewall.
+- **Updating**
+  - Compose with the image: `docker compose pull && docker compose up -d`.
+  - Built yourself: `git pull && docker compose up -d --build`.
+  - Without Docker:
+    1. `sudo systemctl stop crafty`
+    2. `cd /var/opt/minecraft/crafty/crafty-4`
+    3. `sudo -u crafty git pull`
+    4. `sudo -u crafty ../.venv/bin/pip install -r requirements.txt`
+    5. `sudo systemctl start crafty`
+- **Moving from the original Crafty Controller**
+  - Everything carries over (users, roles, servers, schedules, backups,
+    settings): the fork uses the same database and folders and makes no
+    database changes, so switching back works too.
+  - *Versions:* the fork is 4.11.0, which was still upstream's latest
+    release when checked on 2026-10-15 (upstream master `fe65b372`, last
+    upstream commit 2026-09-16). Re-check before publishing.
+    - From 4.11.0: drop-in.
+    - From an older 4.x: works. Crafty's normal migrations upgrade the
+      database on the first start, and after that going back needs 4.11.0
+      or a backup.
+    - From anything newer than 4.11.0: not supported until the fork
+      catches up.
+  - *Back up first:* at least the config folder, which holds the database,
+    users and settings.
+  - *Docker:*
+    1. `docker compose down`.
+    2. Back up.
+    3. Change only the `image:` line
+       (`registry.gitlab.com/crafty-controller/crafty-4:latest` or
+       `arcadiatechnology/crafty-4:latest`) to the new image, and keep the
+       volumes as they are.
+    4. `docker compose pull && docker compose up -d`.
+
+    With docker run: `docker stop` and `docker rm` the container (the data
+    lives in the mounted folders), then run the same command with the new
+    image name.
+  - *Official Linux installer:* switch the code **in place**. Crafty stores
+    each server's absolute path in its database, so never install into a
+    new folder and copy the data across.
+    ```sh
+    sudo systemctl stop crafty
+    sudo cp -a /var/opt/minecraft/crafty/crafty-4/app/config ~/crafty-config-backup
+    cd /var/opt/minecraft/crafty/crafty-4
+    sudo -u crafty git remote rename origin crafty-original
+    sudo -u crafty git remote add origin https://github.com/GiorgosPap777/Better-Crafty.git
+    sudo -u crafty git fetch origin
+    sudo -u crafty git remote set-head origin --auto
+    sudo -u crafty git checkout -b better-crafty --track origin/HEAD
+    sudo -u crafty ../.venv/bin/pip install -r requirements.txt
+    sudo systemctl start crafty
+    ```
+    - `--track origin/HEAD` resolves to the fork's default branch, whatever
+      it is called. This was tested on a toy repo: tracking was set to the
+      real branch name, and `git pull` worked afterwards.
+    - After switching, **do not use the installer's `update_crafty.sh`**.
+      It runs `git reset --hard origin/master` (the fork has no `master`)
+      and then `git pull`. Use the Updating steps instead.
+    - The installer's `run_crafty.sh` and `crafty.service` keep working,
+      because the paths are the same.
+    - If `git checkout` complains about local changes, the files were
+      edited by hand; run `git stash` first.
+  - *Going back:*
+    - Docker: restore the old `image:` line, then pull and `up -d`.
+    - Linux: stop the service, then
+      `sudo -u crafty git checkout master` (or `dev`, whichever they ran
+      before), pip install, and start again.
+  - Windows installs are not covered, because the fork has no Windows
+    build.
+
+### Testing the instructions
+
+- **Clean install:** in a fresh `ubuntu:24.04` container, run the "Without
+  Docker" steps. Skip systemd and start with
+  `cd /var/opt/minecraft/crafty/crafty-4 && sudo -u crafty ../.venv/bin/python main.py -d`.
+  Check that `/login` returns 200 and the creds file appears.
+- **Linux migration:**
+  1. In another container, set up upstream the way the installer does:
+     `git clone https://gitlab.com/crafty-controller/crafty-4.git` into
+     `/var/opt/minecraft/crafty/crafty-4`, check out `master`, then create
+     the venv and run pip install.
+  2. Start it once, log in, add a user and import a server, then stop it.
+  3. Run the migration commands, start the fork, and check that the same
+     admin login works and the data is all there.
+  4. Run the "going back" steps and check that upstream starts again.
+- **Docker migration:** run the upstream image with a data folder, stop it,
+  switch the image, start it, and check the login and the data.
+
+### Facts already checked (no need to redo)
+
+- **Official installer** (gitlab.com/crafty-controller/crafty-installer-4.0,
+  read in session 6):
+  - Default `install_dir` is `/var/opt/minecraft/crafty`. It clones
+    `https://gitlab.com/crafty-controller/crafty-4.git` into `crafty-4`
+    there and creates the venv `.venv` next to it.
+  - User `crafty`, created with `useradd crafty -s /bin/bash`.
+  - Writes `run_crafty.sh`, `run_crafty_service.sh`
+    (`python3 main.py -d`) and `update_crafty.sh`. `crafty.service` runs
+    `run_crafty_service.sh` as `crafty`.
+  - The user picks the `master` or `dev` branch.
+- **`.gitignore`** covers `app/config/`, `/servers/`, `/backups/`,
+  `/import/`, logs, `*.sqlite`, and the custom login, embed and logo image
+  folders under `app/frontend/static/assets/images/`. The only tracked
+  files in `app/config` are `credits.json`, `default.json.example`,
+  `logging.json`, `motd_format.json` and `version.json`. So switching
+  branches never touches user data.
+- **Docker files:** `docker/docker-compose.yml` is unchanged from upstream
+  and builds from source (`build: ..`). On the first start,
+  `docker_launcher.sh` copies the default config and fixes permissions;
+  then it runs Crafty as `crafty`. It refreshes `version.json` in the
+  config volume on every start.
+- **`main.py`:** `-d` / `--daemon` means no interactive prompt. The first
+  start writes `app/config/default-creds.txt` (JSON with username `admin`
+  and the password) with mode 600.
+- **Not checked:** what port 8000 actually does. The README currently
+  calls it "HTTP".
+
+## Rebuilding the test setup (cloud container; adapt on other machines)
 
 The helper scripts are saved in `dev/handoff-tools/`. They expect to live in
 the session scratchpad (`SP`), next to a `venv/`, a `token` file and a

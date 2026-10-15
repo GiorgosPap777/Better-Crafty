@@ -1,0 +1,106 @@
+# DRAFT, not active here. Move to .github/workflows/ to turn it on (see the
+# "Session 6" part of handoff.md).
+#
+# Builds the Better Crafty Docker image (amd64 and arm64) and publishes it.
+#
+# - GitHub Container Registry: ghcr.io/<owner>/better-crafty
+#   Needs no setup; it uses the built-in GITHUB_TOKEN.
+# - Docker Hub: <DOCKERHUB_USERNAME>/better-crafty
+#   Only when the repository secrets DOCKERHUB_USERNAME and DOCKERHUB_TOKEN
+#   (a Docker Hub access token with "Read & Write" access) are set. Docker
+#   Hub creates the repository on the first push.
+#
+# Tags: "latest" for the default branch, "1.2.3" and "1.2" for a v1.2.3 git
+# tag, and "sha-<commit>" for every build.
+name: Docker image
+
+on:
+  push:
+    branches: ["**"]
+    tags: ["v*"]
+    # Changes to documentation alone do not need a new image
+    paths-ignore:
+      - "**.md"
+      - "docs/**"
+      - "dev/**"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  packages: write
+
+concurrency:
+  group: docker-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  publish:
+    # Publish from the default branch and from version tags only
+    if: github.ref_name == github.event.repository.default_branch || startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    env:
+      DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
+      DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Choose image names
+        id: names
+        run: |
+          images="ghcr.io/${GITHUB_REPOSITORY_OWNER,,}/better-crafty"
+          if [ -n "$DOCKERHUB_USERNAME" ] && [ -n "$DOCKERHUB_TOKEN" ]; then
+            images="$images"$'\n'"${DOCKERHUB_USERNAME,,}/better-crafty"
+          else
+            echo "::notice::Docker Hub secrets not set, publishing to ghcr.io only"
+          fi
+          {
+            echo "images<<EOF"
+            echo "$images"
+            echo "EOF"
+            echo "version=$(jq -r '"\(.major).\(.minor).\(.sub)"' app/config/version.json)"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Image tags and labels
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ steps.names.outputs.images }}
+          tags: |
+            type=raw,value=latest,enable={{is_default_branch}}
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=sha
+          labels: |
+            org.opencontainers.image.title=Better Crafty
+            org.opencontainers.image.version=${{ steps.names.outputs.version }}
+
+      - uses: docker/setup-qemu-action@v3
+
+      - uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Log in to Docker Hub
+        if: env.DOCKERHUB_USERNAME != '' && env.DOCKERHUB_TOKEN != ''
+        uses: docker/login-action@v3
+        with:
+          username: ${{ env.DOCKERHUB_USERNAME }}
+          password: ${{ env.DOCKERHUB_TOKEN }}
+
+      - name: Build and push
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          annotations: ${{ steps.meta.outputs.annotations }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
