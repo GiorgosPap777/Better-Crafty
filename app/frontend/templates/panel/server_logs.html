@@ -1,6 +1,7 @@
 {% extends ../base.html %}
 
 {% block meta %}
+<link rel="stylesheet" href="/static/assets/css/partial/crafty-terminal.css">
 {% end %}
 
 {% block title %}Crafty Controller - {{ translate('serverDetails', 'serverDetails', data['lang']) }}{% end %}
@@ -27,24 +28,45 @@
             {% include "parts/m_server_controls_list.html %}
           </span>
 
-          <div class="col-md-12">
-            <div class="form-group">
-              <label for="log_file_select">{{ translate('serverDetails', 'logFile', data['lang']) }}</label>
-              <select class="form-control" id="log_file_select"
-                data-empty="{{ translate('serverDetails', 'noLogFiles', data['lang']) }}"></select>
+          <div class="col-md-12 console-panel">
+            <div class="logs-controls">
+              <div class="form-group logs-file">
+                <label for="log_file_select">{{ translate('serverDetails', 'logFile', data['lang']) }}</label>
+                <select class="form-control" id="log_file_select"
+                  data-empty="{{ translate('serverDetails', 'noLogFiles', data['lang']) }}"></select>
+              </div>
+              <form class="form-group logs-filter" id="filter_form" autocomplete="off">
+                <label for="searchbox">{{ translate('serverDetails', 'hideLines', data['lang']) }}</label>
+                <div class="input-group">
+                  <input type="text" class="form-control" id="searchbox" maxlength="100"
+                    placeholder="{{ translate('serverDetails', 'hideLinesPlaceholder', data['lang']) }}">
+                  <div class="input-group-append">
+                    <button class="btn btn-outline-primary" type="submit">{{ translate('serverDetails', 'hideLinesAdd',
+                      data['lang']) }}</button>
+                  </div>
+                </div>
+                <ul id="ignored-words" class="logs-filter-words"
+                  aria-label="{{ translate('serverDetails', 'filterList', data['lang']) }}"></ul>
+              </form>
             </div>
-            <div class="input-group">
-              <div id="virt_console" class="virt_console">
+
+            <div class="console-toolbar">
+              <span class="console-title"><i class="ph-bold ph-book-open-user" aria-hidden="true"></i>
+                {{ translate('serverDetails', 'logs', data['lang']) }}</span>
+              <div class="console-tools">
+                <span class="small text-muted" id="hidden_count" aria-live="polite"></span>
+                {% if data['permissions']['Terminal'] in data['user_permissions'] %}
+                <a class="btn btn-sm btn-ghost"
+                  href="/panel/server_detail?id={{ data['server_stats']['server_id']['server_id'] }}&subpage=term">
+                  <i class="ph-bold ph-terminal" aria-hidden="true"></i>
+                  {{ translate('serverDetails', 'liveTerminal', data['lang']) }}</a>
+                {% end %}
               </div>
             </div>
-            <br />
-            <label for="ignore">{{ translate('serverDetails', 'filter', data['lang']) }}</label>
-            <input type="text" class="form-control" name="ignore" id="searchbox" value="" required>
-            <br />
-            <br />
-            <h4>{{ translate('serverDetails', 'filterList', data['lang']) }}</h4>
-            <ul id="ignored-words" class="list-group"></ul>
-            <br />
+            <div class="console-frame">
+              <div id="virt_console" role="log" aria-live="off" tabindex="0"
+                data-empty="{{ translate('serverDetails', 'noLogsYet', data['lang']) }}"></div>
+            </div>
           </div>
         </div>
       </div>
@@ -58,6 +80,54 @@
     display: none;
     position: fixed !important;
   }
+
+  .logs-controls {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0 1.5rem;
+  }
+
+  .logs-file {
+    flex: 1 1 260px;
+  }
+
+  .logs-filter {
+    flex: 2 1 320px;
+  }
+
+  .logs-filter-words {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+    list-style: none;
+    padding: 0;
+    margin: 0.5rem 0 0;
+  }
+
+  .logs-filter-words li {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    padding: 0.15rem 0.25rem 0.15rem 0.6rem;
+    border-radius: 999px;
+    border: 1px solid var(--outline);
+    background: var(--deep-bg);
+    font-size: 0.85rem;
+  }
+
+  .logs-filter-words button {
+    border: 0;
+    background: transparent;
+    color: inherit;
+    line-height: 1;
+    padding: 0.2rem;
+    border-radius: 999px;
+  }
+
+  .logs-filter-words button:hover,
+  .logs-filter-words button:focus-visible {
+    background: var(--card-banner-bg);
+  }
 </style>
 <!-- content-wrapper ends -->
 
@@ -66,97 +136,60 @@
 {% block js %}
 <script>
   // ##### Log Filter Block #####
+  // Lines containing any of these words are hidden. Words are kept in the
+  // browser and only ever shown as text.
+  const hiddenText = {% raw json_encode({
+    'remove': translate('serverDetails', 'hideLinesRemove', data['lang']),
+    'count': translate('serverDetails', 'linesHidden', data['lang'])}) %};
   let lines = [];
   let words = [];
-  if (localStorage.getItem("words")) {
-    try {
-      words = JSON.parse(localStorage.getItem("words"));
-    } catch {
-      words = [];
-    }
+  try {
+    const saved = JSON.parse(localStorage.getItem("words") || "[]");
+    if (Array.isArray(saved)) words = saved.filter(w => typeof w === "string" && w.trim());
+  } catch {
+    words = [];
+  }
+
+  function saveWords() {
+    try { localStorage.setItem("words", JSON.stringify(words)); } catch { /* storage off */ }
   }
 
   function hideFilteredWords() {
-    for (let i = 0; i < lines.length; i++) {
-      // Reinitialise line visibility
-      lines[i].classList.remove("is-hidden");
+    let hidden = 0;
+    for (const line of lines) {
+      const hide = words.length > 0 && words.some(word => line.textContent.toLowerCase().includes(word));
+      line.classList.toggle("is-hidden", hide);
+      if (hide) hidden++;
+    }
+    $("#hidden_count").text(hidden ? hiddenText.count.replace("{count}", hidden) : "");
+  }
 
-      // If we have no words to filter, continue.
-      if (!words.length) continue;
-
-      // If we find our target word hide the line
-      if (words.some(ai => lines[i].textContent.toLowerCase().includes(ai))) {
-        lines[i].classList.add("is-hidden");
-      }
+  function renderWords() {
+    const list = $("#ignored-words").empty();
+    for (const word of words) {
+      const remove = $('<button type="button"><i class="ph ph-x" aria-hidden="true"></i></button>')
+        .attr("aria-label", `${hiddenText.remove}: ${word}`)
+        .on("click", () => {
+          words = words.filter(w => w !== word);
+          saveWords();
+          renderWords();
+          hideFilteredWords();
+        });
+      list.append($("<li></li>").append($("<span></span>").text(word), remove));
     }
   }
 
-  function sanitize(string) {
-    return string.replace(/[`~!@#$%^&*()_|+\-=?;:'",.<>\{\}\[\]\\\/]/gi, '');
-  }
-
-  function deleteWord(item) {
-    let safe_item = sanitize(item);
-    words.splice(words.indexOf(item), 1);
-    if (safe_item) $("#" + safe_item.replaceAll(" ", "-")).remove();
-
-    hideFilteredWords();
-    localStorage.setItem("words", JSON.stringify(words));
-  }
-
-  //A little delay
-  let typingTimer;
-  let typeInterval = 500;
-  let searchInput = document.getElementById('searchbox');
-  searchInput.addEventListener('keyup', (e) => {
-    clearTimeout(typingTimer);
-    typingTimer = setTimeout(hideFilteredWords, typeInterval);
-
-    // Return/Enter key press otherwise bail
-    if (e.keyCode !== 13) return;
-
-    let word = document.getElementById("searchbox").value;
-    document.getElementById("searchbox").value = "";
-    word = word.toLowerCase();
-    word = word.replace(/[`'"]/gi, " ");
-
-    let safe_word = sanitize(word).trimLeft();
-
-    if (word.includes("\\n")) {
-      window.alert("Nice try...");
-      return;
-    }
-
-    if (!safe_word) {
-      window.alert("Illegal character detected");
-      return;
-    }
-
-    if (words.includes(safe_word)) return;
-
-    // Display filtered word
+  $("#filter_form").on("submit", function (e) {
+    e.preventDefault();
+    const input = document.getElementById("searchbox");
+    const word = input.value.trim().toLowerCase();
+    input.value = "";
+    if (!word || words.includes(word)) return;
     words.push(word);
-    renderWord(word);
-
-    // Set word filters in browser cache
-    localStorage.setItem("words", JSON.stringify(words));
+    saveWords();
+    renderWords();
+    hideFilteredWords();
   });
-
-  function populateWords() {
-    words.forEach(renderWord);
-  }
-
-  // Built with DOM nodes so a filter word is always shown as plain text
-  function renderWord(word) {
-    const $remove = $("<button type='button' class='btn btn-danger'><i class='ph-fill ph-trash-simple'></i></button>")
-      .on("click", () => deleteWord(word));
-    $("#ignored-words").append(
-      $("<li class='list-group-item'>").attr("id", sanitize(word).replaceAll(" ", "-")).append(
-        $("<div class='text-sm d-flex justify-content-between align-items-center'>")
-          .append(document.createTextNode(word), "\u00a0", $remove)
-      )
-    );
-  }
   // ##### End Log Filter Block #####
 
   // Used to get cookies from browser - this is part of tornados xsrf protection
@@ -178,7 +211,7 @@
   async function get_server_log(logFile) {
     const token = getCookie("_xsrf")
     let colors = true;
-    if (!$("#stop_scroll").is(':checked')) {
+    {
       let url = `/api/v2/servers/${serverId}/logs?colors=${colors}&file=true`;
       if (logFile) {
         url += `&log_file=${encodeURIComponent(logFile)}`;
@@ -203,8 +236,8 @@
       } else {
 
         bootbox.alert({
-          title: responseData.error,
-          message: responseData.error_data
+          title: escapeHtml(String(responseData.error || "")),
+          message: escapeHtml(String(responseData.error_data || ""))
         });
       }
     }
@@ -235,7 +268,8 @@
       let option = document.createElement('option');
       option.textContent = select.dataset.empty;
       select.appendChild(option);
-      return;
+      select.disabled = true;
+      return false;
     }
     select.innerHTML = '';
     for (let entry of responseData.data) {
@@ -251,13 +285,13 @@
     select.addEventListener('change', () => {
       get_server_log(select.value || undefined);
     });
+    return true;
   }
 
-  $(document).ready(function () {
-    console.log("ready!");
-    get_server_log();
-    populate_log_files();
-    populateWords();
+  $(document).ready(async function () {
+    renderWords();
+    // With no log files yet, show a short note instead of a file error
+    if (await populate_log_files()) get_server_log();
   });
 </script>
 {% end %}
