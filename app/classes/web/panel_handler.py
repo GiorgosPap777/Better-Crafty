@@ -861,7 +861,7 @@ class PanelHandler(BaseHandler):
                             days = int(days_param)
                             hours = days * 24
                         else:
-                            hours = 24  # Default to 1 day
+                            hours = 1  # Default to the last hour
                     except ValueError as e:
                         self.redirect(
                             "/panel/error?error=Type error: "

@@ -30,24 +30,66 @@
           </span>
 
           <!-- Time Range Selector -->
-          <div class="col-12 col-md-8 col-lg-6">
-            <div class="form-group">
-              <label for="date-range">Time Period</label>
-              <input type="text" class="form-control" id="date-range" inputmode="none" placeholder="Select time range...">
-              <small class="form-text text-muted">
-                Server timezone (UTC{% if utc_offset >= 0 %}+{% end %}{{ utc_offset }})
-              </small>
+          <div class="metrics-toolbar">
+            <div class="btn-group flex-wrap metrics-ranges" role="group"
+              aria-label="{{ translate('serverMetrics', 'timePeriod', data['lang']) }}">
+              {% for preset in data.get('time_range_presets', []) %}
+              {% set hours = int(preset['hours']) %}
+              {% set active = data.get('range_mode') != 'custom' and hours == data.get('selected_hours') %}
+              {% set short = f"{hours // 24}d" if hours >= 24 and hours % 24 == 0 else f"{hours}h" %}
+              <a class="btn btn-sm {{ 'btn-primary' if active else 'btn-outline-primary' }}"
+                href="/panel/server_detail?id={{ data['server_stats']['server_id']['server_id'] }}&hours={{ hours }}&subpage=metrics"
+                title="{{ preset['label'] }}" {% if active %}aria-current="true" {% end %}>{{ short }}</a>
+              {% end %}
             </div>
+            <div class="metrics-custom">
+              <label for="date-range" class="small text-muted mb-1">{{ translate('serverMetrics', 'customRange',
+                data['lang']) }}</label>
+              <input type="text" class="form-control form-control-sm" id="date-range" inputmode="none"
+                placeholder="{{ translate('serverMetrics', 'customRange', data['lang']) }}">
+            </div>
+            <button class="btn btn-sm btn-outline-success reset-button d-none" id="reset-button" type="button"><i
+                class="ph-fill ph-arrow-counter-clockwise" aria-hidden="true"></i>&nbsp;{{
+              translate('serverMetrics', 'resetZoom', data['lang']) }}</button>
           </div>
-          <button class="btn btn-outline-success reset-button float-right d-none" id="reset-button" hidden><i class="ph-fill ph-arrow-counter-clockwise"></i>&nbsp;{{ translate('serverMetrics', 'resetZoom', data['lang'])
-            }}</button>
-          {% if data['user_data']['hints'] %}
-          <p class="text-muted small mb-2 d-none d-lg-block"><i class="ph ph-info" aria-hidden="true"></i>
-            {{ translate('serverMetrics', 'zoomHint1', data['lang']) }}
-            {{ translate('serverMetrics', 'zoomHint2', data['lang']) }}</p>
-          {% end %}
-          <div class="chart-wrapper">
-            <canvas id="lineChart"></canvas>
+          <p class="text-muted small mb-3">
+            <i class="ph ph-clock" aria-hidden="true"></i>
+            {{ translate('serverMetrics', 'timezoneNote', data['lang']) }}
+            (UTC{% if utc_offset >= 0 %}+{% end %}{{ utc_offset }})
+            {% if data['user_data']['hints'] %}
+            <span class="d-none d-lg-inline">&middot; {{ translate('serverMetrics', 'zoomHint1', data['lang']) }}
+              {{ translate('serverMetrics', 'zoomHint2', data['lang']) }}</span>
+            {% end %}
+          </p>
+
+          <div class="row">
+            <div class="col-xl-6 col-12">
+              <section class="metrics-chart">
+                <h3><i class="ph ph-cpu" aria-hidden="true"></i> {{ translate('serverMetrics', 'cpu',
+                  data['lang']) }}</h3>
+                <div class="chart-wrapper"><canvas id="cpuChart"
+                    aria-label="{{ translate('serverMetrics', 'cpu', data['lang']) }}" role="img"></canvas></div>
+              </section>
+            </div>
+            <div class="col-xl-6 col-12">
+              <section class="metrics-chart">
+                <h3><i class="ph ph-memory" aria-hidden="true"></i> {{ translate('serverMetrics', 'memory',
+                  data['lang']) }}</h3>
+                <div class="chart-wrapper"><canvas id="memChart"
+                    aria-label="{{ translate('serverMetrics', 'memory', data['lang']) }}" role="img"></canvas></div>
+              </section>
+            </div>
+            {% set server_type = data['server_stats']['server_type'] %}
+            {% if 'minecraft-java' in server_type or 'hytale' in server_type %}
+            <div class="col-xl-6 col-12">
+              <section class="metrics-chart">
+                <h3><i class="ph ph-users" aria-hidden="true"></i> {{ translate('serverMetrics', 'players',
+                  data['lang']) }}</h3>
+                <div class="chart-wrapper"><canvas id="playersChart"
+                    aria-label="{{ translate('serverMetrics', 'players', data['lang']) }}" role="img"></canvas></div>
+              </section>
+            </div>
+            {% end %}
           </div>
 
         </div>
@@ -59,8 +101,47 @@
 
 </div>
 <style>
+  .metrics-toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    gap: 12px 20px;
+    margin-bottom: 8px;
+  }
+
+  .metrics-custom {
+    display: flex;
+    flex-direction: column;
+    min-width: 260px;
+  }
+
+  .metrics-chart {
+    background: var(--dropdown-bg);
+    border: 1px solid var(--outline);
+    border-radius: 8px;
+    padding: 12px 16px;
+    margin-bottom: 16px;
+  }
+
+  .metrics-chart h3 {
+    font-size: 1rem;
+    margin-bottom: 8px;
+  }
+
   .chart-wrapper {
-    height: 65vh;
+    position: relative;
+    height: 260px;
+  }
+
+  @media (max-width: 575.98px) {
+    .metrics-custom {
+      min-width: 0;
+      width: 100%;
+    }
+
+    .chart-wrapper {
+      height: 200px;
+    }
   }
 
   /* Date range picker - Crafty theme integration */
@@ -327,7 +408,7 @@
     pickerOpts.endDate = moment(endTimeSaved);
   } else {
     // Default to current preset range
-    const currentHours = {{ data.get('selected_hours', 24) }};
+    const currentHours = {{ data.get('selected_hours', 1) }};
     pickerOpts.startDate = serverNow().subtract(currentHours, 'hours');
     pickerOpts.endDate = serverNow();
   }
@@ -401,161 +482,129 @@
 
   const timestamps = rawDates.map(d => parseServerTime(d));
   const playerData = timestamps.map((t, i) => ({x: t, y: rawPlayers[i]}));
-  const ramPercentData = timestamps.map((t, i) => ({x: t, y: rawRamPercent[i]}));
-  const ramGbData = timestamps.map((t, i) => ({x: t, y: rawRamGb[i]}));
+  // Memory points carry the percentage too, for the tooltip
+  const memData = timestamps.map((t, i) => ({x: t, y: rawRamGb[i], pct: rawRamPercent[i]}));
   const cpuData = timestamps.map((t, i) => ({x: t, y: rawCpu[i]}));
 
-  // Compute decimation samples based on chart width (~1 point per 3 CSS pixels)
-  function getDecimationSamples() {
-    var canvas = document.getElementById("lineChart");
+  // ~1 point per 3 CSS pixels
+  function getDecimationSamples(canvas) {
     var width = canvas.clientWidth || canvas.offsetWidth || 800;
     return Math.max(60, Math.round(width / 3));
   }
 
-  // Create chart with dual Y-axes and time-based x-axis
-  var ctxL = document.getElementById("lineChart").getContext('2d');
-  var hist_chart = new Chart(ctxL, {
-    type: 'line',
-    data: {
-      datasets: [
-        {
-          label: "CPU %",
-          data: cpuData,
-          borderColor: 'rgba(255, 175, 0, .7)',
-          borderWidth: 2,
-          lineTension: 0,
-          spanGaps: false,
-          yAxisID: 'y-left',
-        },
-        {
-          label: "RAM %",
-          data: ramPercentData,
-          borderColor: 'rgba(33, 150, 243, .8)',
-          borderWidth: 2,
-          lineTension: 0,
-          spanGaps: false,
-          yAxisID: 'y-left',
-        },
-        {
-          label: "RAM GB",
-          data: ramGbData,
-          borderColor: 'rgba(0, 188, 212, .9)',
-          borderWidth: 2,
-          lineTension: 0,
-          spanGaps: false,
-          yAxisID: 'y-right',
-        },
-        {
-          label: "Players",
-          data: playerData,
-          borderColor: 'rgba(136, 98, 224, .7)',
-          borderWidth: 2,
-          lineTension: 0,
-          spanGaps: false,
-          yAxisID: 'y-right',
-        },
-      ]
-    },
-    options: {
-      maintainAspectRatio: false,
-      parsing: false,
-      onResize(chart, size) {
-        var newSamples = Math.max(60, Math.round(size.width / 3));
-        chart.options.plugins.decimation.samples = newSamples;
-        chart.options.plugins.decimation.threshold = newSamples;
-      },
-      plugins: {
-        decimation: {
-          enabled: true,
-          algorithm: 'lttb',
-          samples: getDecimationSamples(),
-          threshold: getDecimationSamples(),
-        },
-        zoom: {
-          zoom: {
-            onZoom() {
-              document.getElementById("reset-button").classList.remove("d-none");
-              document.getElementById("reset-button").classList.add("d-block");
-              zoomed = true;
-            },
-            wheel: {
-              enabled: true,
-              modifierKey: 'shift',
-            },
-            drag: {
-              enabled: true,
-              modifierKey: "shift"
-            },
-            pinch: {
-              enabled: true
-            },
-            mode: 'x',
-          },
-          pan: {
-            enabled: true,
-            mode: "x",
-            threshold: 1,
-          }
-        },
-        tooltip: {
-          callbacks: {
-            label: function(context) {
-              let label = context.dataset.label || '';
-              if (label) label += ': ';
+  const charts = [];
 
-              // Format based on metric type
-              if (context.dataset.label === 'RAM GB') {
-                label += parseFloat(context.parsed.y).toFixed(2) + ' GB';
-              } else if (context.dataset.label === 'Players') {
-                label += Math.round(context.parsed.y);
-              } else {
-                label += context.parsed.y.toFixed(1) + '%';
-              }
-              return label;
-            }
-          }
-        }
+  function markZoomed() {
+    zoomed = true;
+    document.getElementById("reset-button").classList.remove("d-none");
+  }
+
+  // Zooming or panning one chart moves the others to the same time span
+  function syncTimeAxis(source) {
+    const { min, max } = source.scales.x;
+    for (const chart of charts) {
+      if (chart !== source) chart.zoomScale('x', { min, max }, 'none');
+    }
+    markZoomed();
+  }
+
+  // Show small amounts in MB so the axis does not read 0.04 GB
+  function formatMemory(gb) {
+    return gb < 1 ? `${Math.round(gb * 1024)} MB` : `${parseFloat(gb).toFixed(2)} GB`;
+  }
+
+  function makeChart(canvasId, data, color, formatTick, formatValue, yOptions) {
+    const canvas = document.getElementById(canvasId);
+    if (!canvas) return null;
+    const samples = getDecimationSamples(canvas);
+    const chart = new Chart(canvas.getContext('2d'), {
+      type: 'line',
+      data: {
+        datasets: [{
+          data: data,
+          borderColor: color,
+          backgroundColor: color.replace(/[\d.]+\)$/, '.15)'),
+          fill: true,
+          borderWidth: 2,
+          pointRadius: 0,
+          pointHitRadius: 6,
+          lineTension: 0,
+          spanGaps: false,
+        }]
       },
-      responsive: true,
-      scales: {
-        'y-left': {
-          type: 'linear',
-          position: 'left',
-          min: 0,
-          title: {
-            display: true,
-            text: 'Percentage (%)'
-          },
-          grid: {
-            display: true
-          }
+      options: {
+        maintainAspectRatio: false,
+        responsive: true,
+        parsing: false,
+        animation: false,
+        interaction: { mode: 'nearest', axis: 'x', intersect: false },
+        onResize(chart, size) {
+          var newSamples = Math.max(60, Math.round(size.width / 3));
+          chart.options.plugins.decimation.samples = newSamples;
+          chart.options.plugins.decimation.threshold = newSamples;
         },
-        'y-right': {
-          type: 'linear',
-          position: 'right',
-          min: 0,
-          title: {
-            display: true,
-            text: 'Count / GB'
+        plugins: {
+          legend: { display: false },
+          decimation: {
+            enabled: true,
+            algorithm: 'lttb',
+            samples: samples,
+            threshold: samples,
           },
-          grid: {
-            display: false
-          }
-        },
-        x: {
-          type: 'time',
-          time: {
-            displayFormats: {
-              minute: 'HH:mm',
-              hour: 'MMM D, HH:mm',
-              day: 'MMM D',
+          zoom: {
+            zoom: {
+              onZoomComplete({ chart }) { syncTimeAxis(chart); },
+              wheel: { enabled: true, modifierKey: 'shift' },
+              drag: { enabled: true, modifierKey: 'shift' },
+              pinch: { enabled: true },
+              mode: 'x',
+            },
+            pan: {
+              enabled: true,
+              mode: 'x',
+              threshold: 1,
+              onPanComplete({ chart }) { syncTimeAxis(chart); },
             }
           },
-          position: 'bottom',
+          tooltip: {
+            callbacks: {
+              label: (context) => formatValue(context.raw),
+            }
+          }
+        },
+        scales: {
+          y: Object.assign({
+            type: 'linear',
+            min: 0,
+            ticks: { callback: formatTick, maxTicksLimit: 6 },
+          }, yOptions || {}),
+          x: {
+            type: 'time',
+            ticks: { maxRotation: 0, autoSkip: true, maxTicksLimit: 8 },
+            time: {
+              displayFormats: {
+                minute: 'HH:mm',
+                hour: 'MMM D, HH:mm',
+                day: 'MMM D',
+              }
+            },
+          }
         }
       }
-    }
-  });
+    });
+    charts.push(chart);
+    return chart;
+  }
+
+  makeChart("cpuChart", cpuData, 'rgba(255, 175, 0, .8)', value => `${value}%`,
+    point => point.y === null ? '—' : `${point.y.toFixed(1)}%`);
+  makeChart("memChart", memData, 'rgba(0, 188, 212, .9)', value => formatMemory(value),
+    point => point.y === null ? '—'
+      : formatMemory(point.y) + (point.pct !== null && point.pct !== undefined
+        ? ` (${Number(point.pct).toFixed(1)}%)` : ''));
+  makeChart("playersChart", playerData, 'rgba(136, 98, 224, .9)', value => value,
+    point => point.y === null ? '—' : String(Math.round(point.y)),
+    { ticks: { precision: 0, maxTicksLimit: 6 }, suggestedMax: 1 });
 
   // WebSocket updates and reset button
 
@@ -589,7 +638,7 @@
   }
 
   $(document).ready(function () {
-    const currentHours = {{ data.get('selected_hours', 24) }};
+    const currentHours = {{ data.get('selected_hours', 1) }};
     const liveInterval = getLiveIntervalMs(currentHours);
     var lastPushedTs = cpuData.length
         ? cpuData[cpuData.length - 1].x
@@ -617,25 +666,21 @@
       }
       lastPushedTs = ts;
 
-      {% if 'minecraft-java' in data['server_stats']['server_type'] or 'hytale' in data['server_stats']['server_type'] %}
       playerData.push({x: ts, y: data.online !== undefined ? data.online : null});
-      {% end %}
       cpuData.push({x: ts, y: data.cpu});
-      ramPercentData.push({x: ts, y: data.mem_percent});
-      ramGbData.push({x: ts, y: bytesToGB(data.mem_raw)});
+      memData.push({x: ts, y: bytesToGB(data.mem_raw), pct: data.mem_percent});
 
       // Sliding window: trim data older than the selected time range
       if (!zoomed) {
         const cutoff = serverCutoff(currentHours);
         while (cpuData.length > 1 && cpuData[0].x < cutoff) {
           playerData.shift();
-          ramPercentData.shift();
-          ramGbData.shift();
+          memData.shift();
           cpuData.shift();
         }
       }
 
-      hist_chart.update();
+      charts.forEach(chart => chart.update('none'));
 
       // Update the picker's displayed range to reflect live data
       picker.maxDate = serverNow();
@@ -647,9 +692,8 @@
     $(".reset-button").click(function () {
       console.log("resetting zoom");
       zoomed = false;
-      hist_chart.resetZoom();
+      charts.forEach(chart => chart.resetZoom());
       document.getElementById("reset-button").classList.add("d-none");
-      document.getElementById("reset-button").classList.remove("d-block");
     });
   });
 </script>

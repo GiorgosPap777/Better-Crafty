@@ -724,7 +724,13 @@
         "unsavedChanges": "Are you sure you'd like to leave? You have unsaved changes."
     },
     "serverMetrics": {
+        "cpu": "CPU usage",
+        "customRange": "Custom range",
+        "memory": "Memory usage",
+        "players": "Players online",
         "resetZoom": "Reset Zoom",
+        "timePeriod": "Time period",
+        "timezoneNote": "Times are shown in the server's time zone",
         "zoomHint1": "To zoom on the graph hold your shift key then use your scroll wheel.",
         "zoomHint2": "Alternatively hold the shift key then click and drag the area you'd like to zoom in on."
     },
