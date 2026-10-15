@@ -1,0 +1,113 @@
+/**************************************************************/
+/* Server config tab: sections, game settings, danger zone    */
+/**************************************************************/
+.config-section {
+    border: 1px solid var(--outline);
+    border-radius: 0.5rem;
+    padding: 1.25rem 1.25rem 0.5rem;
+    margin-bottom: 1.25rem;
+}
+
+.config-section-head {
+    margin-bottom: 1rem;
+}
+
+.config-section-head h3 {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 1.1rem;
+    font-weight: 600;
+    margin-bottom: 0.25rem;
+}
+
+.config-section-head p {
+    margin-bottom: 0;
+}
+
+.config-section .form-group label small {
+    display: block;
+    margin-left: 0 !important;
+    margin-top: 0.15rem;
+}
+
+.config-section .custom-switch {
+    padding-top: 0.25rem;
+}
+
+.config-locked {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+    padding: 0.6rem 0.75rem;
+    border: 1px solid var(--outline);
+    border-radius: 0.25rem;
+    word-break: break-all;
+    font-family: monospace;
+    font-size: 0.85rem;
+}
+
+.config-actions {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 1.25rem;
+}
+
+/* Keep the save buttons in reach on long forms */
+.config-actions-sticky {
+    position: sticky;
+    bottom: 0;
+    z-index: 2;
+    padding: 0.75rem 0;
+    background: var(--dropdown-bg);
+    border-top: 1px solid var(--outline);
+}
+
+.config-actions .config-dirty {
+    margin-right: auto;
+    opacity: 0.8;
+}
+
+.properties-divider {
+    border-top: 1px solid var(--outline);
+    margin: 0.25rem 0 1rem;
+}
+
+.properties-status {
+    margin-bottom: 1rem;
+}
+
+.config-danger {
+    border-color: var(--danger);
+}
+
+.config-danger h3 {
+    color: var(--danger);
+}
+
+.config-danger-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    padding-bottom: 0.75rem;
+}
+
+.config-danger-row p {
+    margin-bottom: 0;
+}
+
+@media (max-width: 575.98px) {
+    .config-section {
+        padding: 1rem 0.85rem 0.25rem;
+    }
+
+    .config-actions .btn {
+        flex: 1 1 auto;
+    }
+}

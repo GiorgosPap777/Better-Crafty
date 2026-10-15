@@ -4,6 +4,7 @@ from jsonschema import validate
 from jsonschema.exceptions import ValidationError
 from playhouse.shortcuts import model_to_dict
 from app.classes.models.server_permissions import EnumPermissionsServer
+from app.classes.helpers.java_memory import set_memory
 from app.classes.web.base_api_handler import BaseApiHandler
 
 logger = logging.getLogger(__name__)
@@ -145,6 +146,9 @@ server_patch_schema = {
             "fill": True,
         },
         "update_watcher": {"type": "boolean", "error": "typeBool", "fill": True},
+        # Memory in MiB; only the -Xms / -Xmx flags of the command change
+        "mem_min": {"type": "integer", "error": "typeInteger", "fill": True},
+        "mem_max": {"type": "integer", "error": "typeInteger", "fill": True},
     },
     "additionalProperties": False,
     "minProperties": 1,
@@ -211,6 +215,9 @@ basic_server_patch_schema = {
             "fill": True,
         },
         "update_watcher": {"type": "boolean", "error": "typeBool", "fill": True},
+        # Memory in MiB; only the -Xms / -Xmx flags of the command change
+        "mem_min": {"type": "integer", "error": "typeInteger", "fill": True},
+        "mem_max": {"type": "integer", "error": "typeInteger", "fill": True},
     },
     "additionalProperties": False,
     "minProperties": 1,
@@ -319,6 +326,8 @@ class ApiServersServerIndexHandler(BaseApiHandler):
             )
 
         server_obj = self.controller.servers.get_server_obj(server_id)
+        mem_min = data.pop("mem_min", None)
+        mem_max = data.pop("mem_max", None)
         java_flag = False
         for key in data:
             # If we don't validate the input there could be security issues
@@ -343,6 +352,20 @@ class ApiServersServerIndexHandler(BaseApiHandler):
                 if key == "execution_command" and java_flag:
                     continue
                 setattr(server_obj, key, data[key])
+        if mem_min is not None or mem_max is not None:
+            try:
+                server_obj.execution_command = set_memory(
+                    server_obj.execution_command, mem_min, mem_max
+                )
+            except ValueError as why:
+                return self.finish_json(
+                    400,
+                    {
+                        "status": "error",
+                        "error": "INVALID_MEMORY",
+                        "error_data": str(why),
+                    },
+                )
         self.controller.servers.update_server(server_obj)
 
         self.controller.management.add_to_audit_log(

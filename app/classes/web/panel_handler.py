@@ -23,6 +23,7 @@ from app.classes.models.crafty_permissions import EnumPermissionsCrafty
 from app.classes.models.management import HelpersManagement
 from app.classes.controllers.roles_controller import RolesController
 from app.classes.helpers.helpers import Helpers, MASTER_CONFIG
+from app.classes.helpers.java_memory import read_memory
 from app.classes.shared.main_models import DatabaseShortcuts
 from app.classes.shared.metrics_time_helper import MetricsTimeRangeHelper
 from app.classes.shared.stats_helpers import StatsConverter
@@ -744,6 +745,7 @@ class PanelHandler(BaseHandler):
                             page_java.append(version)
 
                 page_data["java_versions"] = page_java
+                page_data["memory"] = read_memory(server_obj.execution_command)
             if subpage == "backup":
                 server_info = self.controller.servers.get_server_data_by_id(server_id)
 

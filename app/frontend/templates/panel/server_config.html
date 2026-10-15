@@ -1,6 +1,7 @@
 {% extends ../base.html %}
 
 {% block meta %}
+<link rel="stylesheet" href="/static/assets/css/partial/crafty-config.css">
 {% end %}
 
 {% block title %}Crafty Controller - {{ translate('serverDetails', 'serverDetails', data['lang']) }}{% end %}
@@ -28,47 +29,105 @@
           </span>
           {% end %}
 
-          <div class="row">
-            <div class="col-md-12 col-sm-12">
-              <form class="forms-sample" method="post" id="config_form">
+          {% set srv = data['server_stats']['server_id'] %}
+          {% set stype = data['server_stats']['server_type'] %}
+          <div class="config-page">
 
+            {% if stype in ("minecraft-java", "minecraft-bedrock") %}
+            <section class="config-section" id="game-settings" hidden>
+              <div class="config-section-head">
+                <h3><i class="ph ph-game-controller" aria-hidden="true"></i>{{ translate('serverProperties', 'title',
+                  data['lang']) }}</h3>
+                <p class="text-muted small">{{ translate('serverProperties', 'description', data['lang']) }}</p>
+              </div>
+              <form id="properties_form" novalidate>
+                <div class="row" id="properties_fields"></div>
+                <div class="alert properties-status d-none" id="properties_status" role="status"></div>
+                <div class="config-actions">
+                  {% if data['permissions']['Files'] in data['user_permissions'] %}
+                  <a class="btn btn-link mr-auto"
+                    href="/panel/edit_file?server_id={{ srv['server_id'] }}&file=server.properties"><i
+                      class="ph ph-file-text" aria-hidden="true"></i> {{ translate('serverProperties', 'openFile',
+                    data['lang']) }}</a>
+                  {% end %}
+                  <button type="submit" class="btn btn-success" id="properties_save"><i class="ph ph-floppy-disk"
+                      aria-hidden="true"></i> {{ translate('serverProperties', 'save', data['lang']) }}</button>
+                </div>
+              </form>
+            </section>
+            {% end %}
+
+            <form class="forms-sample" method="post" id="config_form">
+
+              <section class="config-section">
+                <div class="config-section-head">
+                  <h3><i class="ph ph-identification-card" aria-hidden="true"></i>{{ translate('serverConfig',
+                    'sectionGeneral', data['lang']) }}</h3>
+                </div>
                 <div class="form-group">
-                  <label for="server_name">{{ translate('serverConfig', 'serverName', data['lang']) }} <small
-                      class="text-muted ml-1"> - {{ translate('serverConfig', 'serverNameDesc', data['lang']) }}</small>
+                  <label for="server_name">{{ translate('serverConfig', 'serverName', data['lang']) }}
+                    <small class="text-muted">{{ translate('serverConfig', 'serverNameDesc', data['lang']) }}</small>
                   </label>
                   <input type="text" class="form-control" name="server_name" id="server_name"
-                    value="{{ data['server_stats']['server_id']['server_name']  }}"
+                    value="{{ srv['server_name'] }}"
                     placeholder="{{ translate('serverConfig', 'serverName', data['lang']) }}" required>
                 </div>
-
                 {% if data['super_user'] %}
                 <div class="form-group">
-                  <label for="server_path">{{ translate('serverConfig', 'serverPath', data['lang']) }} <small
-                      class="text-muted ml-1"> - {{ translate('serverConfig', 'serverPathDesc', data['lang']) }}</small>
+                  <label>{{ translate('serverConfig', 'serverPath', data['lang']) }}
+                    <small class="text-muted">{{ translate('serverConfig', 'serverPathDesc', data['lang']) }}</small>
                   </label>
-                  <div class="card-header header-sm d-flex justify-content-between align-items-center">
-                    <span class="text-secondary" style="font-size: .9vw;">{{ data['server_stats']['server_id']['path']
-                      }}</span>
-                    🔒
-                  </div>
-
+                  <div class="config-locked"><span>{{ srv['path'] }}</span><i class="ph ph-lock-simple"
+                      aria-hidden="true"></i></div>
                 </div>
-                {% if data['server_stats']['server_type'] != "minecraft-bedrock" %}
+                {% if stype != "minecraft-bedrock" %}
                 <div class="form-group">
-                  <label for="log_path">{{ translate('serverConfig', 'serverLogLocation', data['lang']) }} <small
-                      class="text-muted ml-1"> - {{ translate('serverConfig', 'serverLogLocationDesc', data['lang'])
-                      }}</small> </label>
-                  <input type="text" class="form-control" name="log_path" id="log_path"
-                    value="{{ data['server_stats']['server_id']['log_path']  }}"
+                  <label for="log_path">{{ translate('serverConfig', 'serverLogLocation', data['lang']) }}
+                    <small class="text-muted">{{ translate('serverConfig', 'serverLogLocationDesc', data['lang'])
+                      }}</small></label>
+                  <input type="text" class="form-control" name="log_path" id="log_path" value="{{ srv['log_path'] }}"
                     placeholder="{{ translate('serverConfig', 'serverLogLocation', data['lang']) }}">
                 </div>
                 {% end %}
                 {% end %}
-                {% if data['server_stats']['server_type'] == "minecraft-java" or data['server_stats']['server_type'] == "hytale" %}
+              </section>
+
+              <section class="config-section">
+                <div class="config-section-head">
+                  <h3><i class="ph ph-rocket-launch" aria-hidden="true"></i>{{ translate('serverConfig',
+                    'sectionStartup', data['lang']) }}</h3>
+                </div>
+                {% if data['memory']['mem_min'] is not None or data['memory']['mem_max'] is not None %}
+                <div class="form-group">
+                  <label>{{ translate('serverConfig', 'memory', data['lang']) }}
+                    <small class="text-muted">{{ translate('serverConfig', 'memoryDesc', data['lang']) }}</small>
+                  </label>
+                  <div class="row">
+                    {% if data['memory']['mem_min'] is not None %}
+                    <div class="col-6">
+                      <label for="mem_min" class="small mb-1">{{ translate('serverConfig', 'memMin', data['lang'])
+                        }}</label>
+                      <input type="number" class="form-control" id="mem_min" min="0.125" max="1024" step="0.125"
+                        data-mib="{{ data['memory']['mem_min'] }}"
+                        value="{{ ('%g' % round(data['memory']['mem_min'] / 1024, 3)) }}">
+                    </div>
+                    {% end %}
+                    {% if data['memory']['mem_max'] is not None %}
+                    <div class="col-6">
+                      <label for="mem_max" class="small mb-1">{{ translate('serverConfig', 'memMax', data['lang'])
+                        }}</label>
+                      <input type="number" class="form-control" id="mem_max" min="0.125" max="1024" step="0.125"
+                        data-mib="{{ data['memory']['mem_max'] }}"
+                        value="{{ ('%g' % round(data['memory']['mem_max'] / 1024, 3)) }}">
+                    </div>
+                    {% end %}
+                  </div>
+                </div>
+                {% end %}
+                {% if stype == "minecraft-java" or stype == "hytale" %}
                 <div class="form-group">
                   <label for="java_selection">{{ translate('serverConfig', 'javaVersion', data['lang']) }}
-                    <small class="text-muted ml-1">{{ translate('serverConfig', 'javaVersionDesc', data['lang'])
-                      }}</small>
+                    <small class="text-muted">{{ translate('serverConfig', 'javaVersionDesc', data['lang']) }}</small>
                   </label>
                   <select class="form-select form-control form-control-lg select-css" id="java_selection"
                     name="java_selection" form="config_form">
@@ -79,172 +138,158 @@
                   </select>
                 </div>
                 {% end %}
-
-                {% if data['super_user'] %}
                 <div class="form-group">
-                  <label for="execution_command">{{ translate('serverConfig', 'serverExecutionCommand', data['lang']) }}
-                    <small class="text-muted ml-1"> - {{ translate('serverConfig', 'serverExecutionCommandDesc',
-                      data['lang']) }}</small> </label>
-                  <input type="text" class="form-control" name="execution_command" id="execution_command"
-                    value="{{ data['server_stats']['server_id']['execution_command']  }}"
-                    placeholder="{{ translate('serverConfig', 'serverExecutionCommand', data['lang']) }}" required>
-                </div>
-                {% else %}
-                <label for="execution_command">{{ translate('serverConfig', 'serverExecutionCommand', data['lang']) }}
-                  <div class="card-header header-sm d-flex justify-content-between align-items-center">
-                    <span class="text-secondary" style="font-size: .9vw;">{{
-                      data['server_stats']['server_id']['execution_command'] }}</span> 🔒
-                  </div>
-                  <br>
-                  {% end %}
-                  <div class="form-group">
-                    <label for="stop_command">{{ translate('serverConfig', 'serverStopCommand', data['lang']) }} <small
-                        class="text-muted ml-1"> - {{ translate('serverConfig', 'serverStopCommandDesc', data['lang'])
-                        }}</small> </label>
-                    <input type="text" class="form-control" name="stop_command" id="stop_command"
-                      value="{{ data['server_stats']['server_id']['stop_command']  }}"
-                      placeholder="{{ translate('serverConfig', 'serverStopCommand', data['lang']) }}" required>
-                  </div>
-
-                  <div class="form-group">
-                    <label for="auto_start_delay">{{ translate('serverConfig', 'serverAutostartDelay', data['lang']) }}
-                      <small class="text-muted ml-1"> - {{ translate('serverConfig', 'serverAutostartDelayDesc',
-                        data['lang']) }}</small> </label>
-                    <input type="number" class="form-control" name="auto_start_delay" id="auto_start_delay"
-                      value="{{ data['server_stats']['server_id']['auto_start_delay']  }}" step="1" max="999" min="10"
-                      required>
-                  </div>
-
+                  <label for="execution_command">{{ translate('serverConfig', 'serverExecutionCommand', data['lang'])
+                    }}
+                    <small class="text-muted">{{ translate('serverConfig', 'serverExecutionCommandDesc',
+                      data['lang']) }}</small></label>
                   {% if data['super_user'] %}
-                  <div class="form-group">
-                    <label for="server_ip">{{ translate('serverConfig', 'serverIP', data['lang']) }} <small
-                        class="text-muted ml-1">- {{ translate('serverConfig', 'serverIPDesc', data['lang']) }}</small>
+                  <input type="text" class="form-control" name="execution_command" id="execution_command"
+                    value="{{ srv['execution_command'] }}"
+                    placeholder="{{ translate('serverConfig', 'serverExecutionCommand', data['lang']) }}" required>
+                  {% else %}
+                  <div class="config-locked"><span>{{ srv['execution_command'] }}</span><i class="ph ph-lock-simple"
+                      aria-hidden="true"></i></div>
+                  {% end %}
+                </div>
+                <div class="form-group">
+                  <label for="stop_command">{{ translate('serverConfig', 'serverStopCommand', data['lang']) }}
+                    <small class="text-muted">{{ translate('serverConfig', 'serverStopCommandDesc', data['lang'])
+                      }}</small></label>
+                  <input type="text" class="form-control" name="stop_command" id="stop_command"
+                    value="{{ srv['stop_command'] }}"
+                    placeholder="{{ translate('serverConfig', 'serverStopCommand', data['lang']) }}" required>
+                </div>
+                <div class="form-group">
+                  <div class="custom-control custom-switch">
+                    <input type="checkbox" class="custom-control-input" id="auto_start" name="auto_start" value="1"
+                      {% if srv['auto_start'] %}checked{% end %}>
+                    <label class="custom-control-label" for="auto_start">&nbsp;&nbsp;{{ translate('serverConfig',
+                      'serverAutoStart', data['lang']) }}</label>
+                  </div>
+                </div>
+                <div class="form-group">
+                  <label for="auto_start_delay">{{ translate('serverConfig', 'serverAutostartDelay', data['lang']) }}
+                    <small class="text-muted">{{ translate('serverConfig', 'serverAutostartDelayDesc', data['lang'])
+                      }}</small></label>
+                  <input type="number" class="form-control" name="auto_start_delay" id="auto_start_delay"
+                    value="{{ srv['auto_start_delay'] }}" step="1" max="999" min="10" required>
+                </div>
+              </section>
+
+              <section class="config-section">
+                <div class="config-section-head">
+                  <h3><i class="ph ph-heartbeat" aria-hidden="true"></i>{{ translate('serverConfig',
+                    'sectionMonitoring', data['lang']) }}</h3>
+                </div>
+                {% if data['super_user'] %}
+                <div class="row">
+                  <div class="form-group col-md-8">
+                    <label for="server_ip">{{ translate('serverConfig', 'serverIP', data['lang']) }}
+                      <small class="text-muted">{{ translate('serverConfig', 'serverIPDesc', data['lang']) }}</small>
                     </label>
                     <input type="text" class="form-control" name="server_ip" id="server_ip"
-                      value="{{ data['server_stats']['server_id']['server_ip']  }}" required>
+                      value="{{ srv['server_ip'] }}" required>
                   </div>
-                  <div class="form-group">
-                    <label for="server_port">{{ translate('serverConfig', 'serverPort', data['lang']) }} <small
-                        class="text-muted ml-1"> - {{ translate('serverConfig', 'serverPortDesc', data['lang']) }}
-                      </small> </label>
-                    <input type="number" class="form-control" name="server_port" id="server_port" value="{{ data['server_stats']['server_id']['server_port']  }}" step="1" max="65535" min="1" required>
-                    <span data-html="true" class="port-hint text-center" title="<i class='ph-fill ph-warning'></i> " , data-content="{{
-                        translate('serverConfig', 'statsHint1' , data['lang'])}} <br> <br> <strong>{{ translate('serverConfig', 'statsHint2', data['lang'])}}</strong>" , data-placement="right"></span>
+                  <div class="form-group col-md-4">
+                    <label for="server_port">{{ translate('serverConfig', 'serverPort', data['lang']) }}
+                      <small class="text-muted">{{ translate('serverConfig', 'serverPortDesc', data['lang'])
+                        }}</small></label>
+                    <input type="number" class="form-control" name="server_port" id="server_port"
+                      value="{{ srv['server_port'] }}" step="1" max="65535" min="1" required>
                   </div>
-                  {% end %}
+                </div>
+                <p class="small text-muted"><i class="ph ph-info" aria-hidden="true"></i> {{
+                  translate('serverConfig', 'statsHint2', data['lang']) }}</p>
+                {% end %}
+                <div class="form-group">
+                  <div class="custom-control custom-switch">
+                    <input type="checkbox" class="custom-control-input" id="count_players" name="count_players"
+                      value="1" {% if srv['count_players'] %}checked{% end %}>
+                    <label class="custom-control-label" for="count_players">&nbsp;&nbsp;{{ translate('serverConfig',
+                      'countPlayers', data['lang']) }}</label>
+                  </div>
+                </div>
+                {% if data['super_user'] %}
+                <div class="form-group">
+                  <div class="custom-control custom-switch">
+                    <input type="checkbox" class="custom-control-input" id="show_status" name="show_status" value="1"
+                      {% if srv['show_status'] %}checked{% end %}>
+                    <label class="custom-control-label" for="show_status">&nbsp;&nbsp;{{ translate('serverConfig',
+                      'showStatus', data['lang']) }}</label>
+                  </div>
+                </div>
+                {% end %}
+              </section>
 
-                  <div class="form-group">
-                    <label for="shutdown_timeout">{{ translate('serverConfig', 'shutdownTimeout', data['lang']) }}
-                      <small class="text-muted ml-1"> - {{ translate('serverConfig', 'timeoutExplain1', data['lang'])
-                        }}&nbsp;
-                        {{ data['server_stats']['server_id']['stop_command'] }}&nbsp;{{ translate('serverConfig',
-                        'timeoutExplain2', data['lang']) }}
-                      </small> </label>
-                    <input type="number" class="form-control" name="shutdown_timeout" id="shutdown_timeout"
-                      value="{{ data['server_stats']['server_id']['shutdown_timeout']  }}" step="2" max="300" min="60"
-                      required>
+              <section class="config-section">
+                <div class="config-section-head">
+                  <h3><i class="ph ph-first-aid-kit" aria-hidden="true"></i>{{ translate('serverConfig',
+                    'sectionCrash', data['lang']) }}</h3>
+                </div>
+                <div class="form-group">
+                  <div class="custom-control custom-switch">
+                    <input type="checkbox" class="custom-control-input" id="crash_detection" name="crash_detection"
+                      value="1" {% if srv['crash_detection'] %}checked{% end %}>
+                    <label class="custom-control-label" for="crash_detection">&nbsp;&nbsp;{{ translate('serverConfig',
+                      'serverCrashDetection', data['lang']) }}</label>
                   </div>
-                  <div class="form-group">
-                    <label for="ignored_exits">{{ translate('serverConfig', 'ignoredExits', data['lang']) }}
-                      <small class="text-muted ml-1"> - {{ translate('serverConfig', 'ignoredExitsExplain',
-                        data['lang'])
-                        }}
-                      </small> </label>
-                    <input type="text" class="form-control" name="ignored_exits" id="ignored_exits"
-                      value="{{ data['server_stats']['server_id']['ignored_exits']  }}">
-                  </div>
+                </div>
+                <div class="form-group">
+                  <label for="ignored_exits">{{ translate('serverConfig', 'ignoredExits', data['lang']) }}
+                    <small class="text-muted">{{ translate('serverConfig', 'ignoredExitsExplain', data['lang'])
+                      }}</small></label>
+                  <input type="text" class="form-control" name="ignored_exits" id="ignored_exits"
+                    value="{{ srv['ignored_exits'] }}">
+                </div>
+                <div class="form-group">
+                  <label for="shutdown_timeout">{{ translate('serverConfig', 'shutdownTimeout', data['lang']) }}
+                    <small class="text-muted">{{ translate('serverConfig', 'timeoutExplain1', data['lang']) }}
+                      {{ srv['stop_command'] }} {{ translate('serverConfig', 'timeoutExplain2', data['lang'])
+                      }}</small></label>
+                  <input type="number" class="form-control" name="shutdown_timeout" id="shutdown_timeout"
+                    value="{{ srv['shutdown_timeout'] }}" step="2" max="300" min="60" required>
+                </div>
+                <div class="form-group">
+                  <label for="logs_delete_after">{{ translate('serverConfig', 'removeOldLogsAfter', data['lang']) }}
+                    <small class="text-muted">{{ translate('serverConfig', 'removeOldLogsAfterDesc', data['lang'])
+                      }}</small></label>
+                  <input type="number" class="form-control" name="logs_delete_after" id="logs_delete_after"
+                    value="{{ srv['logs_delete_after'] }}" step="1" max="365" min="0" required>
+                </div>
+              </section>
 
-                  <div class="form-group">
-                    <label for="logs_delete_after">{{ translate('serverConfig', 'removeOldLogsAfter', data['lang']) }}
-                      <small class="text-muted ml-1"> - {{ translate('serverConfig', 'removeOldLogsAfterDesc',
-                        data['lang']) }}</small> </label>
-                    <input type="number" class="form-control" name="logs_delete_after" id="logs_delete_after"
-                      value="{{ data['server_stats']['server_id']['logs_delete_after']  }}" step="1" max="365" min="0"
-                      required>
-                  </div>
+              <div class="config-actions config-actions-sticky">
+                <span class="config-dirty small d-none" id="config_dirty"><i class="ph ph-warning-circle"
+                    aria-hidden="true"></i> {{ translate('serverConfig', 'unsavedChanges', data['lang']) }}</span>
+                <button type="reset" class="btn btn-light"><i class="ph ph-arrow-counter-clockwise"
+                    aria-hidden="true"></i> {{ translate('serverConfig', 'cancel', data['lang']) }}</button>
+                <button type="submit" class="btn btn-success" id="config_save"><i class="ph ph-floppy-disk"
+                    aria-hidden="true"></i> {{ translate('serverConfig', 'save', data['lang']) }}</button>
+              </div>
+            </form>
 
-                  <div class="form-group">
-                    <div class="custom-control custom-switch">
-                      {% if data['server_stats']['server_id']['auto_start'] %}
-                      <input type="checkbox" class="custom-control-input" id="auto_start" name="auto_start" checked=""
-                        value="1">
-                      <label class="custom-control-label" for="auto_start">&nbsp;&nbsp;{{ translate('serverConfig',
-                        'serverAutoStart', data['lang']) }}</label>
-                      {% else %}
-                      <input type="checkbox" class="custom-control-input" id="auto_start" name="auto_start" value="1">
-                      <label class="custom-control-label" for="auto_start">&nbsp;&nbsp;{{ translate('serverConfig',
-                        'serverAutoStart', data['lang']) }}</label>
-                      {% end %}
-                    </div>
-                  </div>
-                  <div class="form-group">
-                    <div class="custom-control custom-switch">
-                      {% if data['server_stats']['server_id']['crash_detection'] %}
-                      <input type="checkbox" class="custom-control-input" id="crash_detection" name="crash_detection"
-                        checked="" value="1">
-                      <label class="custom-control-label" for="crash_detection">&nbsp;&nbsp;{{ translate('serverConfig',
-                        'serverCrashDetection', data['lang']) }}</label>
-                      {% else %}
-                      <input type="checkbox" class="custom-control-input" id="crash_detection" name="crash_detection"
-                        value="1">
-                      <label class="custom-control-label" for="crash_detection">&nbsp;&nbsp;{{ translate('serverConfig',
-                        'serverCrashDetection', data['lang']) }}</label>
-                      {% end %}
-                    </div>
-                  </div>
-                  <div class="form-group">
-                    <div class="custom-control custom-switch">
-                      {% if data['server_stats']['server_id']['count_players'] %}
-                      <input type="checkbox" class="custom-control-input" id="count_players" name="count_players"
-                        checked="" value="1">
-                      <label class="custom-control-label" for="count_players">&nbsp;&nbsp;{{ translate('serverConfig',
-                        'countPlayers', data['lang']) }}</label>
-                      {% else %}
-                      <input type="checkbox" class="custom-control-input" id="count_players" name="count_players"
-                        value="1">
-                      <label class="custom-control-label" for="count_players">&nbsp;&nbsp;{{ translate('serverConfig',
-                        'countPlayers', data['lang']) }}</label>
-                      {% end %}
-                    </div>
-                  </div>
-                  <div class="form-group">
-                    <div class="custom-control custom-switch">
-                      {% if data['super_user'] %}
-                      {% if data['server_stats']['server_id']['show_status'] %}
-                      <input type="checkbox" class="custom-control-input" id="show_status" name="show_status" checked=""
-                        value="1">
-                      <label class="custom-control-label" for="show_status">&nbsp;&nbsp;{{ translate('serverConfig',
-                        'showStatus', data['lang']) }}</label>
-                      {% else %}
-                      <input type="checkbox" class="custom-control-input" id="show_status" name="show_status" value="1">
-                      <label class="custom-control-label" for="show_status">&nbsp;&nbsp;{{ translate('serverConfig',
-                        'showStatus', data['lang']) }}</label>
-                      {% end %}
-                      {% end %}
-                    </div>
-                  </div>
-                  <div class="text-center">
-                    <button type="submit" class="btn btn-success mr-2"><i class="ph ph-floppy-disk"></i> {{
-                      translate('serverConfig', 'save', data['lang']) }}</button>
-                    <button type="reset" class="btn btn-light"><i class="ph ph-clock-counter-clockwise"></i> {{ translate('serverConfig',
-                      'cancel', data['lang']) }}</button>&nbsp;
-                    {% if data['server_stats']['running'] %}
-                    <a class="btn btn-sm btn-danger disabled">{{ translate('serverConfig', 'deleteServer', data['lang'])
-                      }}</a><br />
-                    <small>{{ translate('serverConfig', 'stopBeforeDeleting', data['lang']) }}</small>
-                    {% else %}
-                    {% if not data['failed'] %}
-                    <button onclick="deleteConfirm()" form="" class="btn btn-sm btn-danger">{{ translate('serverConfig',
-                      'deleteServer', data['lang']) }}</button>
-                    {% else %}
-                    <button onclick="deleteUnloadedConfirm()" form="" class="btn btn-sm btn-danger">{{
-                      translate('serverConfig',
-                      'deleteServer', data['lang']) }}</button>
-                    {% end %}
-                    {% end %}
-                  </div>
-              </form>
-            </div>
+            <section class="config-section config-danger">
+              <div class="config-section-head">
+                <h3><i class="ph ph-warning" aria-hidden="true"></i>{{ translate('serverConfig', 'dangerZone',
+                  data['lang']) }}</h3>
+              </div>
+              <div class="config-danger-row">
+                <p>{{ translate('serverConfig', 'deleteServerDesc', data['lang']) }}
+                  {% if data['server_stats']['running'] %}<br><small class="text-warning">{{
+                    translate('serverConfig', 'stopBeforeDeleting', data['lang']) }}</small>{% end %}</p>
+                {% if data['server_stats']['running'] %}
+                <button type="button" class="btn btn-outline-danger" disabled>{{ translate('serverConfig',
+                  'deleteServer', data['lang']) }}</button>
+                {% elif not data['failed'] %}
+                <button type="button" onclick="deleteConfirm()" class="btn btn-outline-danger">{{
+                  translate('serverConfig', 'deleteServer', data['lang']) }}</button>
+                {% else %}
+                <button type="button" onclick="deleteUnloadedConfirm()" class="btn btn-outline-danger">{{
+                  translate('serverConfig', 'deleteServer', data['lang']) }}</button>
+                {% end %}
+              </div>
+            </section>
           </div>
         </div>
       </div>
@@ -274,14 +319,15 @@
 
 {% block js %}
 <script>
-  $(function () {
-    $('.form-check-input').bootstrapToggle({
-      on: '',
-      off: ''
-    });
-  })
-  const serverId = new URLSearchParams(document.location.search).get('id')
-
+  const serverId = new URLSearchParams(document.location.search).get('id');
+  const serverRunning = {% if data['server_stats']['running'] %}true{% else %}false{% end %};
+  const configText = {
+    restartToApply: {% raw json_encode(translate('serverProperties', 'restartToApply', data['lang'])) %},
+    restartNow: {% raw json_encode(translate('serverProperties', 'restartNow', data['lang'])) %},
+    saved: {% raw json_encode(translate('serverProperties', 'saved', data['lang'])) %},
+    loadFailed: {% raw json_encode(translate('serverProperties', 'loadFailed', data['lang'])) %},
+    memoryInvalid: {% raw json_encode(translate('serverConfig', 'memoryInvalid', data['lang'])) %},
+  };
 
   //used to get cookies from browser - this is part of tornados xsrf protection - it's for extra security
   function getCookie(name) {
@@ -289,66 +335,49 @@
     return r ? r[1] : undefined;
   }
 
-  $(document).ready(function () {
-    console.log("ready!");
-
-  });
-
-  function deleteServerE(callback) {
-    const token = getCookie("_xsrf")
-    $.ajax({
-      type: "DELETE",
-      headers: { 'X-XSRFToken': token },
-      url: `/api/v2/servers/${serverId}`,
-      data: {
-      },
-      success: function (data) {
-        console.log("got response:");
-        console.log(data);
-      },
-    });
-  }
-  function deleteServerFilesE(path, callback) {
-    const token = getCookie("_xsrf")
-    $.ajax({
-      type: "DELETE",
-      headers: { 'X-XSRFToken': token },
-      url: `/api/v2/servers/${serverId}?files=true`,
-      data: {
-      },
-      success: function (data) {
-        console.log("got response:");
-        console.log(data);
-      },
-    });
-  }
-
-  function send_command(serverId, command) {
-    //<!--  this getCookie function is in base.html-->
-    const token = getCookie("_xsrf");
-    if (command == "update_executable") {
-      document.getElementById("update-spinner").style.visibility = "visible";
+  async function apiJson(url, options = {}) {
+    options.headers = Object.assign({ 'X-XSRFToken': getCookie("_xsrf") }, options.headers || {});
+    let res;
+    try {
+      res = await fetch(url, options);
+    } catch (e) {
+      return { status: "error", error: "Network error", error_data: e.message };
     }
+    const data = await res.json().catch(() => ({}));
+    if (!data.status) {
+      data.status = res.ok ? "ok" : "error";
+      data.error = data.error || `HTTP ${res.status}`;
+    }
+    return data;
+  }
 
-    $.ajax({
-      type: "POST",
-      headers: { 'X-XSRFToken': token },
-      url: `/api/v2/servers/${serverId}/action/${command}`,
-      success: function (data) {
-        console.log("got response:");
-        console.log(data);
-        if (command != "update_executable") {
-          setTimeout(function () { location.reload(); }, 10000);
-        }
-      }
+  function showError(data) {
+    bootbox.alert({
+      title: escapeHtml(data.error || "Error"),
+      message: escapeHtml(data.error_data || ""),
     });
+  }
+
+  /* ---------- Delete server ---------- */
+  async function sendDelete(withFiles) {
+    const waiting = bootbox.dialog({
+      title: '{% raw translate("serverConfig", "sendingDelete", data['lang']) %}',
+      message: '<div class="text-center"><i class="ph ph-spinner-gap ph-spin"></i> &nbsp; ' +
+        (withFiles ? '{% raw translate("serverConfig", "bePatientDeleteFiles", data['lang']) %}'
+          : '{% raw translate("serverConfig", "bePatientDelete", data['lang']) %}') + '</div>',
+      closeButton: false
+    });
+    const data = await apiJson(`/api/v2/servers/${serverId}${withFiles ? '?files=true' : ''}`, { method: "DELETE" });
+    if (data.status === "ok") {
+      window.location = '/panel/dashboard';
+      return;
+    }
+    waiting.modal('hide');
+    showError(data);
   }
 
   function deleteServer() {
-    path = "{{data['server_stats']['server_id']['path']}}";
-    name = "{{data['server_stats']['server_id']['server_name']}}";
     bootbox.dialog({
-      size: "",
       title: "{% raw translate('serverConfig', 'deleteFilesQuestion', data['lang']) %}",
       closeButton: false,
       message: "{% raw translate('serverConfig', 'deleteFilesQuestionMessage', data['lang']) %}",
@@ -356,52 +385,23 @@
         files: {
           label: "{{ translate('serverConfig', 'yesDeleteFiles', data['lang']) }}",
           className: 'btn-danger',
-          callback: function () {
-            deleteServerFilesE();
-            setTimeout(function () { window.location = '/panel/dashboard'; }, 5000);
-            bootbox.dialog({
-              backdrop: true,
-              title: '{% raw translate("serverConfig", "sendingDelete", data['lang']) %}',
-              message: '<div align="center"><i class="ph ph-spinner-gap ph-spin"></i> &nbsp; {% raw translate("serverConfig", "bePatientDeleteFiles", data['lang']) %} </div>',
-              closeButton: false
-            })
-
-            return;
-          }
+          callback: function () { sendDelete(true); }
         },
         noFiles: {
           label: "{{ translate('serverConfig', 'noDeleteFiles', data['lang']) }}",
           className: 'btn-outline-danger',
-          callback: function () {
-            deleteServerE()
-            setTimeout(function () { window.location = '/panel/dashboard'; }, 5000);
-            bootbox.dialog({
-              backdrop: true,
-              title: '{% raw translate("serverConfig", "sendingDelete", data['lang']) %}',
-              message: '<div align="center"><i class="ph ph-spinner-gap ph-spin"></i> &nbsp; {% raw translate("serverConfig", "bePatientDelete", data['lang']) %} </div>',
-              closeButton: false
-            })
-            return;
-          }
+          callback: function () { sendDelete(false); }
         },
         cancel: {
           label: "{{ translate('serverConfig', 'cancel', data['lang']) }}",
           className: 'btn-secondary',
-          callback: function () {
-            return;
-          }
         }
       },
-      callback: function (result) {
-
-      }
     });
   }
-  function deleteConfirm() {
-    path = "{{data['server_stats']['server_id']['path']}}";
-    name = "{{data['server_stats']['server_id']['server_name']}}";
+
+  function confirmDelete(next) {
     bootbox.confirm({
-      size: "",
       title: "{% raw translate('serverConfig', 'deleteServerQuestion', data['lang']) %}",
       closeButton: false,
       message: "{% raw translate('serverConfig', 'deleteServerQuestionMessage', data['lang']) %}",
@@ -416,169 +416,209 @@
         }
       },
       callback: function (result) {
-        if (!result) {
-          return;
-          return;
-        }
-        else {
-          deleteServer();
-        }
-
+        if (result) next();
       }
     });
   }
-  function deleteUnloadedConfirm() {
-    path = "{{data['server_stats']['server_id']['path']}}";
-    name = "{{data['server_stats']['server_id']['server_name']}}";
-    bootbox.confirm({
-      size: "",
-      title: "{% raw translate('serverConfig', 'deleteServerQuestion', data['lang']) %}",
-      closeButton: false,
-      message: "{% raw translate('serverConfig', 'deleteServerQuestionMessage', data['lang']) %}",
-      buttons: {
-        confirm: {
-          label: "{{ translate('serverConfig', 'yesDelete', data['lang']) }}",
-          className: 'btn-danger',
-        },
-        cancel: {
-          label: "{{ translate('serverConfig', 'noDelete', data['lang']) }}",
-          className: 'btn-link',
-        }
-      },
-      callback: function (result) {
-        if (!result) {
-          return;
-          return;
-        }
-        else {
-          const token = getCookie("_xsrf")
-          setTimeout(function () { window.location = '/panel/dashboard'; }, 5000);
-          bootbox.dialog({
-            backdrop: true,
-            title: '{% raw translate("serverConfig", "sendingDelete", data['lang']) %}',
-            message: '<div align="center"><i class="ph ph-spinner-gap ph-spin"></i> &nbsp; {% raw translate("serverConfig", "bePatientDelete", data['lang']) %} </div>',
-            closeButton: false
-          })
-          $.ajax({
-            type: "DELETE",
-            headers: { 'X-XSRFToken': token },
-            url: `/api/v2/servers/${serverId}`,
-            data: {
-            },
-            success: function (data) {
-              console.log("got response:");
-              console.log(data);
-            },
-          });
-        }
+  function deleteConfirm() { confirmDelete(deleteServer); }
+  // A server that failed to load can only be removed from the panel
+  function deleteUnloadedConfirm() { confirmDelete(() => sendDelete(false)); }
 
-      }
-    });
-  }
-
-  $("#server_port").focus(function () {
-
-    $('[data-toggle="popover"]').popover();
-    if ($(window).width() < 1000) {
-      $('.port-hint').attr("data-placement", "top")
-    } else {
-      $('.port-hint').attr("data-placement", "right")
-    }
-    $('.port-hint').popover("show");
-  });
-  $("#server_port").focusout(function () {
-    $('.port-hint').popover("hide");
-  });
-
-  async function postFormFieldsAsJson({ url, formData }) {
-    //Create an object from the form data entries
-    let formDataObject = Object.fromEntries(formData.entries());
-    // Format the plain form data as JSON
-    let formDataJsonString = JSON.stringify(formDataObject);
-
-    //Set the fetch options (headers, body)
-    let fetchOptions = {
-      //HTTP method set to POST.
-      method: "PATCH",
-      //Set the headers that specify you're sending a JSON body request and accepting JSON response
-      headers: {
-        "Content-Type": "application/json",
-        Accept: "application/json",
-      },
-      // POST request body as JSON string.
-      body: formDataJsonString,
-    };
-
-    //Get the response body as JSON.
-    //If the response was not OK, throw an error.
-    let res = await fetch(url, fetchOptions);
-
-    //If the response is not ok throw an error (for debugging)
-    if (!res.ok) {
-      let error = await res.text();
-      throw new Error(error);
-    }
-    //If the response was OK, return the response body.
-    return res.json();
-  }
+  /* ---------- Crafty settings form ---------- */
   function replacer(key, value) {
     // Text fields stay text even when they look like numbers (e.g. "1234")
-    if (["server_name", "execution_command", "stop_command", "log_path", "server_ip", "java_selection"].includes(key)) {
+    if (["server_name", "execution_command", "stop_command", "log_path", "server_ip", "java_selection", "ignored_exits"].includes(key)) {
       return value;
     }
-    if (key != "ignored_exits") {
-      if (typeof value == "boolean" || key === "executable_update_url" || value === '') {
-        return value
-      } else {
-        return (isNaN(value) ? value : +value);
-      }
-    } else {
+    if (typeof value == "boolean" || value === '') {
       return value;
     }
+    return (isNaN(value) ? value : +value);
+  }
+
+  // Memory fields are in GB on screen and MiB in the API; only send what changed
+  function memoryChanges() {
+    const out = {};
+    for (const id of ["mem_min", "mem_max"]) {
+      const input = document.getElementById(id);
+      if (!input || input.value === "") continue;
+      const mib = Math.round(parseFloat(input.value) * 1024);
+      if (mib !== parseInt(input.dataset.mib, 10)) out[id] = mib;
+    }
+    return out;
+  }
+
+  let configDirty = false;
+  function setConfigDirty(dirty) {
+    configDirty = dirty;
+    $("#config_dirty").toggleClass("d-none", !dirty);
   }
 
   $(document).ready(function () {
-    let token = getCookie("_xsrf")
-    $("#config_form").on("submit", async function (e) {
-      e.preventDefault();
-      const token = getCookie("_xsrf")
-      let configForm = document.getElementById("config_form");
-
-      let formData = new FormData(configForm);
-      //Create an object from the form data entries
-      let formDataObject = Object.fromEntries(formData.entries());
-      //We need to make sure these are sent regardless of whether or not they're checked
-      formDataObject.show_status = $("#show_status").prop('checked');
-      formDataObject.crash_detection = $("#crash_detection").prop('checked');
-      formDataObject.auto_start = $("#auto_start").prop('checked');
-      formDataObject.count_players = $("#count_players").prop('checked');
-      console.log(formDataObject);
-      // Format the plain form data as JSON
-      let formDataJsonString = JSON.stringify(formDataObject, replacer);
-      formDataJsonString["ignored_exits"] = toString(formDataJsonString["ignored_exits"]);
-      console.log(formDataJsonString.ignored_exits)
-
-      console.log(formDataJsonString);
-
-      let res = await fetch(`/api/v2/servers/${serverId}`, {
-        method: 'PATCH',
-        headers: {
-          'X-XSRFToken': token
-        },
-        body: formDataJsonString,
-      });
-      let responseData = await res.json();
-      if (responseData.status === "ok") {
-        location.reload(true);
-      } else {
-
-        bootbox.alert({
-          title: responseData.error,
-          message: responseData.error_data
-        });
+    const configForm = document.getElementById("config_form");
+    $(configForm).on("input change", () => setConfigDirty(true));
+    $(configForm).on("reset", () => setTimeout(() => setConfigDirty(false), 0));
+    window.addEventListener("beforeunload", (e) => {
+      if (configDirty) {
+        e.preventDefault();
+        e.returnValue = "";
       }
     });
+
+    $(configForm).on("submit", async function (e) {
+      e.preventDefault();
+      const memMin = document.getElementById("mem_min");
+      const memMax = document.getElementById("mem_max");
+      if (memMin && memMax && parseFloat(memMin.value) > parseFloat(memMax.value)) {
+        memMax.setCustomValidity(configText.memoryInvalid);
+        memMax.reportValidity();
+        memMax.addEventListener("input", () => memMax.setCustomValidity(""), { once: true });
+        return;
+      }
+      const saveButton = document.getElementById("config_save");
+      saveButton.disabled = true;
+
+      let formDataObject = Object.fromEntries(new FormData(configForm).entries());
+      //We need to make sure these are sent regardless of whether or not they're checked
+      for (const id of ["show_status", "crash_detection", "auto_start", "count_players"]) {
+        if (document.getElementById(id)) formDataObject[id] = $("#" + id).prop('checked');
+      }
+      Object.assign(formDataObject, memoryChanges());
+
+      const data = await apiJson(`/api/v2/servers/${serverId}`, {
+        method: 'PATCH',
+        body: JSON.stringify(formDataObject, replacer),
+      });
+      if (data.status === "ok") {
+        setConfigDirty(false);
+        location.reload();
+      } else {
+        saveButton.disabled = false;
+        showError(data);
+      }
+    });
+
+    loadGameSettings();
   });
+
+  /* ---------- Game settings (server.properties) ---------- */
+  let gameSettings = [];
+
+  function capitalise(text) {
+    return text.charAt(0).toUpperCase() + text.slice(1);
+  }
+
+  function renderSetting(setting) {
+    const id = "prop_" + setting.key;
+    const col = $('<div class="form-group"></div>')
+      .addClass(setting.type === "text" ? "col-12" : "col-md-6 col-lg-4");
+    if (setting.type === "bool") {
+      const wrap = $('<div class="custom-control custom-switch"></div>');
+      $('<input type="checkbox" class="custom-control-input">')
+        .attr({ id: id, "data-key": setting.key })
+        .prop("checked", setting.value)
+        .appendTo(wrap);
+      $('<label class="custom-control-label"></label>').attr("for", id)
+        .text("  " + setting.label).appendTo(wrap);
+      col.append(wrap);
+      return col;
+    }
+    $('<label></label>').attr("for", id).text(setting.label).appendTo(col);
+    let input;
+    if (setting.type === "enum") {
+      input = $('<select class="form-control select-css"></select>');
+      for (const option of setting.options) {
+        $('<option></option>').val(option).text(capitalise(option)).appendTo(input);
+      }
+      input.val(setting.value);
+    } else if (setting.type === "int") {
+      input = $('<input type="number" class="form-control" step="1">')
+        .attr({ min: setting.min, max: setting.max })
+        .val(setting.value === null ? "" : setting.value);
+    } else {
+      input = $('<input type="text" class="form-control" maxlength="1000">').val(setting.value);
+    }
+    input.attr({ id: id, "data-key": setting.key });
+    col.append(input);
+    return col;
+  }
+
+  function readSetting(setting) {
+    const input = document.getElementById("prop_" + setting.key);
+    if (setting.type === "bool") return input.checked;
+    if (setting.type === "int") return input.value === "" ? null : parseInt(input.value, 10);
+    return input.value;
+  }
+
+  function setPropertiesStatus(kind, html) {
+    const box = $("#properties_status");
+    box.removeClass("d-none alert-success alert-info alert-danger").addClass("alert-" + kind).html(html);
+  }
+
+  async function loadGameSettings() {
+    const section = document.getElementById("game-settings");
+    if (!section) return;
+    const data = await apiJson(`/api/v2/servers/${serverId}/properties`);
+    if (data.error === "NO_SERVER_PROPERTIES" || (data.status === "ok" && data.data.length === 0)) return;
+    section.hidden = false;
+    if (data.status !== "ok") {
+      $("#properties_save").prop("disabled", true);
+      setPropertiesStatus("danger", escapeHtml(configText.loadFailed + ": " + (data.error_data || data.error)));
+      return;
+    }
+    gameSettings = data.data;
+    // Inputs first, then the switches, so the two kinds don't share a row
+    const rank = { text: 0, enum: 1, int: 1, bool: 2 };
+    const ordered = [...gameSettings].sort((a, b) => rank[a.type] - rank[b.type]);
+    const fields = $("#properties_fields").empty();
+    ordered.forEach((setting, index) => {
+      if (setting.type === "bool" && index > 0 && ordered[index - 1].type !== "bool") {
+        fields.append('<div class="col-12"><hr class="properties-divider"></div>');
+      }
+      fields.append(renderSetting(setting));
+    });
+
+    $("#properties_form").on("submit", async function (e) {
+      e.preventDefault();
+      const changes = {};
+      for (const setting of gameSettings) {
+        const value = readSetting(setting);
+        if (value !== setting.value && value !== null) changes[setting.key] = value;
+      }
+      if (Object.keys(changes).length === 0) {
+        setPropertiesStatus("info", escapeHtml(configText.saved));
+        return;
+      }
+      const button = $("#properties_save").prop("disabled", true);
+      const result = await apiJson(`/api/v2/servers/${serverId}/properties`, {
+        method: "PATCH",
+        body: JSON.stringify(changes),
+      });
+      button.prop("disabled", false);
+      if (result.status !== "ok") {
+        setPropertiesStatus("danger", escapeHtml((result.error_data || result.error)));
+        return;
+      }
+      for (const setting of gameSettings) {
+        if (setting.key in changes) setting.value = changes[setting.key];
+      }
+      if (serverRunning) {
+        setPropertiesStatus("success", escapeHtml(configText.restartToApply) +
+          ' <button type="button" class="btn btn-sm btn-outline-primary ml-2" id="properties_restart">' +
+          '<i class="ph ph-arrow-clockwise"></i> ' + escapeHtml(configText.restartNow) + '</button>');
+        $("#properties_restart").on("click", async function () {
+          $(this).prop("disabled", true);
+          const res = await apiJson(`/api/v2/servers/${serverId}/action/restart_server`, { method: "POST" });
+          if (res.status !== "ok") {
+            $(this).prop("disabled", false);
+            showError(res);
+          }
+        });
+      } else {
+        setPropertiesStatus("success", escapeHtml(configText.saved));
+      }
+    });
+  }
 </script>
 
 {% end %}

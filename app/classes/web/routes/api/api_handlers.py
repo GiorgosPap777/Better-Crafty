@@ -36,6 +36,9 @@ from app.classes.web.routes.api.servers.server.status import (
     ApiServersServerStatusHandler,
 )
 from app.classes.web.routes.api.servers.server.stats import ApiServersServerStatsHandler
+from app.classes.web.routes.api.servers.server.properties import (
+    ApiServersServerPropertiesHandler,
+)
 from app.classes.web.routes.api.servers.server.history import (
     ApiServersServerHistoryHandler,
 )
@@ -478,6 +481,11 @@ def api_handlers(handler_args):
         (
             r"/api/v2/servers/([a-z0-9-]+)/stats/?",
             ApiServersServerStatsHandler,
+            handler_args,
+        ),
+        (
+            r"/api/v2/servers/([a-z0-9-]+)/properties/?",
+            ApiServersServerPropertiesHandler,
             handler_args,
         ),
         (
