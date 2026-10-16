@@ -13,6 +13,10 @@ const OUT = __dirname + '/shots/';
   const errors = [];
   p.on('console', m => { if (m.type() === 'error') errors.push(m.text()); });
   p.on('pageerror', e => errors.push('PAGEERROR ' + e.message));
+  // The named cards; test_item_icons.js covers the item pictures
+  await p.route('**/api/v2/crafty/item_icons/', route => route.fulfill({
+    contentType: 'application/json', body: JSON.stringify({ status: 'ok', data: { state: 'none' } }),
+  }));
 
   for (const [uuid, want] of [['069a79f4-44e9-4726-a5be-fca90e38aaf5', 200], ['00000000-0000-4000-8000-000000000000', 404], ['abc-123', 400]]) {
     const r = await p.request.get(`${BASE}/api/v2/servers/${S1}/players/${uuid}`, { headers: { Authorization: 'Bearer ' + TOKEN } });

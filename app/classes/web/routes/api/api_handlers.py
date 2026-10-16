@@ -132,6 +132,10 @@ from app.classes.web.routes.api.crafty.exe_cache import (
     ApiCraftySteamCacheIndexHandler,
 )
 from app.classes.web.routes.api.crafty.antilockout.index import ApiCraftyLockoutHandler
+from app.classes.web.routes.api.crafty.item_icons import (
+    ApiCraftyItemIconHandler,
+    ApiCraftyItemIconsHandler,
+)
 from app.classes.web.routes.api.servers.server.stop_all import (
     ApiServersServerStopAllHandler,
 )
@@ -203,6 +207,16 @@ def api_handlers(handler_args):
         (
             r"/api/v2/crafty/stats/?",
             ApiCraftyHostStatsHandler,
+            handler_args,
+        ),
+        (
+            r"/api/v2/crafty/item_icons/?",
+            ApiCraftyItemIconsHandler,
+            handler_args,
+        ),
+        (
+            r"/api/v2/crafty/item_icons/([a-z0-9_]{1,64})\.png",
+            ApiCraftyItemIconHandler,
             handler_args,
         ),
         (

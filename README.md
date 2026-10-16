@@ -118,10 +118,22 @@ turned off, so anyone can join.
   their game mode from here.
 - **Inventory:** armor, off hand, main inventory and hotbar laid out like the
   game. Click an item for its enchantments, durability, custom name and
-  what is inside shulker boxes and bundles.
+  what is inside shulker boxes and bundles. Hover an item for a game-style
+  tooltip.
 - **Ender chest**, **Statistics** (play time, deaths, kills, distance, most
   mined, crafted and killed, and every other statistic in a searchable
   table) and **Advancements**.
+
+**Item pictures** are optional. Minecraft's item art belongs to Mojang, so
+Better Crafty does not ship it. The first time, a super user presses
+**Show item pictures**: Crafty downloads the newest Minecraft client from
+Mojang once (about 40 MB, checked against Mojang's checksum), draws a
+picture of every item into `app/config/item_icons/` and deletes the
+download. After that the inventory, ender chest and statistics show the
+items as in the game, with hearts, food, experience and enchantment shine.
+Without the pictures, items are shown by name. A few items with drawn-in
+patterns (banners, decorated pots, dragon and piglin heads, copper golem
+statues) still show their name; player heads show Steve's face.
 
 All of this is read from the world's save files, so nothing is changed and
 it works while the server is stopped. The game saves player data every few

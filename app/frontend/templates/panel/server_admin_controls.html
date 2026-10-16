@@ -61,7 +61,10 @@
     'contents', 'noStats', 'deaths', 'mobKills', 'playerKills', 'distance', 'blocksMined', 'itemsCrafted',
     'jumps', 'fishCaught', 'animalsBred', 'trades', 'topMined', 'topKilled', 'topKilledBy', 'topCrafted',
     'topUsed', 'allStats', 'searchStats', 'category', 'statistic', 'value', 'general', 'searchToSeeMore',
-    'noAdvancements', 'advancementsDone', 'advancement', 'completed']}) %};
+    'noAdvancements', 'advancementsDone', 'advancement', 'completed', 'tabEnderChest', 'itemPicturesOffer',
+    'itemPicturesButton', 'itemPicturesAskAdmin', 'itemPicturesDownloading', 'itemPicturesDrawing',
+    'itemPicturesFailed', 'itemPicturesRetry', 'itemPicturesFrom', 'itemPicturesUpdate', 'moreItems']}) %};
+  const playerSuperUser = {% raw json_encode(bool(data['superuser'])) %};
   let overview = {% raw json_encode(data['player_overview']) %};
   let refreshTimer = null;
   let playerSearch = "";
@@ -612,6 +615,294 @@
     pane.append(actions);
   }
 
+  // ---- Item pictures -------------------------------------------------------
+  // A super user can have Crafty draw the item pictures from the Minecraft
+  // game (app/classes/helpers/item_icons.py). With them, the inventory looks
+  // like the game's; without them, items are cards with their names.
+
+  let itemIcons = { state: "none" };
+  let iconTimer = null;
+  let tooltip = null;
+
+  // Items that shine in the game without being enchanted
+  const ALWAYS_GLINT = new Set(["enchanted_golden_apple", "experience_bottle", "nether_star", "end_crystal",
+    "debug_stick", "written_book"]);
+  const ARMOR_SPRITES = { head: "_slot_helmet", chest: "_slot_chestplate", legs: "_slot_leggings", feet: "_slot_boots" };
+
+  function iconsReady() {
+    return Boolean(itemIcons.made) && overview.server_type !== "hytale";
+  }
+
+  function iconName(id) {
+    const match = String(id == null ? "" : id).match(/^(?:minecraft:)?([a-z0-9_]{1,64})$/);
+    return match ? match[1] : null;
+  }
+
+  // Names are [a-z0-9_] and the version is encoded, so this is safe in url("")
+  function iconUrl(name) {
+    return `/api/v2/crafty/item_icons/${name}.png?v=${encodeURIComponent(itemIcons.made)}`;
+  }
+
+  async function loadIconStatus() {
+    clearTimeout(iconTimer);
+    try {
+      const res = await fetch("/api/v2/crafty/item_icons/");
+      const data = await res.json();
+      if (res.ok && data.status === "ok") setIconStatus(data.data);
+    } catch (e) {
+      console.error("Could not read the item picture status", e);
+    }
+    if (itemIcons.state === "working") iconTimer = setTimeout(loadIconStatus, 2000);
+  }
+
+  function setIconStatus(status) {
+    const before = itemIcons.made;
+    itemIcons = status || { state: "none" };
+    if (itemIcons.made !== before && currentPlayer && currentPlayer.details) {
+      renderInventory(currentPlayer.details);
+      renderEnderChest(currentPlayer.details);
+      renderStats(currentPlayer.details);
+    } else {
+      $(".item-icons-notice").each(function () { fillIconNotice($(this)); });
+    }
+  }
+
+  async function makeItemIcons() {
+    $(".item-icons-notice button").prop("disabled", true);
+    let status = null, error = null;
+    try {
+      const res = await fetch("/api/v2/crafty/item_icons/", {
+        method: "POST",
+        headers: { "X-XSRFToken": getCookie("_xsrf") },
+      });
+      let data = {};
+      try { data = await res.json(); } catch (e) { /* not JSON */ }
+      if (res.ok && data.status === "ok") status = data.data;
+      else error = data.error_data || data.error || String(res.status);
+    } catch (e) {
+      error = String(e.message || e);
+    }
+    setIconStatus(status || { ...itemIcons, state: "error", error });
+    if (itemIcons.state === "working") {
+      clearTimeout(iconTimer);
+      iconTimer = setTimeout(loadIconStatus, 1000);
+    }
+  }
+
+  // The offer to make the pictures, its progress, or where they came from
+  function fillIconNotice(box) {
+    box.empty().removeClass("alert alert-info alert-warning");
+    if (overview.server_type === "hytale") return;
+    const button = label => $('<button type="button" class="btn btn-sm btn-primary mt-2"></button>')
+      .text(label).on("click", makeItemIcons);
+    if (itemIcons.state === "working") {
+      const download = itemIcons.step === "download";
+      const done = itemIcons.done || 0, total = itemIcons.total || 0;
+      let text = download ? playerText.itemPicturesDownloading : playerText.itemPicturesDrawing;
+      if (total) text += download ? ` (${Math.floor(done / total * 100)}%)` : ` (${done} / ${total})`;
+      box.addClass("alert alert-info").append($("<div></div>").text(`${text}…`), bar(total ? done / total : 0, "info"));
+    } else if (!playerSuperUser) {
+      if (!iconsReady()) box.append($('<p class="small text-muted"></p>').text(playerText.itemPicturesAskAdmin));
+    } else if (itemIcons.state === "error") {
+      box.addClass("alert alert-warning").append(
+        $("<div></div>").text(`${playerText.itemPicturesFailed}: ${itemIcons.error || "?"}`),
+        button(playerText.itemPicturesRetry));
+    } else if (iconsReady()) {
+      box.append($('<p class="small text-muted"></p>').text(`${playerText.itemPicturesFrom} ${itemIcons.version || "?"} · `)
+        .append($('<button type="button" class="btn btn-link btn-sm p-0 align-baseline"></button>')
+          .text(playerText.itemPicturesUpdate).on("click", makeItemIcons)));
+    } else {
+      box.addClass("alert alert-info").append($("<div></div>").text(playerText.itemPicturesOffer),
+        button(playerText.itemPicturesButton));
+    }
+  }
+
+  function iconNotice() {
+    const box = $('<div class="item-icons-notice"></div>');
+    fillIconNotice(box);
+    return box;
+  }
+
+  function mcPanel(kind) {
+    const panel = $('<div class="mc-panel"></div>').addClass(kind);
+    panel[0].style.setProperty("--glint", `url("${iconUrl("_glint")}")`);
+    return panel;
+  }
+
+  // One slot of the game's inventory; info is the details box a click fills
+  function mcSlot(item, info, options = {}) {
+    if (!item) {
+      const empty = $('<div class="mc-slot"></div>');
+      if (options.placeholder) {
+        const sprite = $('<img class="mc-icon" alt="" draggable="false">').attr("src", iconUrl(options.placeholder));
+        empty.append(sprite.on("error", () => sprite.remove()));
+      }
+      if (options.label) empty.attr("title", options.label);
+      return empty;
+    }
+    const name = item.name || prettyId(item.id);
+    const slot = $(info ? '<button type="button" class="mc-slot"></button>' : '<div class="mc-slot"></div>')
+      .toggleClass("mc-selected", Boolean(options.selected))
+      .attr("aria-label", [options.label, item.count > 1 ? `${item.count} × ${name}` : name].filter(Boolean).join(": "));
+    const text = $('<span class="mc-slot-text"></span>').toggleClass("custom-name", Boolean(item.name)).text(name);
+    const icon = iconName(item.id);
+    if (icon) {
+      const url = iconUrl(icon);
+      const picture = $('<img class="mc-icon" alt="" draggable="false">').attr("src", url);
+      // Not every item has a picture (banners, mod items): show its name
+      picture.on("error", () => {
+        picture.replaceWith(text);
+        slot.find(".mc-glint").remove();
+      });
+      slot.append(picture);
+      if (item.enchantments || ALWAYS_GLINT.has(icon)) {
+        slot[0].style.setProperty("--icon", `url("${url}")`);
+        slot.append('<span class="mc-glint" aria-hidden="true"></span>');
+      }
+    } else {
+      slot.append(text);
+    }
+    const max = maxDurability(item);
+    if (item.damage && max && !item.unbreakable) {
+      const left = Math.max(0, (max - item.damage) / max);
+      slot.append($('<span class="mc-durability" aria-hidden="true"></span>').append(
+        $("<span></span>").css({ width: `${Math.round(left * 13) / 13 * 100}%`, background: `hsl(${Math.round(left * 120)}, 100%, 50%)` })));
+    }
+    if (item.count > 1) slot.append($('<span class="mc-count" aria-hidden="true"></span>').text(item.count));
+    slot.on("pointerenter", e => {
+      if (e.originalEvent.pointerType === "mouse") showTooltip(item, e.originalEvent);
+    }).on("pointermove", e => moveTooltip(e.originalEvent)).on("pointerleave", hideTooltip);
+    if (info) slot.on("click", () => showItem(slot, item, info));
+    return slot;
+  }
+
+  // The game's tooltip: name, enchantments, potion, contents, durability, id
+  function showTooltip(item, event) {
+    if (!tooltip) tooltip = $('<div class="mc-tooltip" aria-hidden="true"></div>').appendTo(document.body);
+    const lines = $('<div class="mc-tooltip-inner"></div>');
+    const line = (text, kind) => lines.append($("<div></div>").addClass(kind || "").text(text));
+    const icon = iconName(item.id);
+    line(item.name || prettyId(item.id), (item.enchantments ? "mc-aqua " : "") + (item.name ? "custom-name" : ""));
+    for (const enchantment of item.enchantments || []) line(enchantmentText(enchantment), "mc-gray");
+    if (item.potion) line(prettyId(item.potion), "mc-blue");
+    if (item.contents) {
+      for (const stack of item.contents.slice(0, 5)) line(`${stack.name || prettyId(stack.id)} x${stack.count}`);
+      if (item.contents.length > 5) {
+        line(playerText.moreItems.replace("{count}", item.contents.length - 5), "mc-gray custom-name");
+      }
+    }
+    if (item.unbreakable) line(playerText.unbreakable, "mc-blue");
+    const max = maxDurability(item);
+    if (item.damage && max && !item.unbreakable) line(`${playerText.durability}: ${Math.max(0, max - item.damage)} / ${max}`);
+    line(icon ? `minecraft:${icon}` : String(item.id), "mc-dark");
+    tooltip.empty().append(lines).prop("hidden", false);
+    moveTooltip(event);
+  }
+
+  function moveTooltip(event) {
+    if (!tooltip || tooltip.prop("hidden")) return;
+    const width = tooltip.outerWidth(), height = tooltip.outerHeight();
+    let x = event.clientX + 12, y = event.clientY - 12;
+    if (x + width > window.innerWidth - 4) x = Math.max(4, event.clientX - 16 - width);
+    y = Math.max(4, Math.min(y, window.innerHeight - height - 4));
+    tooltip.css({ left: x, top: y });
+  }
+
+  function hideTooltip() {
+    if (tooltip) tooltip.prop("hidden", true);
+  }
+
+  // Health, food and experience as the game shows them over the hotbar
+  function hudIcon(back, front) {
+    const icon = $('<span class="mc-hud-icon"></span>');
+    const layers = [front, back].filter(Boolean).map(name => `url("${iconUrl(name)}")`);
+    return icon.css("background-image", layers.join(", "));
+  }
+
+  function mcHud(profile) {
+    const hud = $('<div class="mc-hud"></div>');
+    if (profile.health != null) {
+      const health = Math.ceil(profile.health);
+      const hearts = Math.min(20, Math.ceil(Math.max(profile.max_health || 20, health) / 2));
+      const label = `${playerText.health}: ${formatDecimal(profile.health)} / ${formatDecimal(profile.max_health)}`;
+      const row = $('<div class="mc-hearts" role="img"></div>').attr({ "aria-label": label, title: label });
+      for (let i = 0; i < hearts; i++) {
+        row.append(hudIcon("_heart_container", health >= i * 2 + 2 ? "_heart_full" : health === i * 2 + 1 ? "_heart_half" : null));
+      }
+      hud.append(row);
+    }
+    if (profile.food != null) {
+      const label = `${playerText.food}: ${profile.food} / 20`;
+      const row = $('<div class="mc-food" role="img"></div>').attr({ "aria-label": label, title: label });
+      for (let i = 0; i < 10; i++) {
+        const left = profile.food - i * 2;
+        row.append(hudIcon("_food_empty", left >= 2 ? "_food_full" : left === 1 ? "_food_half" : null));
+      }
+      hud.append(row);
+    }
+    if (profile.xp_level != null) {
+      const label = `${playerText.experience}: ${playerText.level} ${profile.xp_level}`;
+      const xp = $('<div class="mc-xp" role="img"></div>').attr({ "aria-label": label, title: label });
+      const progress = Math.max(0, Math.min(1, profile.xp_progress || 0));
+      xp.css("background-image", `url("${iconUrl("_xp_background")}")`).append($("<span></span>")
+        .css({ width: `${progress * 100}%`, "background-image": `url("${iconUrl("_xp_progress")}")` }));
+      if (profile.xp_level > 0) hud.append($('<div class="mc-xp-level" aria-hidden="true"></div>').text(profile.xp_level));
+      hud.append(xp);
+    }
+    return hud;
+  }
+
+  function mcGrid(bySlot, from, to, info, selected) {
+    const grid = $('<div class="mc-grid"></div>');
+    for (let slot = from; slot <= to; slot++) {
+      const item = bySlot.get(slot);
+      grid.append(mcSlot(item, info, { selected: item && slot === selected }));
+    }
+    return grid;
+  }
+
+  // What is inside a shulker box or bundle, placed as the game places it
+  function contentsGrid(contents) {
+    const grid = $('<div class="mc-grid"></div>');
+    if (contents.every(stack => Number.isInteger(stack.slot))) {
+      const bySlot = new Map(contents.map(stack => [stack.slot, stack]));
+      const rows = Math.ceil((Math.max(26, ...contents.map(stack => stack.slot)) + 1) / 9);
+      for (let slot = 0; slot < rows * 9; slot++) grid.append(mcSlot(bySlot.get(slot), null));
+    } else {
+      for (const stack of contents) grid.append(mcSlot(stack, null));
+    }
+    return mcPanel("mc-contents").append(grid);
+  }
+
+  function renderInventoryPictures(pane, details) {
+    const info = itemInfoBox();
+    const bySlot = new Map(details.inventory.map(entry => [entry.slot, entry.item]));
+    const profile = details.profile || {};
+    const armor = $('<div class="mc-armor"></div>');
+    for (const key of ["head", "chest", "legs", "feet"]) {
+      armor.append(mcSlot(details.equipment[key], info, { placeholder: ARMOR_SPRITES[key], label: playerText[key] }));
+    }
+    const player = $('<div class="mc-player"></div>').append(
+      $('<span class="mc-player-name"></span>').text(currentPlayer.name || playerText.unknownName));
+    if (profile.game_mode) player.append($('<span class="mc-player-sub"></span>').text(playerText[profile.game_mode]));
+    if (profile.dimension) player.append($('<span class="mc-player-sub"></span>').text(dimensionName(profile.dimension)));
+    const offhand = $('<div class="mc-offhand"></div>').append(
+      mcSlot(details.equipment.offhand, info, { placeholder: "_slot_shield", label: playerText.offhand }));
+    const panel = mcPanel("mc-inventory").append(
+      $('<div class="mc-top"></div>').append(armor, player, offhand, mcHud(profile)),
+      mcGrid(bySlot, 9, 35, info),
+      mcGrid(bySlot, 0, 8, info, details.profile ? details.profile.selected_slot : null).addClass("mc-hotbar"));
+    pane.append($('<div class="mc-wrap"></div>').append(panel, info), iconNotice());
+  }
+
+  function renderEnderPictures(pane, details) {
+    const info = itemInfoBox();
+    const bySlot = new Map(details.ender_chest.map(entry => [entry.slot, entry.item]));
+    const panel = mcPanel("mc-ender").append($('<div class="mc-title"></div>').text(playerText.tabEnderChest),
+      mcGrid(bySlot, 0, 26, info));
+    pane.append($('<div class="mc-wrap"></div>').append(panel, info), iconNotice());
+  }
+
   function itemSlot(item, info, label, options = {}) {
     if (!item) {
       const empty = $('<div class="inv-slot empty"></div>');
@@ -640,9 +931,15 @@
   }
 
   function showItem(button, item, info) {
-    button.closest(".tab-pane").find(".inv-slot.active").removeClass("active");
+    button.closest(".tab-pane").find(".inv-slot.active, .mc-slot.active").removeClass("active");
     button.addClass("active");
-    info.empty().append($("<h6></h6>").toggleClass("custom-name", Boolean(item.name)).text(item.name || prettyId(item.id)));
+    const title = $("<h6></h6>").toggleClass("custom-name", Boolean(item.name)).text(item.name || prettyId(item.id));
+    const icon = iconName(item.id);
+    if (iconsReady() && icon) {
+      const picture = $('<img class="item-info-icon" alt="" width="32" height="32">').attr("src", iconUrl(icon));
+      title.prepend(picture.on("error", () => picture.remove()));
+    }
+    info.empty().append(title);
     const list = $('<dl class="item-info-list"></dl>');
     const add = (label, value) => list.append($("<dt></dt>").text(label), $("<dd></dd>").text(value));
     add(playerText.itemId, item.id);
@@ -659,6 +956,9 @@
       add(playerText.contents, item.contents.map(stack => `${stack.count} × ${stack.name || prettyId(stack.id)}`).join(", "));
     }
     info.append(list);
+    if (item.contents && iconsReady()) info.append(contentsGrid(item.contents));
+    // On narrow screens the details are under the items
+    info[0].scrollIntoView({ block: "nearest", behavior: "smooth" });
   }
 
   // A grid of slots from..to (inclusive), as the game lays them out
@@ -678,11 +978,17 @@
   }
 
   function renderInventory(details) {
+    hideTooltip();
     const pane = $("#player_tab_inventory").empty();
     if (!details.inventory) {
       pane.append(note(details.playerdata_error ? playerText.fileError : playerText.noPlayerFile));
       return;
     }
+    if (iconsReady()) {
+      renderInventoryPictures(pane, details);
+      return;
+    }
+    pane.append(iconNotice());
     const info = itemInfoBox();
     const bySlot = new Map(details.inventory.map(entry => [entry.slot, entry.item]));
     const equipment = $('<div class="inv-grid inv-equipment"></div>');
@@ -697,11 +1003,17 @@
   }
 
   function renderEnderChest(details) {
+    hideTooltip();
     const pane = $("#player_tab_ender").empty();
     if (!details.ender_chest) {
       pane.append(note(details.playerdata_error ? playerText.fileError : playerText.noPlayerFile));
       return;
     }
+    if (iconsReady()) {
+      renderEnderPictures(pane, details);
+      return;
+    }
+    pane.append(iconNotice());
     const info = itemInfoBox();
     const bySlot = new Map(details.ender_chest.map(entry => [entry.slot, entry.item]));
     pane.append(slotGrid(bySlot, 0, 26, info), info);
@@ -761,9 +1073,17 @@
         .sort((a, b) => b[1] - a[1]).slice(0, 10);
       if (!entries.length) continue;
       const list = $("<ol></ol>");
+      // Mobs have no item picture; mined blocks mostly do
+      const pictures = iconsReady() && !category.startsWith("minecraft:killed");
       for (const [id, value] of entries) {
-        list.append($("<li></li>").append($("<span></span>").text(prettyId(id)),
-          $('<span class="player-top-value"></span>').text(formatNumber(value))));
+        const row = $("<li></li>").append($("<span></span>").text(prettyId(id)),
+          $('<span class="player-top-value"></span>').text(formatNumber(value)));
+        const icon = iconName(id);
+        if (pictures && icon) {
+          const picture = $('<img class="player-top-icon" alt="" width="16" height="16" loading="lazy">').attr("src", iconUrl(icon));
+          row.prepend(picture.on("error", () => picture.css("visibility", "hidden")));
+        }
+        list.append(row);
       }
       tops.append($('<div class="player-top-list"></div>').append($("<h6></h6>").text(label), list));
     }
@@ -863,7 +1183,9 @@
     $("#player_modal").on("hidden.bs.modal", function () {
       currentPlayer = null;
       playerRequest++;
+      hideTooltip();
     });
+    $("#player_modal").on("shown.bs.tab", hideTooltip);
     // A reason prompt can open on top of the details window: keep it in
     // front, and keep the page from scrolling once it closes
     $(document).on("show.bs.modal", ".modal", function () {
@@ -876,6 +1198,7 @@
       if ($(".modal.show").length) $("body").addClass("modal-open");
     });
     renderAll();
+    loadIconStatus();
     // Live updates from the shared server header (details_stats.html)
     window.onServerDetails = function (server) {
       const wasRunning = overview.running;

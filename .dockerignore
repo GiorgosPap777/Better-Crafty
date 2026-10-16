@@ -28,3 +28,8 @@ CLAUDE.md
 docs/
 dev/handoff-tools/
 sonar-project.properties
+
+# Item pictures are drawn from Mojang's game on each install; never ship them
+app/config/item_icons/
+app/config/item_icons.new/
+app/config/item_icons.old/

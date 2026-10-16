@@ -396,7 +396,7 @@ button.inv-slot:focus-visible {
     font-size: 0.82rem;
 }
 
-.player-top-list li span:first-child {
+.player-top-list li span:first-of-type {
     overflow-wrap: anywhere;
 }
 
@@ -417,6 +417,376 @@ button.inv-slot:focus-visible {
     height: auto;
     line-height: 1.35;
     vertical-align: middle;
+}
+
+/**************************************************************/
+/* Item pictures: the game's inventory screen                 */
+/**************************************************************/
+/* Sizes are in the game's pixels (--p): 3 screen pixels each when there is
+   room, else 2, so the pictures stay sharp; on narrow phones whatever fits.
+   The inventory is 178 game pixels wide with its border. */
+#player_tab_inventory,
+#player_tab_ender,
+.item-info {
+    container-type: inline-size;
+}
+
+.item-icons-notice .alert,
+.item-icons-notice.alert {
+    margin-bottom: 1rem;
+}
+
+.mc-wrap {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-start;
+    gap: 1rem;
+}
+
+.mc-wrap .item-info {
+    flex: 1 1 15rem;
+    margin-top: 0;
+}
+
+.mc-panel {
+    --p: 2px;
+    --s: calc(var(--p) * 18);
+    flex: none;
+    width: max-content;
+    max-width: 100%;
+    padding: calc(var(--p) * 7);
+    border: var(--p) solid #000;
+    border-radius: calc(var(--p) * 3);
+    background: #c6c6c6;
+    box-shadow: inset calc(var(--p) * 2) calc(var(--p) * 2) 0 #fff, inset calc(var(--p) * -2) calc(var(--p) * -2) 0 #555;
+    color: #404040;
+    line-height: 1.15;
+    user-select: none;
+    -webkit-touch-callout: none;
+}
+
+.mc-contents {
+    --p: 2px;
+    margin-top: 0.75rem;
+    padding: calc(var(--p) * 4);
+}
+
+@supports (width: 1cqw) {
+    .mc-panel {
+        --p: min(3px, 100cqw / 178);
+    }
+
+    .mc-contents {
+        --p: min(2px, 100cqw / 172);
+    }
+}
+
+@supports (width: round(down, 1cqw, 1px)) {
+    .mc-panel {
+        --p: min(3px, max(round(down, 100cqw / 178, 1px), min(2px, 100cqw / 178)));
+    }
+
+    .mc-contents {
+        --p: min(2px, 100cqw / 172);
+    }
+}
+
+.mc-title {
+    margin: calc(var(--p) * -2) 0 calc(var(--p) * 3) var(--p);
+    font-size: max(0.75rem, calc(var(--p) * 6));
+}
+
+.mc-top {
+    display: flex;
+    height: calc(var(--p) * 72);
+    margin-bottom: calc(var(--p) * 4);
+}
+
+.mc-armor {
+    display: flex;
+    flex-direction: column;
+}
+
+.mc-player {
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
+    gap: calc(var(--p) * 1.5);
+    width: calc(var(--p) * 39);
+    margin-left: var(--p);
+    padding: calc(var(--p) * 3);
+    border: var(--p) solid;
+    border-color: #373737 #fff #fff #373737;
+    background: #000;
+    color: #fff;
+    font-size: max(0.65rem, calc(var(--p) * 5));
+    overflow: hidden;
+    overflow-wrap: anywhere;
+}
+
+.mc-player-name {
+    font-weight: 700;
+}
+
+.mc-player-sub {
+    color: #aaa;
+}
+
+.mc-offhand {
+    display: flex;
+    align-items: flex-end;
+    margin-left: var(--p);
+}
+
+.mc-hud {
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
+    gap: calc(var(--p) * 2);
+    width: calc(var(--p) * 81);
+    margin-left: calc(var(--p) * 4);
+}
+
+.mc-hearts,
+.mc-food {
+    display: flex;
+    flex-wrap: wrap-reverse;
+}
+
+.mc-food {
+    flex-direction: row-reverse;
+}
+
+.mc-hud-icon {
+    flex: none;
+    width: calc(var(--p) * 9);
+    height: calc(var(--p) * 9);
+    margin-right: calc(var(--p) * -1);
+    background-size: 100% 100%;
+    image-rendering: pixelated;
+}
+
+.mc-food .mc-hud-icon {
+    margin-right: 0;
+    margin-left: calc(var(--p) * -1);
+}
+
+.mc-xp-level {
+    align-self: center;
+    margin-bottom: calc(var(--p) * -2);
+    color: #80ff20;
+    font-size: max(0.75rem, calc(var(--p) * 6));
+    font-weight: 700;
+    line-height: 1;
+    text-shadow: var(--p) 0 0 #000, calc(var(--p) * -1) 0 0 #000, 0 var(--p) 0 #000, 0 calc(var(--p) * -1) 0 #000;
+}
+
+.mc-xp {
+    height: calc(var(--p) * 3);
+    background-size: 100% 100%;
+    image-rendering: pixelated;
+}
+
+.mc-xp span {
+    display: block;
+    height: 100%;
+    background-size: calc(var(--p) * 81) 100%;
+    image-rendering: pixelated;
+}
+
+.mc-grid {
+    display: grid;
+    grid-template-columns: repeat(9, var(--s));
+}
+
+.mc-hotbar {
+    margin-top: calc(var(--p) * 4);
+}
+
+.mc-slot {
+    position: relative;
+    display: block;
+    width: var(--s);
+    height: var(--s);
+    margin: 0;
+    padding: 0;
+    border: var(--p) solid;
+    border-color: #373737 #fff #fff #373737;
+    border-radius: 0;
+    background: #8b8b8b;
+    color: #fff;
+    font: inherit;
+    line-height: 1;
+    text-align: center;
+}
+
+button.mc-slot {
+    cursor: pointer;
+}
+
+button.mc-slot:focus {
+    outline: none;
+}
+
+/* The game's white highlight over the slot under the pointer */
+button.mc-slot:hover::after,
+button.mc-slot:focus-visible::after,
+.mc-slot.active::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: 3;
+    background: rgba(255, 255, 255, 0.45);
+}
+
+.mc-slot.mc-selected {
+    z-index: 1;
+    outline: var(--p) solid #fff;
+}
+
+.mc-slot.active {
+    z-index: 2;
+    outline: var(--p) solid #ffd83d;
+}
+
+.mc-icon {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: calc(var(--p) * 16);
+    height: calc(var(--p) * 16);
+    image-rendering: pixelated;
+    pointer-events: none;
+}
+
+/* The enchantment shine, moving over the item's own shape */
+.mc-glint {
+    position: absolute;
+    left: 0;
+    top: 0;
+    z-index: 1;
+    width: calc(var(--p) * 16);
+    height: calc(var(--p) * 16);
+    background: var(--glint) 0 0 / calc(var(--p) * 48) repeat;
+    -webkit-mask: var(--icon) 0 0 / 100% 100% no-repeat;
+    mask: var(--icon) 0 0 / 100% 100% no-repeat;
+    mix-blend-mode: screen;
+    opacity: 0.8;
+    image-rendering: pixelated;
+    animation: mc-glint 7s linear infinite;
+    pointer-events: none;
+}
+
+@keyframes mc-glint {
+    to {
+        background-position: calc(var(--p) * 48) calc(var(--p) * -48);
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .mc-glint {
+        animation: none;
+    }
+}
+
+.mc-slot-text {
+    position: absolute;
+    inset: 0;
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+    padding-top: calc(var(--p) * 1.5);
+    overflow: hidden;
+    overflow-wrap: anywhere;
+    color: #1e1e1e;
+    font-size: max(0.5rem, calc(var(--p) * 3.6));
+    line-height: 1.05;
+}
+
+.mc-count {
+    position: absolute;
+    right: calc(var(--p) * -0.5);
+    bottom: calc(var(--p) * -1.5);
+    z-index: 2;
+    color: #fff;
+    font-size: calc(var(--p) * 7);
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    text-shadow: var(--p) var(--p) 0 #3f3f3f;
+}
+
+.mc-durability {
+    position: absolute;
+    left: calc(var(--p) * 2);
+    top: calc(var(--p) * 13);
+    z-index: 2;
+    width: calc(var(--p) * 13);
+    height: calc(var(--p) * 2);
+    background: #000;
+}
+
+.mc-durability span {
+    display: block;
+    height: var(--p);
+}
+
+/* The game's tooltip */
+.mc-tooltip {
+    position: fixed;
+    z-index: 2000;
+    max-width: min(22rem, calc(100vw - 8px));
+    padding: 2px;
+    border-radius: 3px;
+    background: rgba(16, 0, 16, 0.94);
+    color: #fff;
+    font-size: 0.85rem;
+    line-height: 1.35;
+    text-shadow: 1px 1px 0 #3f3f3f;
+    pointer-events: none;
+}
+
+.mc-tooltip-inner {
+    padding: 3px 6px;
+    border: 1px solid;
+    border-image: linear-gradient(rgba(80, 0, 255, 0.5), rgba(40, 0, 127, 0.5)) 1;
+    overflow-wrap: anywhere;
+}
+
+.mc-tooltip-inner > div:first-child {
+    margin-bottom: 2px;
+}
+
+.mc-aqua {
+    color: #5ff;
+}
+
+.mc-gray {
+    color: #aaa;
+}
+
+.mc-blue {
+    color: #55f;
+}
+
+.mc-dark {
+    color: #777;
+    text-shadow: none;
+}
+
+.item-info-icon {
+    width: 2rem;
+    height: 2rem;
+    margin-right: 0.5rem;
+    vertical-align: middle;
+    image-rendering: pixelated;
+}
+
+.player-top-icon {
+    width: 1rem;
+    height: 1rem;
+    margin-right: 0.35rem;
+    vertical-align: -0.15rem;
+    image-rendering: pixelated;
 }
 
 /* Smaller windows: list the items that are there instead of the grid */

@@ -1,6 +1,6 @@
 # Better Crafty: handoff notes
 
-This file is the project's memory. Sessions 1-9 ran in temporary cloud
+This file is the project's memory. Sessions 1-10 ran in temporary cloud
 containers, so only what is committed survives. It records what has been
 done, what is unfinished, and how to set up and test on any machine. Keep it
 up to date: add the owner's request, a section per session, and a row in the
@@ -8,20 +8,23 @@ commits table.
 
 ## Start here
 
-**State (2026-10-16, end of session 9):** everything is committed and
+**State (2026-10-16, end of session 10):** everything is committed and
 pushed; nothing is half-edited. Done: login, server pages, security fixes,
 README with screenshots, player management (session 7), command suggestions
-in the Terminal (session 8), and portable test tools (session 9).
+in the Terminal (session 8), portable test tools (session 9), and item
+pictures with a game-style inventory (session 10).
 **Unfinished: session 6** (test the Docker image, publish it, and write the
 install, update and migration docs). The owner said they would pick that up
-later; nothing else is in progress.
+later; nothing else is in progress. In session 10 the owner decided to keep
+working in cloud sessions rather than move to their PC; the steps below
+work in either place.
 
 1. **Get the code.** `git clone https://github.com/GiorgosPap777/Better-Crafty.git`.
    The working branch `claude/login-server-admin-improvements-ctbqdu` is the
    repo default, so a fresh clone is already on it. In an existing clone:
    `git fetch origin && git checkout claude/login-server-admin-improvements-ctbqdu && git pull`.
 2. **Set up and check** with "Development setup" below (about 10 minutes).
-   You should see 130 passing pytest tests before changing anything.
+   You should see 142 passing pytest tests before changing anything.
 3. **Ask the owner what to work on next.** If it is the Docker work, follow
    "Session 6" from "Next steps, in order". It needs two answers from them:
    their Docker Hub username, and whether to publish to Docker Hub only or
@@ -87,6 +90,10 @@ later; nothing else is in progress.
 12. Session 9: "Ok can we do the handoff.md thing now. Make sure that the
     new agent will be able to continue on no problem". Done: this file,
     `CLAUDE.md`, and test tools that work on any machine (see Session 9).
+13. Session 10: "Ok I changed my mind let's iderete like this no need to
+    move. Could we have the player management have the icem icon and the
+    inv ui". So: keep working in cloud sessions, and show item pictures
+    and an inventory like the game's. Done, see Session 10.
 
 ### Questions still waiting on the owner
 
@@ -127,7 +134,8 @@ later; nothing else is in progress.
 | `4e9e1244` | Dockerfile `ARG TARGETARCH` fix and fork labels; draft publish workflow; this handoff (session 6) |
 | `b1e8df99` | Player management: every player, details window (inventory, ender chest, stats, advancements) (session 7) |
 | `91fa95ee` | Terminal command suggestions like the game's chat box (session 8) |
-| (this commit) | Handoff for the owner's PC: `CLAUDE.md`, portable test tools, test data setup, role page fix (session 9) |
+| `3363122c` | Handoff for the owner's PC: `CLAUDE.md`, portable test tools, test data setup, role page fix (session 9) |
+| (this commit) | Item pictures drawn from the Minecraft game; inventory, ender chest and tooltips like the game's (session 10) |
 
 ### 1. Login (`d3946c3f`)
 
@@ -832,6 +840,163 @@ Version facts worth knowing: 1.21.11 renamed game rules to snake_case
   - Python `requests` ignores `verify=False` when the environment sets a CA
     bundle; `session.trust_env = False` fixes it.
 
+## Session 10: item pictures and the game's inventory (done)
+
+The owner asked for item pictures and an inventory that looks like the
+game's in the player details window.
+
+### Where the pictures come from
+
+Mojang's textures may not be put in this repo or the Docker image, so the
+pictures are opt-in and made on the owner's machine:
+
+- In the player details window (Inventory or Ender Chest tab) a super user
+  sees an offer and a **Show item pictures** button. Other users see a
+  short hint instead.
+- Crafty reads Mojang's version list, downloads the latest release's client
+  jar (about 40 MB) from Mojang, and checks its SHA-1. It then draws a
+  64x64 PNG for each item, keeps only the pictures in
+  `app/config/item_icons/` (with `info.json`: version, count, made), and
+  deletes the jar. On a fast line this takes about 3 seconds to download
+  and 4 seconds to draw. The page shows progress, and an error offers
+  **Try again**.
+- **Get them again from the newest version** (super users) redoes it after
+  a Minecraft update. The new set replaces the old one in one step
+  (`item_icons.new`, then a rename).
+- Starting it adds an entry to the audit log.
+- `.dockerignore` leaves `app/config/item_icons*` out, so an image built
+  from a checkout that has pictures never ships them.
+- It always uses the latest release, because only 1.21.4 and later jars
+  have the `items/` definitions it reads. Ids from older worlds mostly still
+  match.
+- Checked end to end against Mojang's real servers in session 10: 26.3
+  drew 1630 of 1658 items.
+
+### How items are drawn (`app/classes/helpers/item_icons.py`, Pillow only)
+
+- **Item definitions** (`assets/minecraft/items/<name>.json`):
+  - model: drawn
+  - select: the case for the `gui` display context, else the fallback
+  - condition: `on_false`
+  - composite: all of its models
+  - range_dispatch: the fallback
+  - special: see below
+- **Flat items** (`builtin/generated`): layers `layer0..N`, each with its
+  tint (constant, dye, grass colormap, or the default of the others).
+- **Block models**: drawn in 3D with the model's `display.gui` rotation,
+  translation and scale. Faces are lit like the game's inventory (top 100%,
+  left 81%, right 62%) when `gui_light` is `side`. Drawing is at 4x size,
+  then scaled down. Mirroring transformations flip the faces back.
+- **Specials** are drawn from the entity textures:
+  - chests
+  - shulker boxes
+  - skeleton, wither skeleton, zombie and creeper heads
+  - player heads (always Steve)
+  - shield
+  - conduit
+- **Not drawn**: banners, decorated pots, dragon and piglin heads, copper
+  golem statues and a few others. The slot shows the item's name instead,
+  so nothing breaks.
+- **Sprites** are saved too: the empty armour and shield slot outlines,
+  the enchantment glint, hearts, food and the XP bar. Their names start
+  with `_`.
+
+### API
+
+- `GET /api/v2/crafty/item_icons/` (any signed-in user) returns
+  `{state: none|working|ready|error, version, count, made}`. While working
+  it also has `step` (download/draw), `done` and `total`; on an error it has
+  `error`.
+- `POST` to the same address (super users only) starts the work. A second
+  press while it is running does nothing.
+- `GET /api/v2/crafty/item_icons/<name>.png` serves one picture to signed-in
+  users. Names must match `[a-z0-9_]{1,64}`. Pictures are cached for a week,
+  and the page adds `?v=<made>` so a new set replaces the old one.
+
+### The page (`server_admin_controls.html`, `crafty-players.css`)
+
+- **Inventory tab, with pictures**, laid out like the game's inventory
+  screen:
+  - armour column with the empty-slot outlines
+  - a black box with the player's name, game mode and dimension
+  - the off-hand slot
+  - hearts, food and the XP bar with the level, from the save
+  - main grid
+  - hotbar, with the selected slot framed in white
+- **In each slot**:
+  - stack count
+  - durability bar
+  - moving enchantment glint (still when the system asks for reduced
+    motion)
+  - white highlight on hover
+- **Tooltip** on mouse hover, styled like the game's:
+  - the name (aqua if enchanted, italic if renamed)
+  - enchantments
+  - potion
+  - up to 5 contents, then "and N more"
+  - durability
+  - id
+- **Details box**: a click fills it. It sits beside the inventory on wide
+  screens and below it on phones (scrolled into view). Shulker box and
+  bundle contents appear there as a small grid placed by slot
+  (`parse_item` now keeps each content's `slot`).
+- **Ender Chest tab**: a chest panel.
+- **Statistics tab**: the top lists for mined, crafted and used get small
+  pictures.
+- **Without pictures**: the named cards from session 7 stay, with the
+  offer or the hint above them.
+- **Sizes** are in game pixels (`--p`): 3 screen pixels when there is room,
+  else 2, else whatever fits on narrow phones. This uses CSS container query
+  units and `round()`, so the pictures stay sharp.
+
+### Files
+
+- `app/classes/helpers/item_icons.py` (new): renderer, downloader,
+  `ItemIcons` status and job
+- `app/classes/web/routes/api/crafty/item_icons.py` (new), routes in
+  `api_handlers.py`
+- `app/classes/helpers/player_data.py`: `slot` on container contents
+- `app/frontend/templates/panel/server_admin_controls.html`,
+  `app/frontend/static/assets/css/partial/crafty-players.css`
+- `app/translations/en_EN.json`: `itemPictures*` and `moreItems` under
+  `serverPlayerManagement`
+- `tests/classes/helpers/test_item_icons.py` (new, 12 tests): a tiny fake
+  jar made with Pillow; covers drawing, lighting, select, condition,
+  composite, missing parts, name checks, the folder swap, the checksum
+  check (fake `requests` session) and error reporting
+- `.dockerignore`: leaves the pictures out of images
+- `dev/handoff-tools/test_item_icons.js` (new);
+  `test_player_details.js` now fakes "no pictures" so it still checks the
+  cards
+- `README.md`: an "Item pictures" paragraph in the Players section;
+  `docs/screenshots/player-inventory-after.png` and
+  `player-stats-after.png` retaken with pictures (`readme_shots.js` now
+  clicks the first slot by its label, then moves the mouse away so no
+  tooltip is in the shot)
+
+### Testing the page
+
+`test_item_icons.js` needs pictures in the test Crafty. Either press the
+button once (needs internet), or draw them from a client jar you already
+have, from the repo folder:
+
+```
+python -c "import json, zipfile, datetime; from pathlib import Path; from app.classes.helpers.item_icons import Assets, render_all; out = Path('<crafty>/app/config/item_icons'); out.mkdir(parents=True, exist_ok=True); n = render_all(Assets(zipfile.ZipFile('<client.jar>')), out); (out / 'info.json').write_text(json.dumps({'version': '<version>', 'count': n, 'made': datetime.datetime.now(datetime.timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ')}))"
+```
+
+The script also fakes the status API with `page.route` to check the offer,
+the progress, the switch to pictures and the error, without downloading.
+
+### Not done (ideas)
+
+- Draw banners (pattern layers), decorated pots and the remaining special
+  items.
+- Potions all show the default potion colour; their real colours would need
+  a table of effect colours.
+- Player heads always show Steve. Real skins would need Mojang's session
+  servers.
+- Show the player's own skin in the black box.
+
 ## Development setup (any machine)
 
 Written for Linux, macOS and Windows, but so far only run on Linux (the
@@ -852,7 +1017,7 @@ section. Commands are for a terminal in the repo root. On Windows use
 python3 -m venv .venv
 . .venv/bin/activate            # Windows: .venv\Scripts\activate
 pip install -r requirements.txt pytest black pylint
-pytest -q tests                 # 130 pass
+pytest -q tests                 # 142 pass
 black --check app tests
 node dev/command-data/test_complete.js   # command suggestions engine, no browser
 ```
@@ -933,7 +1098,8 @@ Settings come from `local.json`; the environment variables `CRAFTY_URL`,
 | `test_complete.js`, `test_complete_phone.js` | Command suggestions in the Terminal (desktop, phone) |
 | `test_config.js` | Config tab and the server.properties editor |
 | `test_players.js` | Players tab: lists, ban, op, whitelist |
-| `test_player_details.js` | Player details window (prints results to read) |
+| `test_player_details.js` | Player details window without item pictures (prints results to read) |
+| `test_item_icons.js` | Item pictures: game-style inventory, tooltip, contents, ender chest, phone, offer and progress (needs pictures, see Session 10) |
 | `test_player_running.js` | Player actions on a running server (prints results to read) |
 | `test_backups.js` | Backups tab |
 | `test_files.js` | Files tab: rename, upload, escaping, many files |
@@ -961,5 +1127,5 @@ Notes:
 - `test_complete.js`, `test_server.js` and `test_player_running.js` start
   server 1 and stop it again.
 - `start.sh`, `start_before.sh`, `stop.sh` and `sync.sh` are for the cloud
-  containers of sessions 1-9 (a `crafty` user, `/home/crafty/run`). They
+  containers of sessions 1-10 (a `crafty` user, `/home/crafty/run`). They
   are not needed on a PC.

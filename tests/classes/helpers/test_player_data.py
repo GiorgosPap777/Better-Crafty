@@ -205,7 +205,7 @@ def test_modern_player():
         "enchantments": [["minecraft:sharpness", 5]],
         "damage": 120,
     }
-    assert slots[20]["contents"] == [{"id": "minecraft:dirt", "count": 64}]
+    assert slots[20]["contents"] == [{"id": "minecraft:dirt", "count": 64, "slot": 0}]
     assert set(player["equipment"]) == {"head", "offhand"}
     assert player["ender_chest"] == [
         {"slot": 5, "item": {"id": "minecraft:elytra", "count": 1}}

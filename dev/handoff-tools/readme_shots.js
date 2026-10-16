@@ -29,7 +29,12 @@ const openPlayer = (tab, slot) => async p => {
   await p.waitForSelector('#player_modal_body:not([hidden])');
   await p.click(`a[href="${tab}"]`);
   await p.waitForTimeout(500);
-  if (slot) await p.locator(`${tab} button.inv-slot`, { hasText: slot }).first().click();
+  if (slot) {
+    // Named cards, or item pictures (their name is the button's label)
+    await p.locator(tab).getByRole('button', { name: slot }).first().click();
+    await p.mouse.move(0, 0);
+    await p.waitForTimeout(300);
+  }
 };
 
 const SHOTS = [

@@ -353,20 +353,27 @@ def parse_item(entry, depth: int = 0) -> t.Optional[dict]:
         item["potion"] = potion
 
     if depth == 0:
-        contents = [
-            parse_item(_dict(slot).get("item"), depth + 1)
-            for slot in _list(components.get("minecraft:container"))
+        # (slot, item); bundles have no slots
+        found = [
+            (_dict(entry).get("slot"), parse_item(_dict(entry).get("item"), depth + 1))
+            for entry in _list(components.get("minecraft:container"))
         ]
-        contents += [
-            parse_item(stack, depth + 1)
+        found += [
+            (None, parse_item(stack, depth + 1))
             for stack in _list(components.get("minecraft:bundle_contents"))
         ]
-        contents += [
-            parse_item(stack, depth + 1)
+        found += [
+            (_dict(stack).get("Slot"), parse_item(stack, depth + 1))
             for stack in _list(_dict(tag.get("BlockEntityTag")).get("Items"))
+            + _list(tag.get("Items"))
         ]
-        contents += [parse_item(stack, depth + 1) for stack in _list(tag.get("Items"))]
-        contents = [stack for stack in contents if stack]
+        contents = []
+        for slot, stack in found:
+            if not stack:
+                continue
+            if isinstance(slot, int) and not isinstance(slot, bool) and 0 <= slot < 256:
+                stack["slot"] = slot
+            contents.append(stack)
         if contents:
             item["contents"] = contents
     return item
