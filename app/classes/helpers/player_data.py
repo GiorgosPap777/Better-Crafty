@@ -599,6 +599,24 @@ def player_from_nbt(nbt: dict) -> dict:
     }
 
 
+def has_player(server_path, uuid: str) -> bool:
+    """Whether the server has saved anything about this player."""
+    uuid = str(uuid).lower()
+    if not UUID_RE.match(uuid):
+        return False
+    world = world_folder(server_path)
+    if world is None:
+        return False
+    return any(
+        (world / folder / f"{uuid}{suffix}").is_file()
+        for folder, suffix in (
+            ("playerdata", ".dat"),
+            ("stats", ".json"),
+            ("advancements", ".json"),
+        )
+    )
+
+
 def player_details(server_path, uuid: str) -> t.Optional[dict]:
     """All saved data about one player, or None if the server has none."""
     uuid = str(uuid).lower()

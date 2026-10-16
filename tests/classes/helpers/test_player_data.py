@@ -8,6 +8,7 @@ import pytest
 from app.classes.helpers import player_data
 from app.classes.helpers.player_data import (
     NbtError,
+    has_player,
     list_players,
     normalise_stats,
     parse_item,
@@ -370,6 +371,16 @@ def test_list_players(tmp_path):
 
 def test_list_players_without_world(tmp_path):
     assert list_players(tmp_path) == []
+
+
+def test_has_player(tmp_path):
+    server, world = write_server(tmp_path, {ALEX: ("Alex", MODERN_PLAYER)})
+    (world / "stats" / f"{STEVE}.json").write_text("{}")
+    assert has_player(server, ALEX)
+    assert has_player(server, STEVE.upper())
+    assert not has_player(server, "00000000-0000-4000-8000-000000000000")
+    assert not has_player(server, "../" + ALEX)
+    assert not has_player(tmp_path / "nowhere", ALEX)
 
 
 def test_world_folder(tmp_path):

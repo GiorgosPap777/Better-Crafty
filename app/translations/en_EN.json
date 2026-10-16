@@ -880,7 +880,8 @@
         "whitelistOffHint": "The whitelist is off, so anyone can join.",
         "whitelistOn": "On",
         "whitelistRemove": "Remove from whitelist",
-        "worldSpawn": "World spawn"
+        "worldSpawn": "World spawn",
+        "crafting": "Crafting"
     },
     "serverProperties": {
         "allow-cheats": "Allow cheats",

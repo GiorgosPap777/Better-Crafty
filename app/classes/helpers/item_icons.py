@@ -58,6 +58,24 @@ SPRITES = {
     "_xp_background": "textures/gui/sprites/hud/experience_bar_background.png",
     "_xp_progress": "textures/gui/sprites/hud/experience_bar_progress.png",
 }
+# The game's default player skins, in the order it picks them from for a UUID
+# (slim ones first); kept for players without a skin of their own
+DEFAULT_SKINS = (
+    "alex",
+    "ari",
+    "efe",
+    "kai",
+    "makena",
+    "noor",
+    "steve",
+    "sunny",
+    "zuri",
+)
+for _model in ("slim", "wide"):
+    for _name in DEFAULT_SKINS:
+        SPRITES[f"_skin_{_model}_{_name}"] = (
+            f"textures/entity/player/{_model}/{_name}.png"
+        )
 # Light directions of the game's inventory lighting for 3D items
 LIGHTS = ((-0.2225, 0.1715, 0.9597), (-0.215, 0.9718, 0.0966))
 

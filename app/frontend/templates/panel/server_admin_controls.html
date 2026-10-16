@@ -63,7 +63,7 @@
     'topUsed', 'allStats', 'searchStats', 'category', 'statistic', 'value', 'general', 'searchToSeeMore',
     'noAdvancements', 'advancementsDone', 'advancement', 'completed', 'tabEnderChest', 'itemPicturesOffer',
     'itemPicturesButton', 'itemPicturesAskAdmin', 'itemPicturesDownloading', 'itemPicturesDrawing',
-    'itemPicturesFailed', 'itemPicturesRetry', 'itemPicturesFrom', 'itemPicturesUpdate', 'moreItems']}) %};
+    'itemPicturesFailed', 'itemPicturesRetry', 'itemPicturesFrom', 'itemPicturesUpdate', 'moreItems', 'crafting']}) %};
   const playerSuperUser = {% raw json_encode(bool(data['superuser'])) %};
   let overview = {% raw json_encode(data['player_overview']) %};
   let refreshTimer = null;
@@ -821,34 +821,38 @@
 
   function mcHud(profile) {
     const hud = $('<div class="mc-hud"></div>');
-    if (profile.health != null) {
-      const health = Math.ceil(profile.health);
-      const hearts = Math.min(20, Math.ceil(Math.max(profile.max_health || 20, health) / 2));
-      const label = `${playerText.health}: ${formatDecimal(profile.health)} / ${formatDecimal(profile.max_health)}`;
-      const row = $('<div class="mc-hearts" role="img"></div>').attr({ "aria-label": label, title: label });
-      for (let i = 0; i < hearts; i++) {
-        row.append(hudIcon("_heart_container", health >= i * 2 + 2 ? "_heart_full" : health === i * 2 + 1 ? "_heart_half" : null));
-      }
-      hud.append(row);
-    }
-    if (profile.food != null) {
-      const label = `${playerText.food}: ${profile.food} / 20`;
-      const row = $('<div class="mc-food" role="img"></div>').attr({ "aria-label": label, title: label });
-      for (let i = 0; i < 10; i++) {
-        const left = profile.food - i * 2;
-        row.append(hudIcon("_food_empty", left >= 2 ? "_food_full" : left === 1 ? "_food_half" : null));
-      }
-      hud.append(row);
-    }
     if (profile.xp_level != null) {
       const label = `${playerText.experience}: ${playerText.level} ${profile.xp_level}`;
       const xp = $('<div class="mc-xp" role="img"></div>').attr({ "aria-label": label, title: label });
       const progress = Math.max(0, Math.min(1, profile.xp_progress || 0));
       xp.css("background-image", `url("${iconUrl("_xp_background")}")`).append($("<span></span>")
-        .css({ width: `${progress * 100}%`, "background-image": `url("${iconUrl("_xp_progress")}")` }));
+        .css({ "clip-path": `inset(0 ${100 - progress * 100}% 0 0)`, "background-image": `url("${iconUrl("_xp_progress")}")` }));
       if (profile.xp_level > 0) hud.append($('<div class="mc-xp-level" aria-hidden="true"></div>').text(profile.xp_level));
       hud.append(xp);
     }
+    const row = $('<div class="mc-hud-row"></div>');
+    if (profile.health != null) {
+      const health = Math.ceil(profile.health);
+      const hearts = Math.min(20, Math.ceil(Math.max(profile.max_health || 20, health) / 2));
+      const label = `${playerText.health}: ${formatDecimal(profile.health)} / ${formatDecimal(profile.max_health)}`;
+      const icons = $('<div class="mc-hearts" role="img"></div>').attr({ "aria-label": label, title: label });
+      for (let i = 0; i < hearts; i++) {
+        icons.append(hudIcon("_heart_container", health >= i * 2 + 2 ? "_heart_full" : health === i * 2 + 1 ? "_heart_half" : null));
+      }
+      row.append(icons);
+    }
+    if (profile.food != null) {
+      const label = `${playerText.food}: ${profile.food} / 20`;
+      const icons = $('<div class="mc-food" role="img"></div>').attr({ "aria-label": label, title: label });
+      for (let i = 0; i < 10; i++) {
+        const left = profile.food - i * 2;
+        icons.append(hudIcon("_food_empty", left >= 2 ? "_food_full" : left === 1 ? "_food_half" : null));
+      }
+      // Food stays on the right without health
+      if (profile.health == null) row.append("<span></span>");
+      row.append(icons);
+    }
+    if (row.children().length) hud.append(row);
     return hud;
   }
 
@@ -882,17 +886,223 @@
     for (const key of ["head", "chest", "legs", "feet"]) {
       armor.append(mcSlot(details.equipment[key], info, { placeholder: ARMOR_SPRITES[key], label: playerText[key] }));
     }
-    const player = $('<div class="mc-player"></div>').append(
+    const text = $('<div class="mc-player-text"></div>').append(
       $('<span class="mc-player-name"></span>').text(currentPlayer.name || playerText.unknownName));
-    if (profile.game_mode) player.append($('<span class="mc-player-sub"></span>').text(playerText[profile.game_mode]));
-    if (profile.dimension) player.append($('<span class="mc-player-sub"></span>').text(dimensionName(profile.dimension)));
+    if (profile.game_mode) text.append($('<span class="mc-player-sub"></span>').text(playerText[profile.game_mode]));
+    if (profile.dimension) text.append($('<span class="mc-player-sub"></span>').text(dimensionName(profile.dimension)));
+    const player = $('<div class="mc-player"></div>').append(text);
+    showSkin(player, details.uuid);
     const offhand = $('<div class="mc-offhand"></div>').append(
       mcSlot(details.equipment.offhand, info, { placeholder: "_slot_shield", label: playerText.offhand }));
+    // The player's own crafting grid, always empty in saved data
+    const crafting = $('<div class="mc-grid mc-crafting" aria-hidden="true"></div>');
+    for (let i = 0; i < 4; i++) crafting.append(mcSlot(null, null));
     const panel = mcPanel("mc-inventory").append(
-      $('<div class="mc-top"></div>').append(armor, player, offhand, mcHud(profile)),
+      $('<div class="mc-top"></div>').append(armor, player, offhand,
+        $('<div class="mc-crafting-label" aria-hidden="true"></div>').text(playerText.crafting), crafting,
+        '<div class="mc-arrow" aria-hidden="true"></div>', $('<div class="mc-result" aria-hidden="true"></div>').append(mcSlot(null, null))),
       mcGrid(bySlot, 9, 35, info),
       mcGrid(bySlot, 0, 8, info, details.profile ? details.profile.selected_slot : null).addClass("mc-hotbar"));
-    pane.append($('<div class="mc-wrap"></div>').append(panel, info), iconNotice());
+    const column = $('<div class="mc-column"></div>').append(panel, mcHud(profile));
+    pane.append($('<div class="mc-wrap"></div>').append(column, info), iconNotice());
+  }
+
+  // ---- The player's skin, drawn as the game draws the player in the inventory
+
+  const skinCache = new Map();
+
+  function loadSkin(uuid) {
+    const key = `${uuid}|${itemIcons.made}`;
+    if (!skinCache.has(key)) {
+      if (skinCache.size > 50) skinCache.clear();
+      skinCache.set(key, (async () => {
+        const res = await fetch(`/api/v2/servers/${encodeURIComponent(playerServerId)}/players/${encodeURIComponent(uuid)}/skin?v=${encodeURIComponent(itemIcons.made)}`);
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const slim = res.headers.get("X-Skin-Model") === "slim";
+        const bitmap = await createImageBitmap(await res.blob());
+        if (bitmap.width !== 64 || bitmap.height !== 64) throw new Error("Not a 64x64 skin");
+        const canvas = document.createElement("canvas");
+        canvas.width = 64;
+        canvas.height = 64;
+        const ctx = canvas.getContext("2d");
+        ctx.drawImage(bitmap, 0, 0);
+        return { pixels: ctx.getImageData(0, 0, 64, 64).data, slim };
+      })());
+      // A failed load may work next time
+      skinCache.get(key).catch(() => skinCache.delete(key));
+    }
+    return skinCache.get(key);
+  }
+
+  function showSkin(box, uuid) {
+    if (!uuid || typeof createImageBitmap !== "function") return;
+    box.addClass("mc-loading");
+    loadSkin(uuid).then(skin => {
+      box.removeClass("mc-loading");
+      if (!box[0].isConnected) return;
+      const canvas = $('<canvas aria-hidden="true"></canvas>').prependTo(box)[0];
+      box.addClass("mc-has-skin");
+      followMouse(canvas, skin);
+    }).catch(() => box.removeClass("mc-loading"));
+  }
+
+  // Redraw as the pointer moves, like the game; stops once the box is gone
+  function followMouse(canvas, skin) {
+    let mouse = null, frame = 0;
+    const draw = () => {
+      frame = 0;
+      if (!canvas.isConnected) return stop();
+      const rect = canvas.getBoundingClientRect();
+      if (!rect.width) return;
+      const unit = rect.width / 49;
+      const dx = mouse ? (mouse.x - rect.left) / unit - 24.5 : 0;
+      const dy = mouse ? (mouse.y - rect.top) / unit - 35 : 0;
+      drawSkin(canvas, skin, Math.round(rect.width * (window.devicePixelRatio || 1)), dx, dy);
+    };
+    const later = () => { if (!frame) frame = requestAnimationFrame(draw); };
+    const move = event => {
+      if (event.pointerType === "mouse" || event.buttons) {
+        mouse = { x: event.clientX, y: event.clientY };
+        later();
+      }
+    };
+    const resize = new ResizeObserver(later);
+    function stop() {
+      document.removeEventListener("pointermove", move);
+      resize.disconnect();
+    }
+    document.addEventListener("pointermove", move, { passive: true });
+    resize.observe(canvas);
+    later();
+  }
+
+  const rotX = a => { const c = Math.cos(a), s = Math.sin(a); return [1, 0, 0, 0, c, -s, 0, s, c]; };
+  const rotY = a => { const c = Math.cos(a), s = Math.sin(a); return [c, 0, s, 0, 1, 0, -s, 0, c]; };
+  const rotZ = a => { const c = Math.cos(a), s = Math.sin(a); return [c, -s, 0, s, c, 0, 0, 0, 1]; };
+
+  function matMul(a, b) {
+    const out = [];
+    for (let r = 0; r < 3; r++) {
+      for (let c = 0; c < 3; c++) out.push(a[r * 3] * b[c] + a[r * 3 + 1] * b[3 + c] + a[r * 3 + 2] * b[6 + c]);
+    }
+    return out;
+  }
+
+  const matApply = (m, v) => [m[0] * v[0] + m[1] * v[1] + m[2] * v[2], m[3] * v[0] + m[4] * v[1] + m[5] * v[2],
+    m[6] * v[0] + m[7] * v[1] + m[8] * v[2]];
+
+  // The player model in skin pixels: x to the player's left, y up from the
+  // feet, z to the front. [x, y, z, width, height, depth, u, v, outer u, outer v, grow]
+  function skinParts(slim, head, arms) {
+    const arm = slim ? 3 : 4;
+    return [
+      { box: [-4, 24, -4, 8, 8, 8, 0, 0, 32, 0, 0.5], turn: head, pivot: [0, 24, 0] },
+      { box: [-4, 12, -2, 8, 12, 4, 16, 16, 16, 32, 0.25] },
+      { box: [-4 - arm, 12, -2, arm, 12, 4, 40, 16, 40, 32, 0.25], turn: arms[0], pivot: [-5, 22, 0] },
+      { box: [4, 12, -2, arm, 12, 4, 32, 48, 48, 48, 0.25], turn: arms[1], pivot: [5, 22, 0] },
+      { box: [-3.9, 0, -2, 4, 12, 4, 0, 16, 0, 32, 0.25] },
+      { box: [-0.1, 0, -2, 4, 12, 4, 16, 48, 0, 48, 0.25] },
+    ];
+  }
+
+  // The six faces of a box: corner, the two edges, texture rectangle, normal
+  function boxFaces(x0, y0, z0, x1, y1, z1, w, h, d, u, v) {
+    const W = x1 - x0, H = y1 - y0, D = z1 - z0;
+    return [
+      [[x0, y1, z1], [W, 0, 0], [0, -H, 0], [u + d, v + d, w, h], [0, 0, 1]],
+      [[x1, y1, z0], [-W, 0, 0], [0, -H, 0], [u + 2 * d + w, v + d, w, h], [0, 0, -1]],
+      [[x0, y1, z0], [0, 0, D], [0, -H, 0], [u, v + d, d, h], [-1, 0, 0]],
+      [[x1, y1, z1], [0, 0, -D], [0, -H, 0], [u + d + w, v + d, d, h], [1, 0, 0]],
+      [[x0, y1, z0], [W, 0, 0], [0, 0, D], [u + d, v, w, d], [0, 1, 0]],
+      [[x0, y0, z0], [W, 0, 0], [0, 0, D], [u + d + w, v, w, d], [0, -1, 0]],
+    ];
+  }
+
+  const LIGHT = (() => { const l = [0.2, 0.3, 1], n = Math.hypot(...l); return l.map(x => x / n); })();
+
+  // Draw the player with a depth buffer, as the game would in a 49x70 box
+  function drawSkin(canvas, skin, width, dx, dy) {
+    const height = Math.round(width * 70 / 49);
+    if (canvas.width !== width || canvas.height !== height) {
+      canvas.width = width;
+      canvas.height = height;
+    }
+    const ctx = canvas.getContext("2d");
+    const image = ctx.createImageData(width, height);
+    const out = image.data;
+    const depth = new Float32Array(width * height).fill(-Infinity);
+    const degrees = Math.PI / 180;
+    const turn = Math.atan(dx / 40) * 20 * degrees;
+    const tilt = Math.atan(dy / 40) * 20 * degrees;
+    const world = matMul(rotX(tilt), rotY(turn));
+    const parts = skinParts(skin.slim, matMul(rotY(turn), rotX(tilt)), [rotZ(-0.05), rotZ(0.05)]);
+    const scale = width / 49, unit = 30 * 0.9375 / 16;
+    const pixels = skin.pixels;
+    const faces = [];
+    for (const outer of [false, true]) {
+      for (const part of parts) {
+        const [x, y, z, w, h, d, u, v, ou, ov, grow] = part.box;
+        const g = outer ? grow : 0;
+        const local = part.turn || null;
+        const place = point => {
+          let p = point;
+          if (local) {
+            const q = matApply(local, [p[0] - part.pivot[0], p[1] - part.pivot[1], p[2] - part.pivot[2]]);
+            p = [q[0] + part.pivot[0], q[1] + part.pivot[1], q[2] + part.pivot[2]];
+          }
+          return matApply(world, p);
+        };
+        const turnOnly = vec => matApply(world, local ? matApply(local, vec) : vec);
+        for (const [corner, along, down, tex, normal] of boxFaces(x - g, y - g, z - g, x + w + g, y + h + g, z + d + g,
+          w, h, d, outer ? ou : u, outer ? ov : v)) {
+          const n = turnOnly(normal);
+          // The inside layer is solid, so only its faces that look this way show
+          if (!outer && n[2] <= 0) continue;
+          const o = place(corner);
+          const a = turnOnly(along), b = turnOnly(down);
+          const light = Math.min(1, 0.5 + 0.55 * Math.max(0, n[0] * LIGHT[0] + n[1] * LIGHT[1] + n[2] * LIGHT[2])
+            + 0.25 * Math.max(0, n[1]));
+          faces.push({ o, a, b, tex, light, outer, mid: o[2] + (a[2] + b[2]) / 2 });
+        }
+      }
+    }
+    // Inside layer first, then the outer layer from back to front
+    faces.sort((f, g) => (f.outer - g.outer) || (f.outer ? f.mid - g.mid : 0));
+    for (const face of faces) {
+      // Screen positions in canvas pixels
+      const ox = (24.5 + unit * face.o[0]) * scale, oy = (63.875 - unit * face.o[1]) * scale;
+      const ax = unit * face.a[0] * scale, ay = -unit * face.a[1] * scale;
+      const bx = unit * face.b[0] * scale, by = -unit * face.b[1] * scale;
+      const det = ax * by - ay * bx;
+      if (Math.abs(det) < 1e-6) continue;
+      const xs = [ox, ox + ax, ox + bx, ox + ax + bx], ys = [oy, oy + ay, oy + by, oy + ay + by];
+      const left = Math.max(0, Math.floor(Math.min(...xs))), right = Math.min(width - 1, Math.ceil(Math.max(...xs)));
+      const top = Math.max(0, Math.floor(Math.min(...ys))), bottom = Math.min(height - 1, Math.ceil(Math.max(...ys)));
+      const [tu, tv, tw, th] = face.tex;
+      for (let py = top; py <= bottom; py++) {
+        for (let px = left; px <= right; px++) {
+          const rx = px + 0.5 - ox, ry = py + 0.5 - oy;
+          const s = (rx * by - ry * bx) / det, t = (ax * ry - ay * rx) / det;
+          if (s < -1e-4 || s > 1 + 1e-4 || t < -1e-4 || t > 1 + 1e-4) continue;
+          const z = face.o[2] + s * face.a[2] + t * face.b[2];
+          const at = py * width + px;
+          if (z <= depth[at]) continue;
+          const texel = ((tv + Math.min(th - 1, Math.max(0, Math.floor(t * th)))) * 64
+            + tu + Math.min(tw - 1, Math.max(0, Math.floor(s * tw)))) * 4;
+          const alpha = pixels[texel + 3] / 255;
+          if (alpha === 0) continue;
+          const i = at * 4;
+          const behind = out[i + 3] / 255 * (1 - alpha);
+          const total = alpha + behind;
+          for (let c = 0; c < 3; c++) {
+            out[i + c] = (pixels[texel + c] * face.light * alpha + out[i + c] * behind) / total;
+          }
+          out[i + 3] = total * 255;
+          depth[at] = z;
+        }
+      }
+    }
+    ctx.putImageData(image, 0, 0);
   }
 
   function renderEnderPictures(pane, details) {

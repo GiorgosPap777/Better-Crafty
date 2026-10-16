@@ -465,6 +465,10 @@ button.inv-slot:focus-visible {
     -webkit-touch-callout: none;
 }
 
+.mc-hud {
+    --p: 2px;
+}
+
 .mc-contents {
     --p: 2px;
     margin-top: 0.75rem;
@@ -472,7 +476,8 @@ button.inv-slot:focus-visible {
 }
 
 @supports (width: 1cqw) {
-    .mc-panel {
+    .mc-panel,
+    .mc-hud {
         --p: min(3px, 100cqw / 178);
     }
 
@@ -482,7 +487,8 @@ button.inv-slot:focus-visible {
 }
 
 @supports (width: round(down, 1cqw, 1px)) {
-    .mc-panel {
+    .mc-panel,
+    .mc-hud {
         --p: min(3px, max(round(down, 100cqw / 178, 1px), min(2px, 100cqw / 178)));
     }
 
@@ -496,24 +502,31 @@ button.inv-slot:focus-visible {
     font-size: max(0.75rem, calc(var(--p) * 6));
 }
 
+/* The top of the game's inventory, placed as in its picture */
 .mc-top {
-    display: flex;
+    position: relative;
     height: calc(var(--p) * 72);
     margin-bottom: calc(var(--p) * 4);
 }
 
+.mc-top > * {
+    position: absolute;
+}
+
 .mc-armor {
-    display: flex;
-    flex-direction: column;
+    left: 0;
+    top: 0;
 }
 
 .mc-player {
+    left: calc(var(--p) * 18);
+    top: 0;
     display: flex;
     flex-direction: column;
     justify-content: flex-end;
     gap: calc(var(--p) * 1.5);
-    width: calc(var(--p) * 39);
-    margin-left: var(--p);
+    width: calc(var(--p) * 51);
+    height: calc(var(--p) * 72);
     padding: calc(var(--p) * 3);
     border: var(--p) solid;
     border-color: #373737 #fff #fff #373737;
@@ -522,6 +535,30 @@ button.inv-slot:focus-visible {
     font-size: max(0.65rem, calc(var(--p) * 5));
     overflow: hidden;
     overflow-wrap: anywhere;
+}
+
+.mc-player canvas {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+}
+
+/* Kept for screen readers once the skin is drawn */
+.mc-player.mc-has-skin .mc-player-text,
+.mc-player.mc-loading .mc-player-text {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+}
+
+.mc-player-text {
+    display: flex;
+    flex-direction: column;
+    gap: calc(var(--p) * 1.5);
 }
 
 .mc-player-name {
@@ -533,24 +570,73 @@ button.inv-slot:focus-visible {
 }
 
 .mc-offhand {
-    display: flex;
-    align-items: flex-end;
-    margin-left: var(--p);
+    left: calc(var(--p) * 69);
+    top: calc(var(--p) * 54);
 }
 
+.mc-crafting-label {
+    left: calc(var(--p) * 90);
+    top: calc(var(--p) * -1);
+    max-width: calc(var(--p) * 72);
+    overflow: hidden;
+    font-size: max(0.75rem, calc(var(--p) * 6));
+    line-height: 1.15;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+}
+
+.mc-grid.mc-crafting {
+    left: calc(var(--p) * 90);
+    top: calc(var(--p) * 10);
+    grid-template-columns: repeat(2, var(--s));
+}
+
+.mc-arrow {
+    left: calc(var(--p) * 128);
+    top: calc(var(--p) * 22);
+    width: calc(var(--p) * 16);
+    height: calc(var(--p) * 13);
+    background: #8b8b8b;
+    clip-path: polygon(0 38.46%, 56.25% 38.46%, 56.25% 0, 62.5% 0, 62.5% 7.69%, 68.75% 7.69%, 68.75% 15.38%,
+        75% 15.38%, 75% 23.08%, 81.25% 23.08%, 81.25% 30.77%, 87.5% 30.77%, 87.5% 38.46%, 93.75% 38.46%,
+        93.75% 46.15%, 100% 46.15%, 100% 53.85%, 93.75% 53.85%, 93.75% 61.54%, 87.5% 61.54%, 87.5% 69.23%,
+        81.25% 69.23%, 81.25% 76.92%, 75% 76.92%, 75% 84.62%, 68.75% 84.62%, 68.75% 92.31%, 62.5% 92.31%,
+        62.5% 100%, 56.25% 100%, 56.25% 61.54%, 0 61.54%);
+}
+
+.mc-result {
+    left: calc(var(--p) * 146);
+    top: calc(var(--p) * 20);
+}
+
+/* The inventory with health, food and experience under it, as the game
+   shows them over the hotbar: level and bar, then hearts and food */
+.mc-column {
+    flex: none;
+    width: max-content;
+    max-width: 100%;
+}
+
+/* As wide as the inventory, which sets the width of the column */
 .mc-hud {
     display: flex;
     flex-direction: column;
-    justify-content: flex-end;
-    gap: calc(var(--p) * 2);
-    width: calc(var(--p) * 81);
-    margin-left: calc(var(--p) * 4);
+    width: 100%;
+    margin-top: calc(var(--p) * 3);
+}
+
+.mc-hud-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    margin-top: calc(var(--p) * 2);
 }
 
 .mc-hearts,
 .mc-food {
     display: flex;
     flex-wrap: wrap-reverse;
+    width: calc(var(--p) * 81);
 }
 
 .mc-food {
@@ -572,6 +658,7 @@ button.inv-slot:focus-visible {
 }
 
 .mc-xp-level {
+    position: relative;
     align-self: center;
     margin-bottom: calc(var(--p) * -2);
     color: #80ff20;
@@ -582,7 +669,7 @@ button.inv-slot:focus-visible {
 }
 
 .mc-xp {
-    height: calc(var(--p) * 3);
+    height: calc(var(--p) * 5);
     background-size: 100% 100%;
     image-rendering: pixelated;
 }
@@ -590,7 +677,7 @@ button.inv-slot:focus-visible {
 .mc-xp span {
     display: block;
     height: 100%;
-    background-size: calc(var(--p) * 81) 100%;
+    background-size: 100% 100%;
     image-rendering: pixelated;
 }
 

@@ -1,6 +1,7 @@
-// Item pictures in the player details window: the game-style inventory,
-// tooltip, shulker contents, the ender chest, phone width, and the offer to
-// make the pictures (faked with page.route so nothing is downloaded).
+// Item pictures in the player details window: the game-style inventory with
+// the player's skin and the health, food and experience under it, tooltip,
+// shulker contents, the ender chest, phone width, and the offer to make the
+// pictures (faked with page.route so nothing is downloaded).
 //
 // Needs pictures in <Crafty>/app/config/item_icons: a super user presses
 // "Show item pictures" once, or see "Item pictures" in handoff.md.
@@ -48,14 +49,51 @@ async function pictures(p, pane) {
   ok((await p.request.get(`${BASE}/api/v2/crafty/item_icons/no_such_item.png`, auth)).status() === 404, 'missing picture is 404');
   ok((await p.request.get(`${BASE}/api/v2/crafty/item_icons/Bad.png`, auth)).status() === 404, 'odd names do not match the route');
 
+  // Skins: Notch has a Mojang UUID (his own skin with internet, else the
+  // default the game gives him); only players of this server are looked up
+  const skinUrl = uuid => `${BASE}/api/v2/servers/${S1}/players/${uuid}/skin`;
+  const skin = await p.request.get(skinUrl('069a79f4-44e9-4726-a5be-fca90e38aaf5'), auth);
+  ok(skin.status() === 200 && skin.headers()['content-type'] === 'image/png' && /^(wide|slim)$/.test(skin.headers()['x-skin-model']),
+    'skin served: ' + skin.headers()['x-skin-model']);
+  ok((await p.request.get(skinUrl('00000000-0000-4000-8000-000000000000'), auth)).status() === 404, 'no skin for strangers');
+  // Node's fetch has no login cookie, unlike p.request
+  ok((await fetch(skinUrl('069a79f4-44e9-4726-a5be-fca90e38aaf5'))).status === 403, 'skin needs a login');
+
   // Inventory
   await openPlayer(p, 'Notch', '#player_tab_inventory');
   await p.waitForTimeout(500);
   const inv = await pictures(p, '#player_tab_inventory');
-  ok(inv.slots === 41, `41 slots (${inv.slots})`);
+  // 41 of the player's and 5 of the crafting grid
+  ok(inv.slots === 46, `46 slots (${inv.slots})`);
   console.log('pictures:', inv.pictures, 'names instead:', inv.names);
   ok(await p.$$eval('#player_tab_inventory .mc-hud-icon', e => e.length) === 20, 'ten hearts and ten food');
   ok(await p.isVisible('#player_tab_inventory .mc-xp-level'), 'experience level shown');
+  const hud = await p.evaluate(() => {
+    const box = s => document.querySelector('#player_tab_inventory ' + s).getBoundingClientRect();
+    const panel = box('.mc-panel'), xp = box('.mc-xp'), hearts = box('.mc-hearts'), food = box('.mc-food');
+    return {
+      below: xp.top >= panel.bottom && hearts.top >= xp.bottom && food.top >= xp.bottom,
+      sides: Math.abs(hearts.left - panel.left) < 1 && Math.abs(food.right - panel.right) < 1,
+    };
+  });
+  ok(hud.below && hud.sides, 'level and bar under the inventory, then hearts left and food right ' + JSON.stringify(hud));
+  // The skin is drawn and turns to follow the pointer
+  await p.waitForSelector('#player_tab_inventory .mc-player.mc-has-skin canvas');
+  const drawn = () => p.$eval('#player_tab_inventory .mc-player canvas', c => {
+    const d = c.getContext('2d').getImageData(0, 0, c.width, c.height).data;
+    let filled = 0, sum = 0;
+    for (let i = 0; i < d.length; i += 4) if (d[i + 3]) { filled++; sum += (i / 4) % c.width; }
+    return { filled: filled / (d.length / 4), middle: sum / filled / c.width };
+  });
+  const box = await p.locator('#player_tab_inventory .mc-player').boundingBox();
+  await p.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+  await p.waitForTimeout(150);
+  const ahead = await drawn();
+  ok(ahead.filled > 0.15 && ahead.filled < 0.6, 'player drawn: ' + JSON.stringify(ahead));
+  await p.mouse.move(box.x + box.width / 2 + 400, box.y + box.height / 2);
+  await p.waitForTimeout(150);
+  const turned = await drawn();
+  ok(JSON.stringify(turned) !== JSON.stringify(ahead), 'player turns to the pointer: ' + JSON.stringify(turned));
   ok(await p.$$eval('#player_tab_inventory .mc-slot.mc-selected', e => e.length) === 1, 'selected hotbar slot marked');
   ok(await p.$$eval('#player_tab_inventory .mc-glint', e => e.length) >= 1, 'enchanted items shine');
   await p.locator('#player_tab_inventory .mc-wrap').screenshot({ path: OUT + 'icons_inventory.png' });
@@ -133,7 +171,7 @@ async function pictures(p, pane) {
   await p.locator('#player_tab_inventory .item-icons-notice').screenshot({ path: OUT + 'icons_progress.png' });
   fake = status.data;
   await p.waitForTimeout(2300);
-  ok(await p.$$eval('#player_tab_inventory .mc-slot', e => e.length) === 41, 'switches to pictures when they are done');
+  ok(await p.$$eval('#player_tab_inventory .mc-slot', e => e.length) === 46, 'switches to pictures when they are done');
   fake = { ...status.data, state: 'error', error: 'Network is unreachable' };
   await p.click('#player_tab_inventory .item-icons-notice button');
   await p.waitForTimeout(300);

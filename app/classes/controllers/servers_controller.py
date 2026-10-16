@@ -739,6 +739,15 @@ class ServersController(metaclass=Singleton):
         server_path = srv.stats_helper.get_server_stats()["server_id"]["path"]
         return player_data.player_details(server_path, uuid)
 
+    @staticmethod
+    def has_player(server_id, uuid: str) -> bool:
+        """Whether a Java server has saved data about this player."""
+        if HelperServers.get_server_type_by_id(server_id) != "minecraft-java":
+            return False
+        srv = ServersController().get_server_instance_by_id(server_id)
+        server_path = srv.stats_helper.get_server_stats()["server_id"]["path"]
+        return player_data.has_player(server_path, uuid)
+
     def check_for_old_logs(self):
         servers = HelperServers.get_all_defined_servers()
         for server in servers:

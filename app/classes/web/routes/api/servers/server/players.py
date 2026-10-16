@@ -1,5 +1,8 @@
 import logging
 
+import tornado.ioloop
+
+from app.classes.helpers.player_skins import PlayerSkins
 from app.classes.models.server_permissions import EnumPermissionsServer
 from app.classes.web.base_api_handler import BaseApiHandler
 
@@ -78,3 +81,25 @@ class ApiServersServerPlayerHandler(BaseApiHandler):
                 },
             )
         self.finish_json(200, {"status": "ok", "data": details})
+
+
+class ApiServersServerPlayerSkinHandler(BaseApiHandler):
+    """A player's skin for the inventory picture (needs the item pictures)."""
+
+    async def get(self, server_id: str, uuid: str):
+        if not _authorize_players(self, server_id):
+            return
+        # Only players of this server, so Crafty never looks up anyone else
+        if not self.controller.servers.has_player(server_id, uuid):
+            self.set_status(404)
+            return self.finish()
+        found = await tornado.ioloop.IOLoop.current().run_in_executor(
+            None, PlayerSkins.get(self.helper.config_dir).skin, uuid
+        )
+        if found is None:
+            self.set_status(404)
+            return self.finish()
+        self.set_header("Content-Type", "image/png")
+        self.set_header("X-Skin-Model", found[1])
+        self.set_header("Cache-Control", "private, max-age=3600")
+        self.finish(found[0])
