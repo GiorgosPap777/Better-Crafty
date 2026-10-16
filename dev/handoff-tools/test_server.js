@@ -1,13 +1,14 @@
-const { chromium } = require('/opt/node22/lib/node_modules/playwright');
+const L = require('./local');
+const { chromium } = L;
 const fs = require('fs');
-const SP = __dirname, BASE = 'https://localhost:8443';
-const TOKEN = fs.readFileSync(SP + '/token', 'utf8').trim();
-const S2 = '15673394-a460-4bc9-aee6-61150b6853c3';
+const SP = __dirname, BASE = L.BASE;
+const TOKEN = L.token();
+const S2 = L.S2;
 const ok = (c, m) => console.log((c ? 'PASS ' : 'FAIL ') + m);
 (async () => {
-  const browser = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium-1194/chrome-linux/chrome' });
+  const browser = await chromium.launch(L.launchOptions);
   const ctx = await browser.newContext({ viewport: { width: 1440, height: 900 }, ignoreHTTPSErrors: true });
-  await ctx.addCookies([{ name: 'token', value: TOKEN, domain: 'localhost', path: '/', secure: true }]);
+  await ctx.addCookies([{ name: 'token', value: TOKEN, domain: L.HOST, path: '/', secure: true }]);
   const p = await ctx.newPage();
   const errors = [];
   p.on('pageerror', e => { if (!/ServiceWorker/.test(e.message)) errors.push(e.message); });

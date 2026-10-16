@@ -1,13 +1,14 @@
-const { chromium } = require('/opt/node22/lib/node_modules/playwright');
+const L = require('./local');
+const { chromium } = L;
 const fs = require('fs');
-const TOKEN = fs.readFileSync(__dirname + '/token', 'utf8').trim();
-const BASE = 'https://localhost:8443';
-const S1 = '669ae1ce-61fa-498d-9782-6f3bb1804313', S2 = '15673394-a460-4bc9-aee6-61150b6853c3';
+const TOKEN = L.token();
+const BASE = L.BASE;
+const S1 = L.S1, S2 = L.S2;
 const ok = (c, m) => console.log((c ? 'PASS ' : 'FAIL ') + m);
 (async () => {
-  const b = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium-1194/chrome-linux/chrome' });
+  const b = await chromium.launch(L.launchOptions);
   const ctx = await b.newContext({ viewport: { width: 1440, height: 900 }, ignoreHTTPSErrors: true });
-  await ctx.addCookies([{ name: 'token', value: TOKEN, domain: 'localhost', path: '/', secure: true }]);
+  await ctx.addCookies([{ name: 'token', value: TOKEN, domain: L.HOST, path: '/', secure: true }]);
   const p = await ctx.newPage();
   const errs = []; p.on('pageerror', e => { if (!/ServiceWorker/.test(e.message)) errs.push(e.message); });
   await p.goto(`${BASE}/panel/server_detail?id=${S1}&subpage=logs`, { waitUntil: 'networkidle' });

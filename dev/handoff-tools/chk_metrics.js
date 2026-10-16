@@ -1,13 +1,14 @@
-const { chromium } = require('/opt/node22/lib/node_modules/playwright');
+const L = require('./local');
+const { chromium } = L;
 const fs = require('fs');
-const TOKEN = fs.readFileSync(__dirname + '/token', 'utf8').trim();
+const TOKEN = L.token();
 (async () => {
-  const b = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium-1194/chrome-linux/chrome' });
+  const b = await chromium.launch(L.launchOptions);
   const ctx = await b.newContext({ viewport: { width: 1440, height: 900 }, ignoreHTTPSErrors: true });
-  await ctx.addCookies([{ name: 'token', value: TOKEN, domain: 'localhost', path: '/', secure: true }]);
+  await ctx.addCookies([{ name: 'token', value: TOKEN, domain: L.HOST, path: '/', secure: true }]);
   const p = await ctx.newPage();
   const errs = []; p.on('pageerror', e => { if (!/ServiceWorker/.test(e.message)) errs.push(e.message); });
-  await p.goto('https://localhost:8443/panel/server_detail?id=669ae1ce-61fa-498d-9782-6f3bb1804313&subpage=metrics', { waitUntil: 'networkidle' });
+  await p.goto(`${L.BASE}/panel/server_detail?id=${L.S1}&subpage=metrics`, { waitUntil: 'networkidle' });
   const r = await p.evaluate(() => {
     const c = charts[0]; const { min, max } = c.scales.x; const mid = (min + max) / 2;
     c.zoomScale('x', { min: mid, max }, 'none'); syncTimeAxis(c);

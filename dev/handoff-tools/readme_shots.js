@@ -1,10 +1,11 @@
 // README screenshots. Usage: node readme_shots.js <before|after> <outdir> [name...]
-const { chromium } = require('/opt/node22/lib/node_modules/playwright');
+const L = require('./local');
+const { chromium } = L;
 const fs = require('fs');
-const BASE = 'https://localhost:8443';
-const TOKEN = fs.readFileSync(__dirname + '/token', 'utf8').trim();
-const S1 = '669ae1ce-61fa-498d-9782-6f3bb1804313';
-const B1 = 'be668426-9dad-4194-92f2-87d0d4fd6575';
+const BASE = L.BASE;
+const TOKEN = L.token();
+const S1 = L.S1;
+const B1 = L.B1;
 const [which, outDir, ...only] = process.argv.slice(2);
 const DESK = { width: 1280, height: 800 }, PHONE = { width: 390, height: 844 };
 const server = sub => `/panel/server_detail?id=${S1}&subpage=${sub}`;
@@ -62,12 +63,12 @@ const SHOTS = [
 
 (async () => {
   fs.mkdirSync(outDir, { recursive: true });
-  const browser = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium-1194/chrome-linux/chrome' });
+  const browser = await chromium.launch(L.launchOptions);
   for (const shot of SHOTS) {
     if (only.length && !only.includes(shot.name)) continue;
     if (shot.afterOnly && which !== 'after') continue;
     const ctx = await browser.newContext({ viewport: shot.vp, deviceScaleFactor: 1, ignoreHTTPSErrors: true, isMobile: shot.vp === PHONE, hasTouch: shot.vp === PHONE });
-    if (shot.auth !== false) await ctx.addCookies([{ name: 'token', value: TOKEN, domain: 'localhost', path: '/', secure: true }]);
+    if (shot.auth !== false) await ctx.addCookies([{ name: 'token', value: TOKEN, domain: L.HOST, path: '/', secure: true }]);
     const p = await ctx.newPage();
     await p.goto(BASE + shot.url, { waitUntil: 'load' });
     await p.waitForTimeout(3500);

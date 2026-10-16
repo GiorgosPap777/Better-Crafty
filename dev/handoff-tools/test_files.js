@@ -1,13 +1,14 @@
-const { chromium } = require('/opt/node22/lib/node_modules/playwright');
+const L = require('./local');
+const { chromium } = L;
 const fs = require('fs');
-const SP = __dirname, BASE = 'https://localhost:8443';
-const TOKEN = fs.readFileSync(SP + '/token', 'utf8').trim();
-const S1 = '669ae1ce-61fa-498d-9782-6f3bb1804313', B1 = 'be668426-9dad-4194-92f2-87d0d4fd6575';
+const SP = __dirname, BASE = L.BASE;
+const TOKEN = L.token();
+const S1 = L.S1, B1 = L.B1;
 const ok = (c, m) => console.log((c ? 'PASS ' : 'FAIL ') + m);
 (async () => {
-  const browser = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium-1194/chrome-linux/chrome' });
+  const browser = await chromium.launch(L.launchOptions);
   const ctx = await browser.newContext({ viewport: { width: 1440, height: 900 }, ignoreHTTPSErrors: true });
-  await ctx.addCookies([{ name: 'token', value: TOKEN, domain: 'localhost', path: '/', secure: true }]);
+  await ctx.addCookies([{ name: 'token', value: TOKEN, domain: L.HOST, path: '/', secure: true }]);
   const p = await ctx.newPage();
   const errs = [];
   p.on('pageerror', e => { if (!/ServiceWorker/.test(e.message)) errs.push(e.message); });
@@ -62,7 +63,7 @@ const ok = (c, m) => console.log((c ? 'PASS ' : 'FAIL ') + m);
   await p.keyboard.press('Escape');
 
   // Rename inside a folder whose name matches the file
-  await p.goto(`${BASE}/panel/server_detail?id=${S1}&subpage=files&dir=` + encodeURIComponent(`/home/crafty/run/servers/${S1}/world/data`), { waitUntil: 'networkidle' });
+  await p.goto(`${BASE}/panel/server_detail?id=${S1}&subpage=files&dir=` + encodeURIComponent(`${L.RUN}/servers/${S1}/world/data`), { waitUntil: 'networkidle' });
   await p.waitForTimeout(1000);
   const wrow = p.locator('#files-table-body tr', { hasText: 'world.txt' });
   if (await wrow.count()) {
@@ -82,8 +83,13 @@ const ok = (c, m) => console.log((c ? 'PASS ' : 'FAIL ') + m);
   await p.setInputFiles('#files', { name: 'κόσμος.txt', mimeType: 'text/plain', buffer: Buffer.from('γεια') });
   await p.click('.bootbox .modal-footer button');
   await p.waitForTimeout(4000);
-  const up = `/home/crafty/run/servers/${S1}/κόσμος.txt`;
+  const up = `${L.RUN}/servers/${S1}/κόσμος.txt`;
   ok(fs.existsSync(up) && fs.readFileSync(up, 'utf8') === 'γεια', 'upload with Greek file name works');
+
+  // Put server 1 back the way setup_testdata.py left it, so the test can run again
+  fs.rmSync(up, { force: true });
+  const data = `${L.RUN}/servers/${S1}/world/data`;
+  if (fs.existsSync(`${data}/renamed.txt`)) fs.renameSync(`${data}/renamed.txt`, `${data}/world.txt`);
 
   ok(errs.length === 0, 'no page errors ' + errs.join(' | '));
   await browser.close();

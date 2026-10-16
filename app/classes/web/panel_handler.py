@@ -1850,6 +1850,9 @@ class PanelHandler(BaseHandler):
             user_roles = self.get_user_roles()
             page_data["new_role"] = False
             role_id = self.get_argument("id", None)
+            if role_id is None or not self.controller.roles.role_id_exists(role_id):
+                self.redirect("/panel/error?error=Invalid Role ID")
+                return
             role = self.controller.roles.get_role(role_id)
             page_data["role"] = self.controller.roles.get_role_with_servers(role_id)
             if exec_user["superuser"]:
@@ -1892,9 +1895,6 @@ class PanelHandler(BaseHandler):
                 self.redirect(
                     "/panel/error?error=Unauthorized access: not a role editor"
                 )
-                return
-            if role_id is None:
-                self.redirect("/panel/error?error=Invalid Role ID")
                 return
 
             template = "panel/panel_edit_role.html"

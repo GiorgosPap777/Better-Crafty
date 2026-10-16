@@ -1,9 +1,10 @@
-// Terminal command suggestions E2E (desktop). Run with NODE_TLS_REJECT_UNAUTHORIZED=0
-const { chromium } = require('/opt/node22/lib/node_modules/playwright');
+// Terminal command suggestions E2E (desktop)
+const L = require('./local');
+const { chromium } = L;
 const fs = require('fs');
-const SP = __dirname, BASE = 'https://localhost:8443';
-const TOKEN = fs.readFileSync(SP + '/token', 'utf8').trim();
-const S1 = '669ae1ce-61fa-498d-9782-6f3bb1804313';
+const SP = __dirname, BASE = L.BASE;
+const TOKEN = L.token();
+const S1 = L.S1;
 const ok = (c, m) => console.log((c ? 'PASS ' : 'FAIL ') + m);
 const api = (path, opts = {}) => fetch(BASE + path, { ...opts, headers: { Authorization: 'Bearer ' + TOKEN } }).then(r => r.json());
 const sleep = ms => new Promise(r => setTimeout(r, ms));
@@ -14,9 +15,9 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
   for (let i = 0; i < 40 && !(stats = (await api(`/api/v2/servers/${S1}/stats`)).data).running; i++) await sleep(1000);
   for (let i = 0; i < 15 && stats.version === 'False'; i++) { await sleep(1000); stats = (await api(`/api/v2/servers/${S1}/stats`)).data; }
   console.log('server', stats.running, stats.version, stats.players);
-  const browser = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium-1194/chrome-linux/chrome' });
+  const browser = await chromium.launch(L.launchOptions);
   const ctx = await browser.newContext({ viewport: { width: 1440, height: 900 }, ignoreHTTPSErrors: true });
-  await ctx.addCookies([{ name: 'token', value: TOKEN, domain: 'localhost', path: '/', secure: true }]);
+  await ctx.addCookies([{ name: 'token', value: TOKEN, domain: L.HOST, path: '/', secure: true }]);
   const p = await ctx.newPage();
   const errs = [];
   p.on('pageerror', e => errs.push(e.message));
@@ -38,7 +39,10 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
   await p.keyboard.press('Tab');
   ok(await input.inputValue() === 'give ', 'Tab completes the command and adds a space');
   const players = await options();
-  ok(players.slice(0, 3).join() === 'Alex_Builder,jeb_,Kai' || /Online|online/.test(await p.$eval('.cmd-option-detail', e => e.textContent)), 'player names first, online then A to Z: ' + players.slice(0, 8));
+  // Names come before selectors, saved players A to Z (unless someone is online)
+  const names = players.slice(0, players.findIndex(t => t.startsWith('@')));
+  const sorted = [...names].sort((a, b) => a.localeCompare(b, undefined, { sensitivity: 'base' }));
+  ok((names.length >= 3 && names.join() === sorted.join()) || /Online|online/.test(await p.$eval('.cmd-option-detail', e => e.textContent)), 'player names first, online then A to Z: ' + players.slice(0, 8));
   ok(players.includes('Alex_Builder') && players.includes('@a') && !players.includes('@e'), 'saved players and player selectors');
   ok((await p.$$eval('.cmd-option-detail', e => e.map(x => x.textContent))).includes('All players'), '@a has its description');
   await p.keyboard.press('ArrowDown');
@@ -60,7 +64,7 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
   await p.keyboard.press('Enter');
   ok(await input.inputValue() === `give Steve ${picked} `, 'Enter after choosing completes: ' + await input.inputValue());
   ok(await usage() === '[<count>]' || await usage() === '<count>', 'count hint: ' + await usage());
-  await p.screenshot({ path: SP + '/complete_count.png' });
+  await p.screenshot({ path: SP + '/shots/complete_count.png' });
 
   await input.fill('pardon ');
   ok((await options()).join() === 'Griefer99', 'pardon offers banned players: ' + await options());
@@ -109,7 +113,7 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
   await input.fill('');
   await input.type('give @a minecraft:diamond_');
   await p.waitForTimeout(200);
-  await p.screenshot({ path: SP + '/complete_desktop.png' });
+  await p.screenshot({ path: SP + '/shots/complete_desktop.png' });
 
   // Phone
   await p.setViewportSize({ width: 390, height: 844 });
@@ -118,7 +122,7 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
   const box = await p.locator('.cmd-suggest').boundingBox();
   const sw = await p.evaluate(() => document.documentElement.scrollWidth);
   ok(box && box.x >= 0 && box.x + box.width <= 390 && sw <= 390, `fits a phone (${JSON.stringify(box)}, page ${sw})`);
-  await p.screenshot({ path: SP + '/complete_phone.png' });
+  await p.screenshot({ path: SP + '/shots/complete_phone.png' });
 
   const real = errs.filter(e => !/ServiceWorker|SSL certificate|424/.test(e));
   ok(!real.length, 'no page errors ' + JSON.stringify(real));

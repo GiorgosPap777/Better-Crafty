@@ -1,13 +1,13 @@
-const { chromium } = require('/opt/node22/lib/node_modules/playwright');
+const L = require('./local');
+const { chromium } = L;
 const fs = require('fs');
-const { execFileSync } = require('child_process');
 const SP = __dirname;
-const BASE = 'https://localhost:8443';
+const BASE = L.BASE;
 const mfa = JSON.parse(fs.readFileSync(SP + '/mfa.json'));
-const totp = () => execFileSync(SP + '/venv/bin/python', [SP + '/totp.py', SP + '/mfa.json']).toString().trim();
+const totp = () => L.totp(mfa.secret);
 const ok = (c, m) => console.log((c ? 'PASS ' : 'FAIL ') + m);
 (async () => {
-  const browser = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium-1194/chrome-linux/chrome' });
+  const browser = await chromium.launch(L.launchOptions);
   const newPage = async (vp) => {
     const ctx = await browser.newContext({ viewport: vp || { width: 1440, height: 900 }, ignoreHTTPSErrors: true });
     const page = await ctx.newPage();

@@ -1,15 +1,16 @@
 // Player management E2E: lists, empty states, XSS-safe names, commands
-const { chromium } = require('/opt/node22/lib/node_modules/playwright');
+const L = require('./local');
+const { chromium } = L;
 const fs = require('fs');
-const SP = __dirname, BASE = 'https://localhost:8443';
-const TOKEN = fs.readFileSync(SP + '/token', 'utf8').trim();
-const S1 = '669ae1ce-61fa-498d-9782-6f3bb1804313', S2 = '15673394-a460-4bc9-aee6-61150b6853c3';
+const SP = __dirname, BASE = L.BASE;
+const TOKEN = L.token();
+const S1 = L.S1, S2 = L.S2;
 const ok = (c, m) => console.log((c ? 'PASS ' : 'FAIL ') + m);
 const api = (path, opts = {}) => fetch(BASE + path, { ...opts, headers: { Authorization: 'Bearer ' + TOKEN } }).then(r => r.json());
 (async () => {
-  const browser = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium-1194/chrome-linux/chrome' });
+  const browser = await chromium.launch(L.launchOptions);
   const ctx = await browser.newContext({ viewport: { width: 1440, height: 900 }, ignoreHTTPSErrors: true });
-  await ctx.addCookies([{ name: 'token', value: TOKEN, domain: 'localhost', path: '/', secure: true }]);
+  await ctx.addCookies([{ name: 'token', value: TOKEN, domain: L.HOST, path: '/', secure: true }]);
   const p = await ctx.newPage();
   const errs = [];
   p.on('pageerror', e => { if (!/ServiceWorker/.test(e.message)) errs.push(e.message); });
@@ -17,7 +18,8 @@ const api = (path, opts = {}) => fetch(BASE + path, { ...opts, headers: { Author
 
   await p.goto(url(S1), { waitUntil: 'networkidle' });
   const rows = await p.$$eval('#player-body tr', trs => trs.map(t => t.innerText.replace(/\s+/g, ' ').trim()));
-  ok(rows.length === 4, 'four known players: ' + JSON.stringify(rows));
+  // The five players player_fixtures.py writes
+  ok(rows.length === 5, 'five known players: ' + JSON.stringify(rows));
   const online = rows.map(r => / Online/.test(r));
   ok(online.every((o, i) => i === 0 || !o || online[i - 1]), 'online players listed first');
   ok(await p.evaluate(() => window.__xss === undefined), 'player name is not run as HTML');
@@ -77,7 +79,7 @@ const api = (path, opts = {}) => fetch(BASE + path, { ...opts, headers: { Author
   ok(!(await p.isVisible('#whitelist_state')), 'no whitelist badge when unknown');
 
   const m = await browser.newContext({ viewport: { width: 390, height: 844 }, ignoreHTTPSErrors: true });
-  await m.addCookies([{ name: 'token', value: TOKEN, domain: 'localhost', path: '/', secure: true }]);
+  await m.addCookies([{ name: 'token', value: TOKEN, domain: L.HOST, path: '/', secure: true }]);
   const mp = await m.newPage();
   await mp.goto(url(S1), { waitUntil: 'networkidle' });
   await mp.screenshot({ path: SP + '/shots/players-mob.png', fullPage: true });

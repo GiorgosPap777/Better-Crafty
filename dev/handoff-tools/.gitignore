@@ -1,0 +1,8 @@
+# Written by setup_testdata.py and the scripts; specific to one machine
+token
+mfa.json
+backup_idx
+local.json
+shots/
+node_modules/
+package-lock.json

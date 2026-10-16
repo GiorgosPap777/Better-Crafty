@@ -1,10 +1,11 @@
 // Audit fixes E2E: schedule/webhook switches, restore errors, snapshot confirm, editor double save
-const { chromium } = require('/opt/node22/lib/node_modules/playwright');
+const L = require('./local');
+const { chromium } = L;
 const fs = require('fs');
-const SP = __dirname, BASE = 'https://localhost:8443';
-const TOKEN = fs.readFileSync(SP + '/token', 'utf8').trim();
-const S1 = '669ae1ce-61fa-498d-9782-6f3bb1804313';
-const B1 = 'be668426-9dad-4194-92f2-87d0d4fd6575';
+const SP = __dirname, BASE = L.BASE;
+const TOKEN = L.token();
+const S1 = L.S1;
+const B1 = L.B1;
 const ok = (c, m) => console.log((c ? 'PASS ' : 'FAIL ') + m);
 const api = (path, opts = {}) => fetch(BASE + path, { ...opts, headers: { Authorization: 'Bearer ' + TOKEN } }).then(r => r.json());
 const unwrap = r => (r && r.data && "enabled" in r.data ? r.data : r).enabled;
@@ -12,26 +13,30 @@ const taskEnabled = async id => unwrap(await api(`/api/v2/servers/${S1}/tasks/${
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 
 (async () => {
-  const browser = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium-1194/chrome-linux/chrome' });
+  const browser = await chromium.launch(L.launchOptions);
   const ctx = await browser.newContext({ viewport: { width: 1440, height: 900 }, ignoreHTTPSErrors: true });
-  await ctx.addCookies([{ name: 'token', value: TOKEN, domain: 'localhost', path: '/', secure: true }]);
+  await ctx.addCookies([{ name: 'token', value: TOKEN, domain: L.HOST, path: '/', secure: true }]);
   const p = await ctx.newPage();
   const errs = [];
   p.on('pageerror', e => { if (!/ServiceWorker/.test(e.message)) errs.push(e.message); });
 
   // --- Schedules
+  // A schedule of its own, so the test does not depend on what else is there
+  const sched = await api(`/api/v2/servers/${S1}/tasks/`, { method: 'POST', body: JSON.stringify({
+    name: 'Audit schedule', action: 'command', command: 'say hi', interval: 12, interval_type: 'hours' }) });
+  const SID = sched.data.schedule_id;
   await p.goto(`${BASE}/panel/server_detail?id=${S1}&subpage=schedules`, { waitUntil: 'networkidle' });
-  const sw = p.locator('#schedule_table .schedule-custom-toggle[data-schedule-id="1"]');
-  ok(await taskEnabled(1) === true, 'schedule 1 starts enabled');
+  const sw = p.locator(`#schedule_table .schedule-custom-toggle[data-schedule-id="${SID}"]`);
+  ok(await taskEnabled(SID) === true, 'new schedule starts enabled');
   ok(await sw.evaluate(e => e.classList.contains('active') && e.getAttribute('aria-pressed') === 'true'), 'switch shows on');
   let patch = p.waitForResponse(r => r.request().method() === 'PATCH');
   await sw.click(); await patch; await sleep(200);
-  ok(await taskEnabled(1) === false, 'first click turns it off on the server');
+  ok(await taskEnabled(SID) === false, 'first click turns it off on the server');
   ok(await sw.evaluate(e => !e.classList.contains('active') && e.dataset.scheduleEnabled === 'false'), 'switch shows off');
-  ok(await p.locator('.schedule-enabled-toggle[data-schedule-id="1"]').evaluate(e => !e.checked), 'details popup checkbox follows');
+  ok(await p.locator(`.schedule-enabled-toggle[data-schedule-id="${SID}"]`).evaluate(e => !e.checked), 'details popup checkbox follows');
   patch = p.waitForResponse(r => r.request().method() === 'PATCH');
   await sw.click(); await patch; await sleep(200);
-  ok(await taskEnabled(1) === true, 'second click turns it back on (was stuck before)');
+  ok(await taskEnabled(SID) === true, 'second click turns it back on (was stuck before)');
   ok(await sw.evaluate(e => e.classList.contains('active')), 'switch shows on again');
 
   await p.route('**/api/v2/servers/*/tasks/*', r => r.request().method() === 'PATCH'
@@ -42,9 +47,10 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
   const alertText = await p.locator('.bootbox.show .modal-body').innerText();
   ok(alertText.includes('No <b>access</b>'), 'refused change shows the error as text: ' + alertText.trim());
   ok(await sw.evaluate(e => e.classList.contains('active')), 'refused change leaves the switch on');
-  ok(await taskEnabled(1) === true, 'server still enabled');
+  ok(await taskEnabled(SID) === true, 'server still enabled');
   await p.locator('.bootbox.show .btn').first().click();
   await p.unroute('**/api/v2/servers/*/tasks/*');
+  await api(`/api/v2/servers/${S1}/tasks/${SID}`, { method: 'DELETE' });
 
   // --- Webhooks
   const created = await api(`/api/v2/servers/${S1}/webhook`, { method: 'POST', body: JSON.stringify({
@@ -103,7 +109,7 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
   await p.unroute(`**/api/v2/servers/${S1}/backups/backup/${B1}/`);
 
   // --- Editor double save
-  fs.writeFileSync(`/home/crafty/run/servers/${S1}/audit_edit.txt`, "line one\n"); fs.chownSync(`/home/crafty/run/servers/${S1}/audit_edit.txt`, ...[fs.statSync(`/home/crafty/run/servers/${S1}`)].map(s => [s.uid, s.gid])[0]);
+  fs.writeFileSync(`${L.RUN}/servers/${S1}/audit_edit.txt`, "line one\n"); fs.chownSync(`${L.RUN}/servers/${S1}/audit_edit.txt`, ...[fs.statSync(`${L.RUN}/servers/${S1}`)].map(s => [s.uid, s.gid])[0]);
   await p.goto(`${BASE}/panel/edit_file?server_id=${S1}&file=audit_edit.txt`, { waitUntil: 'load' });
   await p.waitForFunction(() => window.editor && editor.session.getValue().includes('line one'));
   let saves = 0;
@@ -133,10 +139,10 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
   await sleep(2500);
   ok(saves === 2, 'edit during a save is saved right after: ' + saves);
   ok(await p.locator('.bootbox.show').count() === 0, 'still no conflict popup');
-  const onDisk = fs.readFileSync(`/home/crafty/run/servers/${S1}/audit_edit.txt`, 'utf8');
+  const onDisk = fs.readFileSync(`${L.RUN}/servers/${S1}/audit_edit.txt`, 'utf8');
   ok(onDisk.includes('line four'), 'latest text on disk');
   ok(await p.evaluate(() => is_saved), 'editor says saved');
-  fs.unlinkSync(`/home/crafty/run/servers/${S1}/audit_edit.txt`);
+  fs.unlinkSync(`${L.RUN}/servers/${S1}/audit_edit.txt`);
 
   ok(errs.length === 0, 'no page errors ' + errs.join(' | '));
   await browser.close();

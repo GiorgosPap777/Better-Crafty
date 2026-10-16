@@ -1,13 +1,14 @@
 // Usage: node shot.js <outprefix> [pages...]  pages are paths after login, e.g. /panel/dashboard
-const { chromium } = require('/opt/node22/lib/node_modules/playwright');
+const L = require('./local');
+const { chromium } = L;
 const fs = require('fs');
-const BASE = 'https://localhost:8443';
-const creds = JSON.parse(fs.readFileSync('/home/crafty/run/app/config/default-creds.txt', 'utf8'));
+const BASE = L.BASE;
+const creds = JSON.parse(fs.readFileSync(L.RUN + '/app/config/default-creds.txt', 'utf8'));
 const PASS = process.env.CRAFTY_PASS || creds.password;
 (async () => {
   const out = process.argv[2];
   const pages = process.argv.slice(3);
-  const browser = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium-1194/chrome-linux/chrome' });
+  const browser = await chromium.launch(L.launchOptions);
   for (const [label, vp] of [['desk', { width: 1440, height: 900 }], ['mob', { width: 390, height: 844 }]]) {
     const ctx = await browser.newContext({ viewport: vp, ignoreHTTPSErrors: true });
     const page = await ctx.newPage();

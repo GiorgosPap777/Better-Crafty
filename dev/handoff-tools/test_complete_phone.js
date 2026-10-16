@@ -1,14 +1,15 @@
 // Phone layout of the command suggestions, plus a live version from the stats feed
-const { chromium } = require('/opt/node22/lib/node_modules/playwright');
+const L = require('./local');
+const { chromium } = L;
 const fs = require('fs');
-const SP = __dirname, BASE = 'https://localhost:8443';
-const TOKEN = fs.readFileSync(SP + '/token', 'utf8').trim();
-const S1 = '669ae1ce-61fa-498d-9782-6f3bb1804313';
+const SP = __dirname, BASE = L.BASE;
+const TOKEN = L.token();
+const S1 = L.S1;
 const ok = (c, m) => console.log((c ? 'PASS ' : 'FAIL ') + m);
 (async () => {
-  const browser = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium-1194/chrome-linux/chrome' });
+  const browser = await chromium.launch(L.launchOptions);
   const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true, ignoreHTTPSErrors: true });
-  await ctx.addCookies([{ name: 'token', value: TOKEN, domain: 'localhost', path: '/', secure: true }]);
+  await ctx.addCookies([{ name: 'token', value: TOKEN, domain: L.HOST, path: '/', secure: true }]);
   const p = await ctx.newPage();
   const errs = [];
   p.on('pageerror', e => errs.push(e.message));
@@ -21,9 +22,10 @@ const ok = (c, m) => console.log((c ? 'PASS ' : 'FAIL ') + m);
   const box = await p.locator('.cmd-suggest').boundingBox();
   const sw = await p.evaluate(() => document.documentElement.scrollWidth);
   ok(box && box.x >= 0 && box.x + box.width <= 390 && sw <= 390, `fits a phone (${JSON.stringify(box)}, page ${sw})`);
-  const clipped = await p.$$eval('.cmd-option-text', els => els.filter(e => e.scrollWidth > e.clientWidth + 1).map(e => e.textContent));
+  // Minecraft names are at most 16 characters; the HTML test name is longer
+  const clipped = await p.$$eval('.cmd-option-text', els => els.filter(e => e.textContent.length <= 16 && e.scrollWidth > e.clientWidth + 1).map(e => e.textContent));
   ok(!clipped.length, 'names are not cut off: ' + clipped);
-  await p.screenshot({ path: SP + '/complete_phone.png' });
+  await p.screenshot({ path: SP + '/shots/complete_phone.png' });
 
   // The server's start-up line in the log sets the version
   ok(/1\.21\.1 /.test(await p.textContent('#console-hint')), 'version read from the log: ' + await p.textContent('#console-hint'));

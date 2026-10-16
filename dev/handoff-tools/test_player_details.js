@@ -1,19 +1,20 @@
-const { chromium } = require('/opt/node22/lib/node_modules/playwright');
+const L = require('./local');
+const { chromium } = L;
 const fs = require('fs');
-const TOKEN = fs.readFileSync(__dirname + '/token', 'utf8').trim();
-const S1 = '669ae1ce-61fa-498d-9782-6f3bb1804313';
-const BASE = 'https://localhost:8443';
+const TOKEN = L.token();
+const S1 = L.S1;
+const BASE = L.BASE;
 const OUT = __dirname + '/shots/';
 (async () => {
-  const b = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium-1194/chrome-linux/chrome' });
+  const b = await chromium.launch(L.launchOptions);
   const ctx = await b.newContext({ viewport: { width: 1440, height: 900 }, ignoreHTTPSErrors: true });
-  await ctx.addCookies([{ name: 'token', value: TOKEN, domain: 'localhost', path: '/', secure: true }]);
+  await ctx.addCookies([{ name: 'token', value: TOKEN, domain: L.HOST, path: '/', secure: true }]);
   const p = await ctx.newPage();
   const errors = [];
   p.on('console', m => { if (m.type() === 'error') errors.push(m.text()); });
   p.on('pageerror', e => errors.push('PAGEERROR ' + e.message));
 
-  for (const [uuid, want] of [['069a79f4-44e9-4726-a5be-fca90e38aaf5', 200], ['00000000-0000-4000-8000-000000000000', 404], ['nope', 400]]) {
+  for (const [uuid, want] of [['069a79f4-44e9-4726-a5be-fca90e38aaf5', 200], ['00000000-0000-4000-8000-000000000000', 404], ['abc-123', 400]]) {
     const r = await p.request.get(`${BASE}/api/v2/servers/${S1}/players/${uuid}`, { headers: { Authorization: 'Bearer ' + TOKEN } });
     console.log('API', uuid, r.status(), r.status() === want ? 'OK' : 'UNEXPECTED');
   }

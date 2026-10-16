@@ -1,16 +1,17 @@
 // Usage: node panel.js <outprefix> pages...   (authenticates with token cookie)
-const { chromium } = require('/opt/node22/lib/node_modules/playwright');
+const L = require('./local');
+const { chromium } = L;
 const fs = require('fs');
-const BASE = 'https://localhost:8443';
-const TOKEN = fs.readFileSync(__dirname + '/token', 'utf8').trim();
+const BASE = L.BASE;
+const TOKEN = L.token();
 (async () => {
   const out = process.argv[2];
   const pages = process.argv.slice(3);
-  const browser = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium-1194/chrome-linux/chrome' });
+  const browser = await chromium.launch(L.launchOptions);
   const vps = process.env.ONLY_DESK ? [['desk', { width: 1440, height: 900 }]] : [['desk', { width: 1440, height: 900 }], ['mob', { width: 390, height: 844 }]];
   for (const [label, vp] of vps) {
     const ctx = await browser.newContext({ viewport: vp, ignoreHTTPSErrors: true });
-    await ctx.addCookies([{ name: 'token', value: TOKEN, domain: 'localhost', path: '/', secure: true }]);
+    await ctx.addCookies([{ name: 'token', value: TOKEN, domain: L.HOST, path: '/', secure: true }]);
     const page = await ctx.newPage();
     const logs = [];
     page.on('pageerror', e => logs.push('pageerror: ' + e.message));

@@ -1,15 +1,45 @@
 # Better Crafty: handoff notes
 
-Read this first when picking the work back up. It records what has been done,
-what is half done, and how to rebuild the test setup (the cloud container is
-temporary, so only what is committed here survives).
+This file is the project's memory. Sessions 1-9 ran in temporary cloud
+containers, so only what is committed survives. It records what has been
+done, what is unfinished, and how to set up and test on any machine. Keep it
+up to date: add the owner's request, a section per session, and a row in the
+commits table.
 
-**Picking up on the owner's PC?** Sessions 1-7 ran in a temporary cloud
-container. Paths like `$SP`, `/home/crafty/run` and `/opt/pw-browsers` existed
-only there; the scripts in `dev/handoff-tools/` need adapting to your machine.
-**"Session 6" below is unfinished** (Docker image and install docs; the
-owner said they will pick it up later). Sessions 7 (player management)
-and 8 (command suggestions in the Terminal) are done.
+## Start here
+
+**State (2026-10-16, end of session 9):** everything is committed and
+pushed; nothing is half-edited. Done: login, server pages, security fixes,
+README with screenshots, player management (session 7), command suggestions
+in the Terminal (session 8), and portable test tools (session 9).
+**Unfinished: session 6** (test the Docker image, publish it, and write the
+install, update and migration docs). The owner said they would pick that up
+later; nothing else is in progress.
+
+1. **Get the code.** `git clone https://github.com/GiorgosPap777/Better-Crafty.git`.
+   The working branch `claude/login-server-admin-improvements-ctbqdu` is the
+   repo default, so a fresh clone is already on it. In an existing clone:
+   `git fetch origin && git checkout claude/login-server-admin-improvements-ctbqdu && git pull`.
+2. **Set up and check** with "Development setup" below (about 10 minutes).
+   You should see 130 passing pytest tests before changing anything.
+3. **Ask the owner what to work on next.** If it is the Docker work, follow
+   "Session 6" from "Next steps, in order". It needs two answers from them:
+   their Docker Hub username, and whether to publish to Docker Hub only or
+   also to GitHub's registry (`ghcr.io`).
+4. Before you finish, update this file, commit and push (see "The project").
+
+### How the owner likes to work
+
+- Short, plain status updates and reports.
+- **Subagents use far more of their usage than they expected: use them
+  sparingly.** (They once allowed Haiku subagents; prefer doing the work
+  yourself.)
+- Ask when something is genuinely theirs to decide; otherwise pick the
+  sensible option and say so.
+- Never ask them to paste a password or token into the chat. For Docker Hub
+  they run `docker login` themselves, or add repo secrets on GitHub.
+- Don't put machine details (proxy addresses, environment values, local
+  paths) into screenshots, the README or other committed files.
 
 ## The project
 
@@ -54,6 +84,9 @@ and 8 (command suggestions in the Terminal) are done.
     ( inventorys , statistics etc)". Done, see Session 7.
 11. Session 8: "Could we implement a auto complison in the command like
     like in the game". Done, see Session 8.
+12. Session 9: "Ok can we do the handoff.md thing now. Make sure that the
+    new agent will be able to continue on no problem". Done: this file,
+    `CLAUDE.md`, and test tools that work on any machine (see Session 9).
 
 ### Questions still waiting on the owner
 
@@ -93,7 +126,8 @@ and 8 (command suggestions in the Terminal) are done.
 | `8806e7ec` | README for visitors with before/after screenshots |
 | `4e9e1244` | Dockerfile `ARG TARGETARCH` fix and fork labels; draft publish workflow; this handoff (session 6) |
 | `b1e8df99` | Player management: every player, details window (inventory, ender chest, stats, advancements) (session 7) |
-| (this commit) | Terminal command suggestions like the game's chat box (session 8) |
+| `91fa95ee` | Terminal command suggestions like the game's chat box (session 8) |
+| (this commit) | Handoff for the owner's PC: `CLAUDE.md`, portable test tools, test data setup, role page fix (session 9) |
 
 ### 1. Login (`d3946c3f`)
 
@@ -246,8 +280,8 @@ have the details; the notes below are what is useful when changing the code.
 - Never wrap a `{{ ... }}` or `{% ... %}` expression across lines: Tornado
   raises a SyntaxError on the whole page. Compute with `{% set x = ... %}`.
 - Check a template compiles before restarting:
-  `$SP/venv/bin/python -c "from tornado.template import Loader;
-  Loader('app/frontend/templates').load('panel/X.html')"`.
+  `python -c "from tornado.template import Loader;
+  Loader('app/frontend/templates').load('panel/X.html')"` (in the venv).
 - Pass strings to JS with
   `{% raw json_encode({key: translate(section, key, data['lang']) for key in [...]}) %}`.
 - jQuery `.data()` caches values; change state with `.attr()` +
@@ -285,18 +319,20 @@ have the details; the notes below are what is useful when changing the code.
   images do not include these changes), credits and license.
 - Screenshots live in `docs/screenshots/<name>-before|after.png|jpg`
   (`docs/` is in `.dockerignore`). To retake them:
-  1. Make an upstream copy:
-     `cp -a /home/crafty/run /home/crafty/run_before`, then
-     `git archive fe65b372 | tar -x -C /home/crafty/run_before` (fe65b372 is
-     the plain Crafty 4.11.0 commit), `chown -R crafty:crafty` it.
-  2. Stop the fork, start the copy with `start_before.sh`, run
-     `node readme_shots.js before <dir>`; then stop it, start the fork with
-     `start.sh` and run `node readme_shots.js after <dir>`. Start server 1
-     first in both so the header shows live numbers.
-  3. Both start scripts unset `JAVA_TOOL_OPTIONS`/`JDK_JAVA_OPTIONS`: in the
-     cloud sandbox Java prints them into the console, which would put
-     sandbox details into the Terminal screenshots. Look at every image
-     before committing it.
+  1. Make an upstream copy of your test Crafty, data included: copy the
+     whole folder (with `app/config/`, `servers/`, `backups/`), then
+     `git archive fe65b372 | tar -x -C <copy>` to put the plain Crafty
+     4.11.0 code (commit `fe65b372`) over it. `tar` is built into Windows
+     10 and newer.
+  2. Start server 1 in each first so the header shows live numbers. With
+     the copy running (`python main.py -d -i` in the copy), run
+     `node readme_shots.js before <dir>` from `dev/handoff-tools/`; stop
+     it, start the fork and run `node readme_shots.js after <dir>`. Both
+     use port 8443, so only one can run at a time.
+  3. Look at every image before committing it: no machine details (paths,
+     user names, environment values) in the Terminal or anywhere else.
+     The cloud containers printed `JAVA_TOOL_OPTIONS` into the console,
+     which is why `start.sh` unsets it.
   4. Use clean test data (normal player names and files); the XSS test
      files and players look odd in a README.
   5. Shrink: `convert X.png -strip -define png:compression-level=9`, and
@@ -351,8 +387,10 @@ Not done:
 
 ### Next steps, in order
 
-1. Tell the owner about points 2 and 4 above, and ask the open questions
-   (Docker Hub username; Docker Hub only, or also `ghcr.io`).
+1. The owner was told about points 2 and 4 at the end of session 6
+   (nothing published, no Docker Hub access from the cloud; the README did
+   change). Still to ask: their Docker Hub username, and Docker Hub only or
+   also `ghcr.io`. The README top change in point 4 is still to do.
 2. Run the image (adapt the paths on Windows):
    ```sh
    docker build -t better-crafty:test .
@@ -757,58 +795,171 @@ Version facts worth knowing: 1.21.11 renamed game rules to snake_case
 - Checking a whole command for errors before sending (the game underlines
   mistakes in red).
 
-## Rebuilding the test setup (cloud container; adapt on other machines)
+## Session 9: handoff to the owner's PC (done)
 
-The helper scripts are saved in `dev/handoff-tools/`. They expect to live in
-the session scratchpad (`SP`), next to a `venv/`, a `token` file and a
-`shots/` folder, so copy them there first:
-`cp dev/handoff-tools/* "$SP"/ && mkdir -p "$SP/shots"`.
+- `CLAUDE.md` (repo root): loaded automatically by Claude Code; points here
+  and lists the working rules and the checks to run before each commit.
+- The browser scripts in `dev/handoff-tools/` now run in place on any OS.
+  `local.js` holds what they share: the Crafty URL and folder, the test ids,
+  the API token, Playwright and Chromium, and a TOTP code generator (so
+  `totp.py` and `mk_mfa_user.py` are gone). `package.json` pins Playwright.
+- `setup_testdata.py` builds all the test data on a fresh Crafty through the
+  API in about 15 seconds; `fake_server/` holds the fake Minecraft server it
+  uses (source and a Java 8 jar).
+- Checked on a brand-new Crafty with only these steps: every suite passes.
+  Tests that had relied on old data now make their own (`test_audit.js`
+  adds its own schedule; `test_files.js` undoes its rename and upload).
+- Bug fixed on the way: `/panel/edit_role?id=<unknown>` crashed with a 500
+  (upstream); it now goes to the "Invalid Role ID" error page
+  (`panel_handler.py`).
+- Server, backup and other ids are UUIDs and can start with a digit, which
+  a CSS `#id` selector does not allow. jQuery's `$("#" + id)` still works
+  (it uses `getElementById`), but `querySelector` and Playwright do not: use
+  `[id="..."]` in tests.
+- API facts learned (they cost time):
+  - A token issued in the same second as a change to that user (such as
+    creating it) is refused (`valid_tokens_from`). Wait 2 seconds before
+    logging in as a user you just made.
+  - TOTP set-up: `POST /api/v2/users/<id>/totp/` (there is no `@me` route
+    for it) returns `otp.id` and `otp.totp_secret`; confirm it with
+    `POST /api/v2/users/@me/totp/<otp id>/verify/` and
+    `{"name": ..., "totp": <6 digits>}`, which returns the backup codes.
+  - `GET /api/v2/servers/<id>/backups/` returns an object keyed by backup
+    id, not a list. Backup files go to `<backup_location>/<backup_id>/`.
+  - Importing a server: put the zip in `<crafty>/import/upload/`, then
+    `POST /api/v2/servers/` (see `import_servers()` in
+    `setup_testdata.py`); the answer has `data.new_server_id`.
+  - Python `requests` ignores `verify=False` when the environment sets a CA
+    bundle; `session.trust_env = False` fixes it.
 
-1. Crafty refuses to run as root: create a `crafty` user. Run copy in
-   `/home/crafty/run`, venv in `/home/crafty/venv`
-   (`pip install -r requirements.txt`; if the venv was built as root,
-   `chmod -R o+rX` it).
-2. `sync.sh` copies tracked repo files into the run dir (keeps config,
-   servers, logs). `start.sh` (run it in the background) starts Crafty on
-   `https://localhost:8443`; `stop.sh` stops it. **Templates are cached:**
-   after editing a template, run stop, sync, start. CSS/JS only needs sync.
-3. Linters/tests: a separate venv in `$SP/venv` with black, pylint, pytest,
-   pyotp, requests. Run `black --check app tests` and `pytest -q tests`
-   (130 passing at this commit).
-4. Browser tests use Playwright at `/opt/node22/lib/node_modules/playwright`
-   with Chromium at `/opt/pw-browsers/chromium-1194/chrome-linux/chrome`.
-   - `crawl.js`: opens every panel page (desktop + mobile) and reports page
-     errors and failed requests. `node crawl.js [substring]`.
-   - `test_login.js`: login E2E (2FA, backup codes, cooldown, redirects).
-     Uses `mfa.json` and a `backup_idx` file (next unused backup code).
-     Login cooldown is 3 failures / 3 minutes, then 5 minutes locked, so
-     don't run it twice back to back. **All checks passed** at this commit.
-   - `test_server.js`: start/stop/kill and console on a running server.
-   - `shot.js`, `panel.js`, `shot_files.js`, `shot_metrics.js`,
-     `shot_header.js`: screenshots. `chk_metrics.js`: metrics zoom checks.
-   - `test_config.js`, `test_players.js`, `test_backups.js`,
-     `test_files.js`, `test_logs.js`, `test_audit.js`: E2E checks for each
-     tab (`test_audit.js` covers the session 4 fixes). Run with
-     `NODE_TLS_REJECT_UNAUTHORIZED=0 node X.js`.
-   - Players (session 7): `player_fixtures.py <server dir>` writes sample
-     save files for five players (modern and 1.12-era formats, an unknown
-     name) into a server's `world/`, plus `usercache.json`. Run it with the
-     `$SP/venv` python from the repo root (it imports the NBT writer from
-     the tests; set `REPO` if the repo is elsewhere). With `XSS=1` it uses
-     HTML-looking player and item names for the escaping checks; leave it
-     off for screenshots. Then `test_player_details.js` (list, every tab,
-     item details, search, phone width, escaping) and, with server 1
-     running, `test_player_running.js` (game mode, Save now, a prompt
-     stacked over the details window). `readme_shots.js` takes the
-     `players`, `player-inventory` and `player-stats` README shots.
-   - After `test_files.js`, rename `world/data/renamed.txt` back to
-     `world.txt` and delete `κόσμος.txt` in server 1.
-5. Test data to recreate (ids will change; update the constants at the top
-   of the scripts): admin API token in `$SP/token`; two servers made with
-   "import server" from a zip containing a fake Java jar (server 2 has no
-   `logs` folder on purpose; server 1 has a `logs/latest.log` with an
-   HTML-looking chat line for the XSS check) (the "custom"
-   server type is a stub upstream); a user `tester` / `TesterPass123`
-   (id 3) with TOTP, set up by `mk_mfa_user.py "$SP"`; a role; a backup.
-   Panel screenshots log in with the token cookie to avoid the login
-   cooldown.
+## Development setup (any machine)
+
+Written for Linux, macOS and Windows, but so far only run on Linux (the
+cloud containers): if a step fails on the owner's PC, fix it and update this
+section. Commands are for a terminal in the repo root. On Windows use
+`python` and `.venv\Scripts\activate`.
+
+### Needs
+
+- Python 3.9 or newer (3.13 used so far), Git.
+- Node.js 18 or newer (22 used so far), for the browser tests.
+- Java 8 or newer on the PATH, for the fake Minecraft server in the tests.
+- Docker Desktop, only for the session 6 Docker work.
+
+### Python and the quick checks
+
+```
+python3 -m venv .venv
+. .venv/bin/activate            # Windows: .venv\Scripts\activate
+pip install -r requirements.txt pytest black pylint
+pytest -q tests                 # 130 pass
+black --check app tests
+node dev/command-data/test_complete.js   # command suggestions engine, no browser
+```
+
+`pylint` uses the repo's `.pylintrc`; run it on the files you changed.
+
+### Run Crafty from the checkout
+
+```
+python main.py -d -i
+```
+
+- Serves `https://localhost:8443` with a self-signed certificate. `-d`
+  skips the interactive prompt; `-i` ignores a stale `session.lock`. Stop
+  it with Ctrl+C.
+- The first start writes `app/config/default-creds.txt` with the `admin`
+  password. Everything Crafty creates (`servers/`, `backups/`, `logs/`,
+  `import/`, `temp/`, the database) is already in `.gitignore`; this was
+  checked on a fresh run.
+- On Linux it refuses to run as root.
+- **Templates are cached:** restart Crafty after editing anything in
+  `app/frontend/templates/`. CSS and JS changes only need a browser reload.
+
+### Test data
+
+With Crafty running on a fresh checkout (no servers yet), in the same venv:
+
+```
+python dev/handoff-tools/setup_testdata.py
+```
+
+It reads the admin password from `default-creds.txt` (`--password` to give
+it), and makes:
+
+- two servers, "Survival World" and "Creative Build", imported from a zip
+  of the fake server. It logs "Starting minecraft server version 1.21.1"
+  and "Done", answers `list`, `say` and `stop`, and prints an error for
+  anything else. Server 2 has no `logs/` folder on purpose.
+- in server 1: `server.properties`, ban, op and whitelist files, a
+  `logs/latest.log`, odd file names, 520 files in `many/`, and save files for
+  five players (`player_fixtures.py`: modern and 1.12-era formats, and one
+  with no known name).
+- one backup of server 1.
+- a role "Moderators" (id 1 on a fresh Crafty; `crawl.js` opens it).
+- user `tester` / `TesterPass123` with 2FA.
+
+It writes `token`, `mfa.json` and `local.json` in `dev/handoff-tools/`
+(gitignored). Run it once per fresh Crafty; to start over, stop Crafty and
+delete `servers/`, `backups/`, `import/` and `app/config/db/`, or use a new
+clone. `--crafty-dir` and `--url` point it at a Crafty somewhere else.
+
+By default some player, item, chat and file names contain HTML
+(`<img onerror>`) for the escaping checks; `--no-xss` uses plain names (for
+screenshots). Windows does not allow `<` and `>` in file names, so there the
+HTML file name is skipped and the checks in `test_files.js` that look for it
+fail; that is expected.
+
+### Browser tests
+
+```
+cd dev/handoff-tools
+npm install
+npx playwright install chromium
+node test_config.js
+```
+
+Each prints `PASS` or `FAIL` lines, and most save screenshots in
+`dev/handoff-tools/shots/` (gitignored). The warning about
+`NODE_TLS_REJECT_UNAUTHORIZED` is expected (self-signed certificate).
+Settings come from `local.json`; the environment variables `CRAFTY_URL`,
+`CRAFTY_DIR`, `CRAFTY_TOKEN`, `S1`, `S2`, `B1` and `CHROME` override them
+(see `local.js`).
+
+| Script | Checks |
+|---|---|
+| `test_login.js` | Login page: 2FA, backup codes, cooldown, redirects |
+| `test_server.js` | Start, stop, kill and the Terminal on a running server |
+| `test_complete.js`, `test_complete_phone.js` | Command suggestions in the Terminal (desktop, phone) |
+| `test_config.js` | Config tab and the server.properties editor |
+| `test_players.js` | Players tab: lists, ban, op, whitelist |
+| `test_player_details.js` | Player details window (prints results to read) |
+| `test_player_running.js` | Player actions on a running server (prints results to read) |
+| `test_backups.js` | Backups tab |
+| `test_files.js` | Files tab: rename, upload, escaping, many files |
+| `test_logs.js` | Logs tab |
+| `test_audit.js` | Schedule and webhook switches, restore errors, editor saves |
+| `crawl.js` | Opens every panel page (desktop and phone), reports page errors; `node crawl.js [substring]` |
+| `chk_metrics.js` | Metrics chart zoom |
+| `shot.js`, `panel.js`, `shot_files.js`, `shot_metrics.js`, `shot_header.js` | Screenshots only |
+| `readme_shots.js` | README screenshots (see Session 5) |
+
+Known noise, not bugs: 424 responses on the console (Crafty could not fetch
+its news feed, e.g. without internet), ServiceWorker certificate errors
+(self-signed certificate), and in `crawl.js` errors from the Ko-fi, Patreon
+and GitLab widgets on the Credits, Contribute and similar pages (upstream,
+third-party sites).
+
+Notes:
+
+- Login cooldown: 3 failed logins in 3 minutes lock the account for 5
+  minutes, so do not run `test_login.js` twice back to back. It uses one
+  of the 6 2FA backup codes per run and remembers the next one in
+  `backup_idx`; after 5 runs make a fresh Crafty and run the setup again.
+- The other scripts log in with the API token as a cookie, so they never
+  touch the cooldown.
+- `test_complete.js`, `test_server.js` and `test_player_running.js` start
+  server 1 and stop it again.
+- `start.sh`, `start_before.sh`, `stop.sh` and `sync.sh` are for the cloud
+  containers of sessions 1-9 (a `crafty` user, `/home/crafty/run`). They
+  are not needed on a PC.
