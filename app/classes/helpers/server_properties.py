@@ -5,7 +5,11 @@ and line endings are left as they were. Only settings that already appear
 in the file are offered, so each Minecraft version shows what it supports.
 """
 
+import contextlib
+import os
 import re
+import shutil
+import tempfile
 import typing as t
 from pathlib import Path
 
@@ -188,12 +192,21 @@ def validate_changes(changes: t.Dict[str, t.Any], server_type: str) -> t.Dict[st
             text = text.replace("\n", "\\n")
             if server_type == "minecraft-java":
                 text = _encode_java(text)
+                # Java joins the next line onto a value ending in an odd
+                # number of backslashes, losing that setting; keep it literal
+                if (len(text) - len(text.rstrip("\\"))) % 2:
+                    text += "\\"
             out[key] = text
     return out
 
 
 def write_changes(path: Path, changes: t.Dict[str, str]) -> None:
-    """Replace the values of the given keys, keeping every other line as is."""
+    """Replace the values of the given keys, keeping every other line as is.
+
+    The new file is written next to the old one and then moved over it, so
+    a crash or a full disk never leaves a half-written server.properties.
+    """
+    path = Path(os.path.realpath(path))
     lines = _read_lines(path)
     for index, line in enumerate(lines):
         parsed = _split_line(line)
@@ -201,5 +214,17 @@ def write_changes(path: Path, changes: t.Dict[str, str]) -> None:
             continue
         ending = line[len(line.rstrip("\r\n")) :]
         lines[index] = f"{parsed[0]}={changes[parsed[0]]}{ending}"
-    with open(path, "w", encoding="utf-8", errors="surrogateescape", newline="") as f:
-        f.write("".join(lines))
+    handle, tmp = tempfile.mkstemp(prefix=".server.properties.", dir=path.parent)
+    try:
+        with open(
+            handle, "w", encoding="utf-8", errors="surrogateescape", newline=""
+        ) as f:
+            f.write("".join(lines))
+            f.flush()
+            os.fsync(f.fileno())
+        shutil.copymode(path, tmp)
+        os.replace(tmp, path)
+    except BaseException:
+        with contextlib.suppress(OSError):
+            os.remove(tmp)
+        raise

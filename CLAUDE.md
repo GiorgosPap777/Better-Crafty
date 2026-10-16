@@ -21,7 +21,7 @@ questions, and how to set up and test on any machine.
 ## Before every commit
 
 - `black --check app tests`, and pylint on the Python files you changed.
-- `pytest -q tests` (142 pass).
+- `pytest -q tests` (164 pass).
 - `node dev/command-data/test_complete.js` after touching command
   suggestions.
 - For UI changes, the browser checks in `dev/handoff-tools/` (see

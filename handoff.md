@@ -1,6 +1,6 @@
 # Better Crafty: handoff notes
 
-This file is the project's memory. Sessions 1-10 ran in temporary cloud
+This file is the project's memory. Sessions 1-11 ran in temporary cloud
 containers, so only what is committed survives. It records what has been
 done, what is unfinished, and how to set up and test on any machine. Keep it
 up to date: add the owner's request, a section per session, and a row in the
@@ -8,24 +8,30 @@ commits table.
 
 ## Start here
 
-**State (2026-10-16, end of session 10):** everything is committed and
-pushed; nothing is half-edited. Done: login, server pages, security fixes,
-README with screenshots, player management (session 7), command suggestions
-in the Terminal (session 8), portable test tools (session 9), and item
-pictures with a game-style inventory (session 10).
-**Unfinished: session 6** (test the Docker image, publish it, and write the
-install, update and migration docs). The owner said they would pick that up
-later; nothing else is in progress. In session 10 the owner decided to keep
-working in cloud sessions rather than move to their PC; the steps below
-work in either place.
+**State (2026-10-16, session 11 stopped early: the owner hit their usage
+limit).** Everything is committed and pushed. **Session 11 is half done:**
+the skin and HUD layout are finished, but the bug review the owner asked
+for is not, and one fix is not yet checked in a browser. **Read "Session
+11" below and do its "Next steps" first.** The owner also asked a question
+that still needs an answer (why banners and some heads have no picture;
+the answer is written there too).
+Done before: login, server pages, security fixes, README with screenshots,
+player management (session 7), command suggestions in the Terminal
+(session 8), portable test tools (session 9), and item pictures with a
+game-style inventory (session 10).
+**Also unfinished: session 6** (test the Docker image, publish it, and
+write the install, update and migration docs). The owner said they would
+pick that up later. The owner works in cloud sessions; the steps below work
+on any machine.
 
 1. **Get the code.** `git clone https://github.com/GiorgosPap777/Better-Crafty.git`.
    The working branch `claude/login-server-admin-improvements-ctbqdu` is the
    repo default, so a fresh clone is already on it. In an existing clone:
    `git fetch origin && git checkout claude/login-server-admin-improvements-ctbqdu && git pull`.
 2. **Set up and check** with "Development setup" below (about 10 minutes).
-   You should see 142 passing pytest tests before changing anything.
-3. **Ask the owner what to work on next.** If it is the Docker work, follow
+   You should see 164 passing pytest tests before changing anything.
+3. **Finish session 11** ("Next steps" in its section). Then ask the
+   owner what to work on next. If it is the Docker work, follow
    "Session 6" from "Next steps, in order". It needs two answers from them:
    their Docker Hub username, and whether to publish to Docker Hub only or
    also to GitHub's registry (`ghcr.io`).
@@ -94,6 +100,19 @@ work in either place.
     move. Could we have the player management have the icem icon and the
     inv ui". So: keep working in cloud sessions, and show item pictures
     and an inventory like the game's. Done, see Session 10.
+14. Session 11: "Okay, I thought about something we could do. Where you see
+    the inventory of this of the player, could we move the health below the
+    inventory on the left, the food below the inventory on the right, and
+    the levels below the inventory above the health and the food, like it is
+    on the real game? And if possible, could we have the skin of the player
+    be visible? Also, make sure that there is not any catastrophic bugs or
+    something, because I want to run my server with this." HUD and skin
+    done; **bug review half done**, see Session 11.
+15. Session 11, later: "Also, why do banners, decorated pots, dragon, piglin
+    heads, copper golem statues and all of that cannot be shown as an
+    image?" **Not answered yet in chat**; the answer is under Session 11.
+    Then the owner hit their usage limit and asked for this file to be
+    brought up to date.
 
 ### Questions still waiting on the owner
 
@@ -135,7 +154,9 @@ work in either place.
 | `b1e8df99` | Player management: every player, details window (inventory, ender chest, stats, advancements) (session 7) |
 | `91fa95ee` | Terminal command suggestions like the game's chat box (session 8) |
 | `3363122c` | Handoff for the owner's PC: `CLAUDE.md`, portable test tools, test data setup, role page fix (session 9) |
-| (this commit) | Item pictures drawn from the Minecraft game; inventory, ender chest and tooltips like the game's (session 10) |
+| `6ee33fd2` | Item pictures drawn from the Minecraft game; inventory, ender chest and tooltips like the game's (session 10) |
+| `423d2a9c` | Player skin in the inventory; hearts, food and XP below the inventory like the game; 2x2 crafting grid (session 11) |
+| (this commit) | Bug-review fixes: safe `server.properties` writes, trailing backslash, memory flags, config memory boxes; this handoff (session 11, unfinished) |
 
 ### 1. Login (`d3946c3f`)
 
@@ -997,6 +1018,165 @@ the progress, the switch to pictures and the error, without downloading.
   servers.
 - Show the player's own skin in the black box.
 
+## Session 11: skin, HUD layout, bug review (UNFINISHED)
+
+The owner asked for the HUD below the inventory like the game, the
+player's skin, and a check for serious bugs because they will run their
+real server on this fork.
+
+### Next steps, in order
+
+1. **Browser-check the config page fix** (`server_config.html`, not yet
+   checked in a browser). Restart Crafty first (templates are cached).
+   Run `test_config.js`; it should still pass. Then add to it: set the start
+   command to `java -Xms512M -Xmx3000M -jar server.jar nogui`, save, and
+   check that saving the page again (any other change) works and the
+   command keeps `-Xmx3000M`; set it back to `-Xmx1024M` at the end.
+   Also check `-Xmx448M` stays `448M` after a save that does not touch
+   memory. Look at the page at phone width.
+2. **Finish the bug review.** Compare the fork with upstream:
+   `git diff fe65b372 HEAD -- <path>` (`fe65b372` is upstream 4.11.0).
+   Still to read:
+   - `app/frontend/templates/panel/server_term.html` and
+     `static/assets/js/shared/command-complete.js` (sending commands,
+     start/stop/restart/kill buttons)
+   - `app/frontend/templates/panel/parts/details_stats.html`
+     (start/stop buttons in the server header)
+   - `app/frontend/templates/panel/dashboard.html` (start/stop on the
+     server list)
+   - `server_schedules.html`, `server_webhooks.html`,
+     `server_webhook_edit.html`, `server_backup_edit.html` (save flows)
+   - the wizards (`server/wizard.html`, `bedrock_wizard.html`,
+     `steam_wizard.html`, `hytale_wizard.html`): creating a server
+   - `public/login.html` front end (back end already read)
+   - DB: confirm there are no new migrations (none expected)
+   Fix anything that can lose data, stop a server by mistake, or break a
+   page; add tests for back-end fixes.
+3. **Answer the owner's question** about banners and other items with no
+   picture (answer below), and ask if they want any of them drawn.
+4. Run black, pylint on changed files, `pytest -q tests` (164), and
+   `test_item_icons.js`. Update this file (move "UNFINISHED" to "done",
+   fill in the commits table), add the skin and HUD to the README
+   Players section, commit and push. Give the owner a short list of the
+   bugs found and fixed (below).
+
+### Done and pushed (`423d2a9c`)
+
+- **HUD like the game**: XP level and bar right below the inventory panel,
+  hearts below it on the left, food on the right (`mcHud` in
+  `server_admin_controls.html`). A spacer keeps food on the right when there
+  is no health.
+- **2x2 crafting grid**, the "Crafting" label, the arrow and the result slot,
+  placed as in the game's inventory texture (content coordinates: grid at
+  (90,10), arrow (128,22), result (146,20)). Always empty: the save does not
+  keep it.
+- **Player skin** drawn in the black box with a small z-buffer rasteriser in
+  the page (`drawSkin`, canvas). It turns toward the mouse like the game's
+  inventory (body and head yaw `atan(dx/40)*20 deg`, head pitch from dy),
+  inner layer culled, outer layer (hat, jacket...) blended. Slim arms are 3
+  pixels wide. Phones: follows a finger while it is down.
+- **Where skins come from** (`app/classes/helpers/player_skins.py`, new):
+  - only once item pictures exist (that is when Mojang's art is allowed);
+  - version 4 UUIDs (online-mode accounts): Mojang's session server, then
+    `textures.minecraft.net` only (checked by regex), at most 256 KB, PNG
+    64x64 or 64x32. Kept in `app/config/player_skins/` for 6 hours; after a
+    failure it waits 10 minutes before asking again and uses an old copy if
+    there is one;
+  - everyone else, or on failure: the game's default skin for that UUID
+    (Java `UUID.hashCode()`, 9 skins x slim/wide), saved by the item picture
+    maker as `_skin_<model>_<name>` sprites (`DEFAULT_SKINS` in
+    `item_icons.py`). Picture sets made before this have no default skins:
+    the box then shows the text as before;
+  - old 64x32 skins get the game's clean-up (`normalise`).
+- **API**: `GET /api/v2/servers/<id>/players/<uuid>/skin` (players
+  permission; only players this server knows, so Crafty never looks up
+  anyone else). PNG with header `X-Skin-Model: wide|slim`.
+- `.dockerignore` leaves out `app/config/player_skins/`.
+- Tests: `tests/classes/helpers/test_player_skins.py` (18),
+  `test_has_player` in `test_player_data.py`; `test_item_icons.js` checks
+  46 slots, the HUD position, the skin drawn and turning with the pointer.
+
+### Bug review: found and fixed (in "this commit", tested with pytest)
+
+- **`server.properties` could be emptied** by a crash or a full disk while
+  saving game settings: it was rewritten in place. Now it is written to a
+  temporary file in the same folder, synced, given the old file's
+  permissions, then moved over it in one step (follows a symlink to the
+  real file). `server_properties.write_changes`.
+- **A text setting ending in `\`** (e.g. a MOTD) made Java join the next
+  line onto it, silently losing that setting. An odd number of trailing
+  backslashes now gets one more. `server_properties.validate_changes`.
+- **Changing only the max memory rewrote the min flag too** (and the other
+  way round), e.g. `-Xms512k` became `-Xms0M`. Now the flag that is not
+  being changed stays exactly as written. `java_memory.set_memory`.
+- **Config page, memory boxes** (`server_config.html`, NOT yet
+  browser-checked): the boxes only allowed steps of 0.125 GB, so a start
+  command like `-Xmx3000M` (2.93 GB) made the browser refuse to save the
+  whole config page. Now `step="any"`, `min="0"` (the server still checks
+  128 MiB to 1 TiB). Also, GB rounding could change an untouched value by
+  1 MiB on every save (`-Xmx448M` became `-Xmx449M`): `memoryChanges()` now
+  skips a box whose value equals its `defaultValue`.
+- Tests: `test_trailing_backslash_does_not_swallow_the_next_line`,
+  `test_write_replaces_the_file_in_one_step` (symlink and mode kept, no
+  leftover files), and a `-Xms512k` test in `test_java_memory.py`.
+
+### Bug review: read and fine (no need to redo)
+
+Back end: `server.py` (EULA check, stats job), `backup_mgr.py`, `tasks.py`,
+`server_stats.py`, `servers_controller.py`, properties route, server create
+and PATCH (memory), upload (names checked after decoding), login, public
+handler (`safe_next_url`), passkeys, `panel_handler.py` (schedule, webhook,
+backup and role ids checked against the server), schedule and webhook APIs
+(ownership checks), item picture routes (name regex), `command_data.py`.
+Front end: `files.js` (delete, rename, upload, editor links now
+`encodeURIComponent`), `editor.js` (save queue, conflict prompt),
+`server_backup.html` and `server_backup_edit.html` (start, delete plan,
+restore), `server_config.html` (save, delete server).
+
+### Answer to the owner's question: why some items have no picture
+
+In the game these items have no normal model in the game files. Their item
+definition says `"type": "minecraft:special"`, and the game draws them with
+Java code that holds their shape (the same code that draws the block or
+mob). The picture maker reads only the game's data files, so for each such
+item its shape has to be written by hand in `item_icons.py`
+(`_special_model`, boxes like `CHEST`, `SHULKER`, `HEADS`). Done so far:
+chests, shulker boxes, skeleton/wither skeleton/zombie/creeper heads,
+player heads, shield, conduit. Not done:
+
+- **Banners**: the cloth and pole are easy (one texture, dyed base
+  colour). The patterns on each banner come from that item's data in the
+  save, so a per-banner picture would be drawn in the page, not ahead of
+  time. A plain banner of each colour is a small job.
+- **Decorated pots**: a simple box shape; sides from the pot texture (the
+  sherds on each side are per item, like banners). Small job for a plain
+  pot.
+- **Dragon head and piglin head**: different head shapes (dragon has a
+  snout and jaw, piglin has ears and a snout). Medium job, boxes copied
+  from the game's model code.
+- **Copper golem statues**: the whole golem in a pose, four copper ageing
+  stages. Biggest job.
+- Others may be in the same group (session 10 drew 1630 of 1658 items).
+  To list them, find the `special` types that `_special_model` returns
+  None for.
+
+Ask the owner which ones they want; plain banners, decorated pots and the
+two heads are the best value.
+
+### Files (session 11)
+
+- `app/classes/helpers/player_skins.py` (new), `item_icons.py`
+  (`DEFAULT_SKINS`, `_skin_*` sprites), `player_data.py` (`has_player`),
+  `servers_controller.py` (`has_player`)
+- `app/classes/web/routes/api/servers/server/players.py`
+  (`ApiServersServerPlayerSkinHandler`), route in `api_handlers.py`
+- `app/classes/helpers/server_properties.py`, `java_memory.py` (fixes)
+- `app/frontend/templates/panel/server_admin_controls.html`,
+  `static/assets/css/partial/crafty-players.css`,
+  `templates/panel/server_config.html`
+- `app/translations/en_EN.json`: `serverPlayerManagement.crafting`
+- tests listed above; `dev/handoff-tools/test_item_icons.js`
+
 ## Development setup (any machine)
 
 Written for Linux, macOS and Windows, but so far only run on Linux (the
@@ -1017,7 +1197,7 @@ section. Commands are for a terminal in the repo root. On Windows use
 python3 -m venv .venv
 . .venv/bin/activate            # Windows: .venv\Scripts\activate
 pip install -r requirements.txt pytest black pylint
-pytest -q tests                 # 142 pass
+pytest -q tests                 # 164 pass
 black --check app tests
 node dev/command-data/test_complete.js   # command suggestions engine, no browser
 ```

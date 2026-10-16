@@ -48,7 +48,10 @@ def set_memory(
         raise ValueError("minimum memory cannot be more than maximum memory")
 
     def replace(match: re.Match) -> str:
-        value = new_min if match.group(1) == "s" else new_max
+        value = mem_min if match.group(1) == "s" else mem_max
+        if value is None:
+            # Leave the flag that is not being changed exactly as it was
+            return match.group(0)
         return f"-Xm{match.group(1)}{value}M"
 
     return _FLAG.sub(replace, command)

@@ -35,7 +35,14 @@ def test_set_memory_one_flag():
 def test_set_memory_keeps_quoted_java_path():
     command = '"/opt/java 21/bin/java" -Xms1G -Xmx2G -jar server.jar'
     assert set_memory(command, mem_max=4096) == (
-        '"/opt/java 21/bin/java" -Xms1024M -Xmx4096M -jar server.jar'
+        '"/opt/java 21/bin/java" -Xms1G -Xmx4096M -jar server.jar'
+    )
+
+
+def test_set_memory_leaves_the_other_flag_as_written():
+    # 512k would round to 0 MiB, which Java refuses to start with
+    assert set_memory("java -Xms512k -Xmx2G -jar a.jar", mem_max=4096) == (
+        "java -Xms512k -Xmx4096M -jar a.jar"
     )
 
 

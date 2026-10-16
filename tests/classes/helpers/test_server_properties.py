@@ -63,6 +63,28 @@ def test_write_keeps_other_lines_and_line_endings(java_props):
     )
 
 
+def test_trailing_backslash_does_not_swallow_the_next_line(java_props):
+    changes = validate_changes({"motd": "path C:\\"}, "minecraft-java")
+    assert changes["motd"] == "path C:\\\\"
+    assert validate_changes({"motd": "a\\\\"}, "minecraft-java")["motd"] == "a\\\\"
+    write_changes(java_props, changes)
+    assert "\\\\\r\npvp=true\r\n" in java_props.read_bytes().decode()
+
+
+def test_write_replaces_the_file_in_one_step(java_props, tmp_path):
+    java_props.chmod(0o640)
+    link = tmp_path / "link.properties"
+    link.symlink_to(java_props)
+    write_changes(link, validate_changes({"pvp": False}, "minecraft-java"))
+    assert link.is_symlink()
+    assert "pvp=false" in java_props.read_text(encoding="utf-8")
+    assert java_props.stat().st_mode & 0o777 == 0o640
+    assert sorted(p.name for p in tmp_path.iterdir()) == [
+        "link.properties",
+        "server.properties",
+    ]
+
+
 def test_motd_round_trip_with_non_ascii(java_props):
     changes = validate_changes({"motd": "§bΓεια σου\nline two"}, "minecraft-java")
     assert changes["motd"] == (
