@@ -4,12 +4,42 @@ import json
 import logging
 
 from croniter import croniter
+from peewee import DoesNotExist
 from playhouse.shortcuts import model_to_dict
 from jsonschema import ValidationError, validate
 from app.classes.models.server_permissions import EnumPermissionsServer
+from app.classes.shared.restart_countdown import CHOICES, parse_minutes
 from app.classes.web.base_api_handler import BaseApiHandler
 
 logger = logging.getLogger(__name__)
+
+
+def action_id_error(controller, server_id: str, action, action_id) -> dict | None:
+    """Why a schedule's action_id does not fit its action, or None.
+
+    A restart keeps the minutes to warn the players first; a backup keeps the
+    id of one of this server's backup configs."""
+    if not action_id:
+        return None
+    if action == "restart":
+        if parse_minutes(action_id) is None:
+            return {
+                "status": "error",
+                "error": "INVALID_WARNING_TIME",
+                "error_data": "The warning time must be one of "
+                + ", ".join(str(choice) for choice in CHOICES)
+                + " minutes.",
+            }
+        return None
+    try:
+        backup_config = controller.management.get_backup_config(action_id)
+    except DoesNotExist:
+        return {"status": "error", "error": "BACKUP_NOT_FOUND"}
+    if backup_config["server_id"]["server_id"] != server_id:
+        return {"status": "error", "error": "Server ID Mismatch"}
+    return None
+
+
 new_task_schema = {
     "type": "object",
     "properties": {
@@ -237,18 +267,11 @@ class ApiServersServerTasksIndexHandler(BaseApiHandler):
                 )
         if "parent" not in data:
             data["parent"] = None
-        if data.get("action_id"):
-            backup_config = self.controller.management.get_backup_config(
-                data["action_id"]
-            )
-            if backup_config["server_id"]["server_id"] != server_id:
-                return self.finish_json(
-                    405,
-                    {
-                        "status": "error",
-                        "error": "Server ID Mismatch",
-                    },
-                )
+        error = action_id_error(
+            self.controller, server_id, data["action"], data.get("action_id")
+        )
+        if error:
+            return self.finish_json(405, error)
         task_id = self.tasks_manager.schedule_job(data)
 
         self.controller.management.add_to_audit_log(

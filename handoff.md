@@ -13,7 +13,10 @@ is done and what is next. The owner approved a list of suggestions (update
 check, tests on GitHub, versions, upstream, error pop-ups, then bigger
 features) and is setting up Docker Hub themselves; they will say when to
 check it. Items 1 to 5 are done, plus a fix for an upstream bug that made
-saves fail with "database is locked"; the bigger features are next. Session 11 added the player's skin and the game's HUD layout to
+saves fail with "database is locked". Of the bigger features, the restart
+with in-game warnings is done; world tools are next. The GitHub Actions
+runs pass and already publish `edge` to Docker Hub (the owner's secrets
+are set). Session 11 added the player's skin and the game's HUD layout to
 the inventory, and reviewed the whole fork for serious bugs (four found and
 fixed). The owner has not yet said which special items (banners, pots,
 dragon/piglin heads, copper golem statues) they want drawn.
@@ -31,7 +34,7 @@ on any machine.
    repo default, so a fresh clone is already on it. In an existing clone:
    `git fetch origin && git checkout claude/login-server-admin-improvements-ctbqdu && git pull`.
 2. **Set up and check** with "Development setup" below (about 10 minutes).
-   You should see 171 passing pytest tests before changing anything.
+   You should see 192 passing pytest tests before changing anything.
 3. **Ask the owner what to work on next.** If it is the Docker work, follow
    "Session 6" from "Next steps, in order". It needs two answers from them:
    their Docker Hub username, and whether to publish to Docker Hub only or
@@ -170,7 +173,8 @@ on any machine.
 | `46684a64` | Bug-review fixes: safe `server.properties` writes, trailing backslash, memory flags, config memory boxes (session 11) |
 | `3d3158b2` | End of the review: odd memory sizes in `test_config.js`, README skin and HUD, this handoff (session 11) |
 | `57ed1545` | Update check reads this fork's GitHub releases; Better Crafty version; tests and Docker publish on GitHub Actions (session 12) |
-| (this commit) | Error pop-ups show the server's text as text; fix for "database is locked" after opening a backup's settings (session 12) |
+| `7bbdc549` | Error pop-ups show the server's text as text; fix for "database is locked" after opening a backup's settings (session 12) |
+| (this commit) | Restart with in-game warnings: panel menu, countdown with Cancel, schedules (session 12) |
 
 ### 1. Login (`d3946c3f`)
 
@@ -1181,12 +1185,18 @@ they are doing the Docker Hub part themselves in parallel:
 5. Escape the ~90 error pop-ups. **Done.** Also fixed an upstream bug
    found while testing it ("Database is locked" below).
 6. Bigger features, in this order unless the owner says otherwise:
-   restart with in-game warnings, world tools (download the world as a
-   zip, reset the Nether or the End), backups to another disk / network
-   share / cloud, a Modrinth plugin and mod installer. Plus the special
-   item pictures once the owner picks which.
+   restart with in-game warnings (**done**, see below), world tools
+   (download the world as a zip, reset the Nether or the End), backups to
+   another disk / network share / cloud, a Modrinth plugin and mod
+   installer. Plus the special item pictures once the owner picks which.
 
 ### Waiting on the owner: Docker Hub
+
+**Update:** the GitHub runs for `57ed1545` and `7bbdc549` passed every job
+and their `docker` job logged in to Docker Hub and pushed `edge` and
+`sha-...`, so the two secrets are already set. Still to do when the owner
+says they are finished: steps 2 to 4 below (and ask for the username if
+it is not in the run log).
 
 They were told to: make a Docker Hub account, create a personal access
 token with Read & Write access, add the GitHub repo secrets
@@ -1272,8 +1282,9 @@ pull request except ones that change only `**.md` or `docs/**`:
   always. A tag that does not match `better_crafty` fails the job.
 - Action versions are the newest majors as of 2026-10-17 (checkout,
   setup-python, setup-node v7; metadata-action v6; qemu, buildx, login v4;
-  build-push v7), checked with actionlint 1.7.7. **Not yet run on GitHub**
-  when this was written.
+  build-push v7), checked with actionlint 1.7.7. **Runs on GitHub pass**
+  (`57ed1545` and `7bbdc549`: all nine jobs, image pushed to `ghcr.io`
+  and Docker Hub).
 - The browser tests in `dev/handoff-tools/` are not in CI (they need Java,
   the fake server and test data); run them by hand as before.
 - The draft `dev/handoff-tools/docker-publish.yml` was removed.
@@ -1320,6 +1331,59 @@ pull request except ones that change only `**.md` or `docs/**`:
   have the problem (nothing keeps their data alive). Rule for new code:
   put lists or dicts, not query results, into page data.
 
+### Restart with in-game warnings (done)
+
+What the owner approved: "A restart action that warns players in the game
+first ("Restarting in 5 minutes…"), which you could also schedule."
+
+- **Panel:** the ⋮ menu next to Start/Restart/Stop has "Restart with
+  warning…" (Java and Bedrock servers only: their console has `say`). It
+  asks how long (1, 2, 5, 10, 15 or 30 minutes; 5 first), then a yellow
+  bar under the buttons shows "Restarting in m:ss" with "Cancel restart".
+  The bar is on every server sub page, follows the live stats, and comes
+  back after a reload. At zero it goes away and the status shows
+  "Restarting...".
+- **In the game:** `say Restarting in 5 minutes.` at the start, then at
+  30/15/10/5/2/1 minutes, 30 and 10 seconds, and each of the last five
+  seconds. Cancel says `Restart cancelled.`
+- **Nobody online:** it restarts at once (counted with the same ping as the
+  Players tile). If the ping fails, it warns anyway. A stopped server is
+  simply started, like the plain Restart button.
+- **Ends a countdown:** Cancel, Stop, Kill, the plain Restart, an
+  executable update, or the server stopping or crashing (checked before
+  each warning). Starting a new warned restart replaces the old one.
+- **Schedules:** choosing "Restart Server" shows "Warn players first"
+  (No warning or one of the times). It is stored in the schedule's
+  `action_id` (backups keep the backup id there), so no database change.
+  The restart happens that long after the scheduled time.
+- **API:** `POST /api/v2/servers/<id>/action/restart_server/<minutes>`
+  answers `{"restart_in": seconds}` (0 = restarted at once; another
+  minutes value gives 400 `INVALID_WARNING_TIME`).
+  `POST .../action/cancel_restart` cancels (409 `NO_RESTART_PENDING` if
+  there is none or the restart already began). `GET .../stats` and the
+  live websocket stats carry `restart_in` (seconds, or null). The task API
+  checks a restart's `action_id` too; it now also checks on PATCH (not
+  only POST) that a backup schedule's id is one of this server's backups,
+  and answers 405 `BACKUP_NOT_FOUND` instead of a server error for an
+  unknown id.
+- **How:** `app/classes/shared/restart_countdown.py` (a thread per
+  countdown; a lock makes a Cancel in the last second either win or
+  report "too late", never both). `ServerInstance` holds the current one
+  (`start_restart_countdown`, `cancel_restart_countdown`,
+  `restart_countdown_left`). The panel button calls the API directly; a
+  schedule goes through the command queue (`tasks.command_watcher`).
+  Counting the players pings the server (up to a few seconds), so the API
+  handler does it off the web thread.
+- **Not done (ideas):** a custom message, a warning before a scheduled
+  stop, showing the warning time in the schedules list (it shows the
+  action name only, as before).
+- **Checked:** 21 unit tests (`tests/classes/shared/test_restart_countdown.py`,
+  with a fake clock: warning times, cancel, stop, the last-second race,
+  nobody online), and `dev/handoff-tools/test_restart_warned.js` (about 2
+  minutes: dialog, banner, console text, reload, Cancel, Stop, a full one
+  minute countdown that restarts the fake server, the schedule form, phone
+  width). `test_server.js` and `crawl.js` still pass.
+
 ### Upstream (checked 2026-10-17)
 
 - Upstream's newest release is still `v4.11.0` (`fe65b372`). Their `dev`
@@ -1345,6 +1409,14 @@ pull request except ones that change only `**.md` or `docs/**`:
   `app/classes/web/base_handler.py`
 - Database lock: `app/classes/models/management.py`,
   `tests/classes/models/test_backups_query.py` (new)
+- Warned restart: `app/classes/shared/restart_countdown.py` (new),
+  `server.py`, `tasks.py`, `app/classes/controllers/servers_controller.py`,
+  `app/classes/web/routes/api/servers/server/action.py`, `stats.py`,
+  `tasks/index.py`, `tasks/task/index.py`,
+  `templates/panel/parts/details_stats.html`, `server_schedule_edit.html`,
+  `css/partial/crafty-server-overview.css`, `en_EN.json`,
+  `tests/classes/shared/test_restart_countdown.py` (new),
+  `dev/handoff-tools/test_restart_warned.js` (new)
 
 ## Development setup (any machine)
 
@@ -1366,7 +1438,7 @@ section. Commands are for a terminal in the repo root. On Windows use
 python3 -m venv .venv
 . .venv/bin/activate            # Windows: .venv\Scripts\activate
 pip install -r requirements.txt pytest black pylint
-pytest -q tests                 # 171 pass
+pytest -q tests                 # 192 pass
 black --check app tests
 node dev/command-data/test_complete.js   # command suggestions engine, no browser
 ```
@@ -1456,6 +1528,7 @@ Settings come from `local.json`; the environment variables `CRAFTY_URL`,
 | `test_files.js` | Files tab: rename, upload, escaping, many files |
 | `test_logs.js` | Logs tab |
 | `test_audit.js` | Schedule and webhook switches, restore errors, editor saves |
+| `test_restart_warned.js` | Restart with in-game warnings: dialog, countdown, Cancel, schedules, phone (about 2 minutes; leaves server 1 running) |
 | `crawl.js` | Opens every panel page (desktop and phone), reports page errors; `node crawl.js [substring]` |
 | `chk_metrics.js` | Metrics chart zoom |
 | `shot.js`, `panel.js`, `shot_files.js`, `shot_metrics.js`, `shot_header.js` | Screenshots only |

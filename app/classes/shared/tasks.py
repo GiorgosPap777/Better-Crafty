@@ -25,6 +25,7 @@ from app.classes.models.management import HelpersManagement, Schedules
 from app.classes.models.users import HelperUsers
 from app.classes.shared.console import Console
 from app.classes.shared.main_controller import Controller
+from app.classes.shared.restart_countdown import parse_minutes
 from app.classes.shared.websocket_manager import WebSocketManager
 from app.classes.web.tornado_handler import Webserver
 
@@ -134,8 +135,9 @@ class TasksManager:
         at some point rather than a simple while True.
 
         Commands are expected to provide server_id, user_id, and command keys. Backup
-        commands also use action_id. If a queued command references a server that is no
-        longer loaded, the command is logged and discarded.
+        commands also use action_id, and restarts use it for the minutes to warn the
+        players first. If a queued command references a server that is no longer
+        loaded, the command is logged and discarded.
 
         Returns:
             None
@@ -175,10 +177,20 @@ class TasksManager:
                 case "start_server":
                     svr.run_threaded_server(user_id)
                 case "stop_server":
+                    svr.cancel_restart_countdown(announce=False)
                     svr.stop_threaded_server()
+                case "restart_server" if parse_minutes(cmd.get("action_id")):
+                    # A schedule that warns the players first; with nobody
+                    # online it restarts at once
+                    if not svr.start_restart_countdown(
+                        user_id, parse_minutes(cmd["action_id"])
+                    ):
+                        svr.restart_threaded_server(user_id)
                 case "restart_server":
+                    svr.cancel_restart_countdown(announce=False)
                     svr.restart_threaded_server(user_id)
                 case "kill_server":
+                    svr.cancel_restart_countdown(announce=False)
                     try:
                         svr.kill()
                         time.sleep(5)
@@ -201,6 +213,7 @@ class TasksManager:
                             why,
                         )
                 case "update_executable":
+                    svr.cancel_restart_countdown(announce=False)
                     svr.server_upgrade()
                 case _:
                     try:

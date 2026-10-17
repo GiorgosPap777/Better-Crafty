@@ -519,7 +519,11 @@ class ServersController(metaclass=Singleton):
     @staticmethod
     def get_server_stats_by_id(server_id):
         srv = ServersController().get_server_instance_by_id(server_id)
-        return srv.stats_helper.get_latest_server_stats()
+        stats = srv.stats_helper.get_latest_server_stats()
+        # Live, not stored: a restart that is warning the players first
+        stats["restart_in"] = srv.restart_countdown_left()
+        stats["can_warn"] = srv.can_warn_players()
+        return stats
 
     @staticmethod
     def server_id_exists(server_id):

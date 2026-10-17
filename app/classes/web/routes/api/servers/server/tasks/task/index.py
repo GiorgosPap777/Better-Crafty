@@ -9,6 +9,7 @@ from jsonschema import ValidationError, validate
 from app.classes.models.server_permissions import EnumPermissionsServer
 
 from app.classes.web.base_api_handler import BaseApiHandler
+from app.classes.web.routes.api.servers.server.tasks.index import action_id_error
 
 logger = logging.getLogger(__name__)
 
@@ -252,8 +253,18 @@ class ApiServersServerTasksTaskIndexHandler(BaseApiHandler):
                 },
             )
 
-        if self._get_server_task(server_id, task_id) is None:
+        task = self._get_server_task(server_id, task_id)
+        if task is None:
             return
+        if "action_id" in data:
+            error = action_id_error(
+                self.controller,
+                server_id,
+                data.get("action", task["action"]),
+                data["action_id"],
+            )
+            if error:
+                return self.finish_json(405, error)
 
         # Checks to make sure some doofus didn't actually make the newly
         # created task a child of itself.

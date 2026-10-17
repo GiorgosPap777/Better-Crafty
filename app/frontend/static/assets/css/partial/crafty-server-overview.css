@@ -211,6 +211,35 @@
     }
 }
 
+/* Countdown of a restart that warns the players first */
+.restart-countdown {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem 0.75rem;
+    margin: -0.25rem 0 1.25rem;
+    padding: 0.5rem 0.9rem;
+    border-radius: 0.5rem;
+    border: 1px solid currentColor;
+    color: var(--warning);
+    background: rgba(255, 175, 0, 0.1);
+    font-weight: 600;
+}
+
+.restart-countdown [role="timer"] {
+    font-variant-numeric: tabular-nums;
+}
+
+.restart-countdown .btn {
+    margin-left: auto;
+}
+
+@media (max-width: 575.98px) {
+    .restart-countdown {
+        margin: 0 0 0.75rem;
+    }
+}
+
 /* Stat tiles */
 .server-stat-grid {
     display: grid;

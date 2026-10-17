@@ -1,6 +1,7 @@
 {% set srv = data['server_stats'] %}
 {% set srv_id = srv['server_id']['server_id'] %}
 {% set can_command = 'permissions' in data and data['permissions']['Commands'] in data.get('user_permissions', []) %}
+{% from app.classes.shared.restart_countdown import CHOICES as restart_choices %}
 {% if data.get('importing') and srv['running'] %}
 {% set busy_label = translate('serverTerm', 'installing', data['lang']) %}
 {% elif srv.get('updating') %}
@@ -28,7 +29,14 @@
       data-msg-kill-confirm="{{ translate('serverOverview', 'killConfirm', data['lang']) }}"
       data-msg-kill="{{ translate('dashboard', 'kill', data['lang']) }}"
       data-msg-cancel="{{ translate('panelConfig', 'cancel', data['lang']) }}"
-      data-msg-request-failed="{{ translate('serverOverview', 'requestFailed', data['lang']) }}">
+      data-msg-request-failed="{{ translate('serverOverview', 'requestFailed', data['lang']) }}"
+      data-msg-restart-in="{{ translate('serverOverview', 'restartIn', data['lang']) }}"
+      data-msg-warn-title="{{ translate('serverOverview', 'restartWarnTitle', data['lang']) }}"
+      data-msg-warn-text="{{ translate('serverOverview', 'restartWarnText', data['lang']) }}"
+      data-msg-warn-when="{{ translate('serverOverview', 'restartWarnWhen', data['lang']) }}"
+      data-msg-warn-start="{{ translate('serverOverview', 'restartWarnStart', data['lang']) }}"
+      data-msg-minute="{{ translate('serverScheduleConfig', 'restartWarningMinute', data['lang']) }}"
+      data-msg-minutes="{{ translate('serverScheduleConfig', 'restartWarningMinutes', data['lang']) }}">
       <div class="card-body">
         <div class="server-overview-head">
           <div class="server-overview-state">
@@ -85,6 +93,13 @@
                 <i class="ph-bold ph-dots-three-vertical" aria-hidden="true"></i>
               </button>
               <div class="dropdown-menu dropdown-menu-right">
+                {% if srv.get('can_warn') %}
+                <button type="button" class="dropdown-item server-action" data-action="restart_warned"
+                  {% if busy_label or not srv['running'] %}disabled{% end %}>
+                  <i class="ph-bold ph-timer" aria-hidden="true"></i>
+                  {{ translate('serverOverview', 'restartWarned', data['lang']) }}
+                </button>
+                {% end %}
                 <button type="button" class="dropdown-item text-danger server-action" data-action="kill_server"
                   {% if not srv['running'] %}disabled{% end %}>
                   <i class="ph-fill ph-skull" aria-hidden="true"></i>
@@ -93,6 +108,17 @@
               </div>
             </div>
           </div>
+          {% end %}
+        </div>
+
+        <!-- A restart that is warning the players first -->
+        <div class="restart-countdown{% if srv.get('restart_in') is None %} d-none{% end %}" id="restart-countdown">
+          <i class="ph-bold ph-timer" aria-hidden="true"></i>
+          <span id="restart-countdown-text" role="timer"></span>
+          {% if can_command %}
+          <button type="button" class="btn btn-sm btn-outline-warning" id="restart-cancel">
+            {{ translate('serverOverview', 'restartCancel', data['lang']) }}
+          </button>
           {% end %}
         </div>
 
@@ -214,6 +240,13 @@
     let uptimeLoop = null;
     let pending = null; // {action, startedBefore, timer}
     let updating = false; // an executable update started after page load
+    const restartChoices = {% raw json_encode(restart_choices) %};
+    const countdownEl = document.getElementById("restart-countdown");
+    const countdownText = document.getElementById("restart-countdown-text");
+    const cancelRestartBtn = document.getElementById("restart-cancel");
+    let restartEndsAt = null; // ms timestamp of a warned restart
+    let countdownSetAt = 0;
+    let countdownLoop = null;
 
     function setStarted(startedValue) {
       clearInterval(uptimeLoop);
@@ -290,6 +323,61 @@
       pending = null;
     }
 
+    function startPending(action) {
+      clearPending();
+      const startedBefore = startedUTC ? startedUTC.format("YYYY-MM-DD HH:mm:ss") : null;
+      // Stopping can legitimately take as long as the shutdown timeout
+      const timeoutMs = action === "start_server" ? 45000 : 150000;
+      pending = {
+        action: action,
+        startedBefore: startedBefore,
+        timer: setTimeout(function () { clearPending(); refresh(); }, timeoutMs),
+      };
+      renderState();
+    }
+
+    function formatCountdown(seconds) {
+      return `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, "0")}`;
+    }
+
+    function tickCountdown() {
+      const left = Math.max(0, Math.round((restartEndsAt - Date.now()) / 1000));
+      countdownText.textContent = msg.msgRestartIn.replace("{time}", formatCountdown(left));
+      if (left === 0) {
+        // The server restarts now: show it like a normal restart
+        setCountdown(null);
+        if (running && !pending) startPending("restart_server");
+      }
+    }
+
+    function setCountdown(seconds) {
+      clearInterval(countdownLoop);
+      countdownLoop = null;
+      if (seconds === null || seconds === undefined) {
+        restartEndsAt = null;
+        countdownEl.classList.add("d-none");
+        return;
+      }
+      restartEndsAt = Date.now() + seconds * 1000;
+      countdownSetAt = Date.now();
+      countdownEl.classList.remove("d-none");
+      tickCountdown();
+      if (restartEndsAt !== null) countdownLoop = setInterval(tickCountdown, 1000);
+    }
+
+    // Live stats carry the seconds left, or null when there is no countdown
+    function syncCountdown(seconds) {
+      if (seconds === null || seconds === undefined) {
+        // A push worked out just before the countdown started can arrive after it
+        if (restartEndsAt !== null && Date.now() - countdownSetAt > 3000) setCountdown(null);
+        return;
+      }
+      // The last seconds of a countdown that already ended here
+      if (restartEndsAt === null && seconds < 3) return;
+      const left = restartEndsAt === null ? null : (restartEndsAt - Date.now()) / 1000;
+      if (left === null || Math.abs(left - seconds) > 2) setCountdown(seconds);
+    }
+
     // Decide whether the action the user asked for has visibly happened yet
     function maybeResolvePending(stats) {
       if (!pending) return;
@@ -305,6 +393,7 @@
       if (typeof stats.running === "boolean") running = stats.running;
       if (typeof stats.crashed === "boolean") crashed = stats.crashed;
       maybeResolvePending(stats);
+      if ("restart_in" in stats) syncCountdown(stats.restart_in);
 
       if (startedUTC === null || !running || (stats.started && startedUTC.format("YYYY-MM-DD HH:mm:ss") !== stats.started)) {
         setStarted(stats.started);
@@ -338,18 +427,12 @@
       document.dispatchEvent(new CustomEvent("crafty:server-state", { detail: { running: running } }));
     }
 
-    async function sendAction(action) {
-      const startedBefore = startedUTC ? startedUTC.format("YYYY-MM-DD HH:mm:ss") : null;
-      // Stopping can legitimately take as long as the shutdown timeout
-      const timeoutMs = action === "start_server" ? 45000 : 150000;
-      pending = {
-        action: action,
-        startedBefore: startedBefore,
-        timer: setTimeout(function () { clearPending(); refresh(); }, timeoutMs),
-      };
-      renderState();
+    // minutes: for restart_server, warn the players first
+    async function sendAction(action, minutes) {
+      startPending(action);
+      const path = minutes ? `${action}/${minutes}` : action;
       try {
-        const res = await fetch(`/api/v2/servers/${overviewServerId}/action/${action}`, {
+        const res = await fetch(`/api/v2/servers/${overviewServerId}/action/${path}`, {
           method: "POST",
           headers: { "X-XSRFToken": token },
         });
@@ -363,19 +446,79 @@
           clearPending();
           renderState();
           bootbox.alert({ title: escapeHtml(data.error), message: escapeHtml(data.error_data || msg.msgRequestFailed) });
+        } else if (minutes && data.data && data.data.restart_in) {
+          // Players are being warned; the restart comes at the end
+          clearPending();
+          setCountdown(data.data.restart_in);
+          renderState();
+        } else if (action !== "start_server") {
+          // Stop, kill and an immediate restart end any countdown
+          setCountdown(null);
         }
       } catch (e) {
         clearPending();
         renderState();
-        bootbox.alert(msg.msgRequestFailed);
+        bootbox.alert(escapeHtml(msg.msgRequestFailed));
       }
     }
+
+    function askWarnedRestart() {
+      const options = restartChoices.map(function (minutes) {
+        const label = minutes === 1 ? msg.msgMinute : msg.msgMinutes.replace("{minutes}", minutes);
+        return `<option value="${minutes}"${minutes === 5 ? " selected" : ""}>${escapeHtml(label)}</option>`;
+      }).join("");
+      bootbox.dialog({
+        title: escapeHtml(msg.msgWarnTitle),
+        message: `<p>${escapeHtml(msg.msgWarnText)}</p>
+          <label for="restart-warn-minutes">${escapeHtml(msg.msgWarnWhen)}</label>
+          <select id="restart-warn-minutes" class="form-control">${options}</select>`,
+        buttons: {
+          cancel: { label: escapeHtml(msg.msgCancel), className: "btn-secondary" },
+          confirm: {
+            label: escapeHtml(msg.msgWarnStart),
+            className: "btn-primary",
+            callback: function () {
+              sendAction("restart_server", $("#restart-warn-minutes").val());
+            },
+          },
+        },
+      });
+    }
+
+    async function cancelRestart() {
+      cancelRestartBtn.disabled = true;
+      try {
+        const res = await fetch(`/api/v2/servers/${overviewServerId}/action/cancel_restart`, {
+          method: "POST",
+          headers: { "X-XSRFToken": token },
+        });
+        let data;
+        try {
+          data = await res.json();
+        } catch (e) {
+          data = { status: "error", error: res.status, error_data: msg.msgRequestFailed };
+        }
+        if (data.status === "ok" || data.error === "NO_RESTART_PENDING") setCountdown(null);
+        if (data.status !== "ok") {
+          bootbox.alert({ title: escapeHtml(data.error), message: escapeHtml(data.error_data || msg.msgRequestFailed) });
+        }
+      } catch (e) {
+        bootbox.alert(escapeHtml(msg.msgRequestFailed));
+      }
+      cancelRestartBtn.disabled = false;
+    }
+
+    if (cancelRestartBtn) cancelRestartBtn.addEventListener("click", cancelRestart);
 
     if (actionsEl) {
       actionsEl.addEventListener("click", function (e) {
         const btn = e.target.closest(".server-action");
         if (!btn || btn.disabled) return;
         const action = btn.dataset.action;
+        if (action === "restart_warned") {
+          askWarnedRestart();
+          return;
+        }
         if (action === "kill_server") {
           bootbox.confirm({
             message: msg.msgKillConfirm,
@@ -396,6 +539,7 @@
     $(function () {
       $('#server-actions [data-toggle="tooltip"]').tooltip();
       setStarted({% raw json_encode(data['server_stats']['started']) %});
+      setCountdown({% raw json_encode(srv.get('restart_in')) %});
       initParser("input_motd", "input_motd");
       if (typeof webSocket === "undefined" || !webSocket) return;
       webSocket.on("send_start_reload", function () {

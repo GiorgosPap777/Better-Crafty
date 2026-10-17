@@ -39,6 +39,7 @@ from app.classes.remote_stats.ping import ping, ping_raknet
 from app.classes.remote_stats.stats import Stats
 from app.classes.shared.console import Console
 from app.classes.shared.null_writer import NullWriter
+from app.classes.shared.restart_countdown import RestartCountdown, SUPPORTED_TYPES
 from app.classes.shared.update_mgr import UpdateManager
 from app.classes.shared.websocket_manager import WebSocketManager
 from app.classes.web.webhooks.webhook_factory import WebhookFactory
@@ -286,6 +287,9 @@ class ServerInstance:
         self.stats_helper = HelperServerStats(self.server_id)
         self.last_backup_failed = False
         self.server_registry = CollectorRegistry()
+        # A restart that warns the players first (restart_countdown.py)
+        self.restart_countdown = None
+        self._countdown_lock = threading.Lock()
 
         try:
             with open(
@@ -1013,6 +1017,63 @@ class ServerInstance:
             time.sleep(2)
             self.run_threaded_server(user_id)
 
+    # **********************************************************************************
+    #                         Restart after warning the players
+    # **********************************************************************************
+
+    def can_warn_players(self) -> bool:
+        return self.settings.get("type") in SUPPORTED_TYPES
+
+    def players_online(self) -> int | None:
+        """How many players are on the server now, or None if it does not answer"""
+        try:
+            server_dt = HelperServers.get_server_data_by_id(self.server_id)
+            address = (server_dt["server_ip"], int(server_dt["server_port"]))
+            if self.settings.get("type") == "minecraft-bedrock":
+                result = ping_raknet(*address)
+                return int(Stats.parse_server_raknet_ping(result)["online"])
+            result = ping(*address)
+            # A server that is still starting answers without a player list
+            if not hasattr(result, "players"):
+                return None
+            return int(Stats.parse_server_ping(result)["online"])
+        except Exception as e:
+            logger.debug(f"Could not count the players on {self.server_id}: {e}")
+            return None
+
+    def start_restart_countdown(self, user_id, minutes: int) -> int:
+        """Warns the players in the game chat, then restarts. Returns the seconds
+        until the restart, or 0 when there is nobody to warn: then the caller
+        restarts the server itself, at once."""
+        self.cancel_restart_countdown(announce=False)
+        if (
+            not self.check_running()
+            or not self.can_warn_players()
+            or self.players_online() == 0
+        ):
+            return 0
+        countdown = RestartCountdown(self, user_id, minutes * 60)
+        with self._countdown_lock:
+            self.restart_countdown = countdown
+        countdown.start()
+        return countdown.total
+
+    def cancel_restart_countdown(self, announce=True) -> bool:
+        """Stops a pending warned restart; False if there was none"""
+        with self._countdown_lock:
+            countdown, self.restart_countdown = self.restart_countdown, None
+        return countdown is not None and countdown.cancel(announce)
+
+    def restart_countdown_finished(self, countdown):
+        with self._countdown_lock:
+            if self.restart_countdown is countdown:
+                self.restart_countdown = None
+
+    def restart_countdown_left(self) -> int | None:
+        """Seconds until a warned restart, or None"""
+        countdown = self.restart_countdown
+        return countdown.seconds_left() if countdown else None
+
     def cleanup_server_object(self):
         self.start_time = None
         self.restart_count = 0
@@ -1647,6 +1708,7 @@ class ServerInstance:
                     "crashed": self.is_crashed,
                     "created": datetime.datetime.now().strftime("%Y/%m/%d, %H:%M:%S"),
                     "players_cache": self.player_cache,
+                    "restart_in": self.restart_countdown_left(),
                 },
             )
 

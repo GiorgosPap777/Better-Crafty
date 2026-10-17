@@ -1,16 +1,18 @@
 import logging
 import os
 import json
+from tornado.ioloop import IOLoop
 from app.classes.models.server_permissions import EnumPermissionsServer
 from app.classes.models.servers import Servers
 from app.classes.helpers.file_helpers import FileHelpers
+from app.classes.shared.restart_countdown import CHOICES, parse_minutes
 from app.classes.web.base_api_handler import BaseApiHandler
 
 logger = logging.getLogger(__name__)
 
 
 class ApiServersServerActionHandler(BaseApiHandler):
-    def post(self, server_id: str, action: str, action_id=None):
+    async def post(self, server_id: str, action: str, action_id=None):
         auth_data = self.authenticate_user()
         if not auth_data:
             return
@@ -75,6 +77,12 @@ class ApiServersServerActionHandler(BaseApiHandler):
             )
         if action == "eula":
             return self._agree_eula(server_id, auth_data[4]["user_id"])
+        if action == "restart_server" and action_id is not None:
+            return await self._warned_restart(
+                server_id, auth_data[4]["user_id"], action_id
+            )
+        if action == "cancel_restart":
+            return self._cancel_restart(server_id, auth_data[4]["user_id"])
 
         self.controller.management.send_command(
             auth_data[4]["user_id"], server_id, self.get_remote_ip(), action, action_id
@@ -84,6 +92,60 @@ class ApiServersServerActionHandler(BaseApiHandler):
             200,
             {"status": "ok"},
         )
+
+    async def _warned_restart(self, server_id, user_id, minutes_value):
+        """restart_server/<minutes>: warn the players in the game chat first"""
+        minutes = parse_minutes(minutes_value)
+        if minutes is None:
+            return self.finish_json(
+                400,
+                {
+                    "status": "error",
+                    "error": "INVALID_WARNING_TIME",
+                    "error_data": "The warning time must be one of "
+                    + ", ".join(str(choice) for choice in CHOICES)
+                    + " minutes.",
+                },
+            )
+        svr = self.controller.servers.get_server_instance_by_id(server_id)
+        # Counting the players pings the server, which can take a few seconds
+        seconds = await IOLoop.current().run_in_executor(
+            None, svr.start_restart_countdown, user_id, minutes
+        )
+        if seconds:
+            self.controller.management.add_to_audit_log(
+                user_id,
+                f"will restart server {svr.name} in {minutes} minutes,"
+                " warning the players",
+                server_id,
+                self.get_remote_ip(),
+            )
+        else:
+            # Nobody to warn: restart now, like the plain Restart button
+            self.controller.management.send_command(
+                user_id, server_id, self.get_remote_ip(), "restart_server"
+            )
+        return self.finish_json(200, {"status": "ok", "data": {"restart_in": seconds}})
+
+    def _cancel_restart(self, server_id, user_id):
+        svr = self.controller.servers.get_server_instance_by_id(server_id)
+        if not svr.cancel_restart_countdown(announce=True):
+            return self.finish_json(
+                409,
+                {
+                    "status": "error",
+                    "error": "NO_RESTART_PENDING",
+                    "error_data": "There is no restart to cancel,"
+                    " or it has already begun.",
+                },
+            )
+        self.controller.management.add_to_audit_log(
+            user_id,
+            f"cancelled the restart of server {svr.name}",
+            server_id,
+            self.get_remote_ip(),
+        )
+        return self.finish_json(200, {"status": "ok"})
 
     def _agree_eula(self, server_id, user):
         svr = self.controller.servers.get_server_instance_by_id(server_id)

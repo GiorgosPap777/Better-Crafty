@@ -24,8 +24,7 @@ class ApiServersServerStatsHandler(BaseApiHandler):
                 },
             )
 
-        srv = ServersController().get_server_instance_by_id(server_id)
-        latest = srv.stats_helper.get_latest_server_stats()
+        latest = ServersController.get_server_stats_by_id(server_id)
 
         self.finish_json(
             200,

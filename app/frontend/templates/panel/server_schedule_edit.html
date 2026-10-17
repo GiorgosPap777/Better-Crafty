@@ -83,6 +83,18 @@
                         {% end %}
                       </select>
                     </div>
+                    <div id="ifRestart" class="d-none">
+                      <br>
+                      <label for="restart_warning">{{ translate('serverScheduleConfig', 'restartWarning', data['lang']) }} <small class="text-muted ml-1"> - {{ translate('serverScheduleConfig', 'restartWarning-explain', data['lang']) }}</small></label>
+                      {% from app.classes.shared.restart_countdown import CHOICES as restart_choices %}
+                      {% set warn_minutes = str(data['schedule']['action_id']) if data['schedule']['action'] == 'restart' else '' %}
+                      <select id="restart_warning" class="form-control form-control-lg select-css">
+                        <option value="">{{ translate('serverScheduleConfig', 'restartWarningNone', data['lang']) }}</option>
+                        {% for minutes in restart_choices %}
+                        <option value="{{ minutes }}" {% if warn_minutes == str(minutes) %}selected{% end %}>{% if minutes == 1 %}{{ translate('serverScheduleConfig', 'restartWarningMinute', data['lang']) }}{% else %}{{ translate('serverScheduleConfig', 'restartWarningMinutes', data['lang']).replace('{minutes}', str(minutes)) }}{% end %}</option>
+                        {% end %}
+                      </select>
+                    </div>
                   </div>
                   <div id="ifBasic">
                     <div class="form-group">
@@ -240,6 +252,15 @@
       }
     }
 
+    // A restart keeps the minutes to warn the players first in action_id
+    function setRestartWarning(formDataObject) {
+      if (formDataObject.action === "restart") {
+        formDataObject.action_id = $("#restart_warning").val();
+      } else if (formDataObject.action !== "backup") {
+        formDataObject.action_id = "";
+      }
+    }
+
     const serverId = new URLSearchParams(document.location.search).get('id');
     const schId = new URLSearchParams(document.location.search).get('sch_id');
     $(document).ready(function () {
@@ -262,6 +283,7 @@
         if ($("#action").val() != "command") {
           formDataObject.command = formDataObject.action + "_server";
         }
+        setRestartWarning(formDataObject);
         if (formDataObject.cron_string != "") {
           formDataObject.interval_type = '';
         }
@@ -312,6 +334,7 @@
         if ($("#action").val() != "command") {
           formDataObject.command = formDataObject.action + "_server";
         }
+        setRestartWarning(formDataObject);
         if (formDataObject.cron_string != "") {
           formDataObject.interval_type = '';
         }
@@ -365,6 +388,8 @@
         $("#action_id").val(null);
         $("#action_id_label").html($("#action_id_label").attr("data-action-translate"));
       }
+      const isRestart = document.getElementById('action').value == "restart";
+      document.getElementById("ifRestart").classList.toggle("d-none", !isRestart);
     }
     function basicAdvanced() {
       if (document.getElementById('difficulty').value == "advanced") {
