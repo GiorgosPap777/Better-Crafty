@@ -369,6 +369,25 @@ def test_list_players(tmp_path):
     ]
 
 
+def test_players_folder_of_minecraft_26(tmp_path):
+    server, world = write_server(tmp_path, {})
+    for folder in ("data", "stats", "advancements"):
+        (world / "players" / folder).mkdir(parents=True)
+    (world / "players" / "data" / f"{ALEX}.dat").write_bytes(nbt_file(MODERN_PLAYER))
+    (world / "players" / "stats" / f"{ALEX}.json").write_text(
+        json.dumps({"stats": {"minecraft:custom": {"minecraft:play_time": 42}}})
+    )
+    # Left over from before the world was converted: not read any more
+    (world / "playerdata" / f"{STEVE}.dat").write_bytes(nbt_file(OLD_PLAYER))
+
+    assert [(p["uuid"], p["play_time"]) for p in list_players(server)] == [(ALEX, 42)]
+    assert has_player(server, ALEX)
+    assert not has_player(server, STEVE)
+    details = player_details(server, ALEX)
+    assert details["profile"]["dimension"] == "minecraft:the_nether"
+    assert details["stats"]["minecraft:custom"]["minecraft:play_time"] == 42
+
+
 def test_list_players_without_world(tmp_path):
     assert list_players(tmp_path) == []
 

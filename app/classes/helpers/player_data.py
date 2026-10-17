@@ -6,9 +6,11 @@ The game keeps, inside the world folder (``level-name`` in server.properties):
 - ``stats/<uuid>.json``: statistics
 - ``advancements/<uuid>.json``: advancements
 
-and ``usercache.json`` (uuid to name) in the server folder. Everything here is
-read-only. The game saves player files every few minutes and when a player
-leaves, so for players who are online the data can be a few minutes old.
+(``players/data``, ``players/stats`` and ``players/advancements`` from
+Minecraft 26.1) and ``usercache.json`` (uuid to name) in the server folder.
+Everything here is read-only. The game saves player files every few minutes
+and when a player leaves, so for players who are online the data can be a
+few minutes old.
 
 Several Minecraft versions are understood: item ``tag`` (up to 1.20.4) and
 ``components`` (1.20.5 and newer), armor in ``Inventory`` (up to 1.21.4) or
@@ -411,6 +413,20 @@ def world_folder(server_path) -> t.Optional[Path]:
     return folder
 
 
+# Where each kind of player file lives: Minecraft 26.1 moved them all under
+# players/, and converts older worlds when it first loads them
+PLAYER_FOLDERS = {
+    "data": ("players/data", "playerdata"),
+    "stats": ("players/stats", "stats"),
+    "advancements": ("players/advancements", "advancements"),
+}
+
+
+def player_folder(world: Path, kind: str) -> Path:
+    new, old = PLAYER_FOLDERS[kind]
+    return world / new if (world / new).is_dir() else world / old
+
+
 def _usercache_names(server_path) -> t.Dict[str, str]:
     names = {}
     for entry in _list(_read_json(Path(server_path, "usercache.json"))):
@@ -505,7 +521,7 @@ def list_players(server_path) -> t.List[dict]:
         return []
     saved: t.Dict[str, float] = {}
     try:
-        with os.scandir(world / "playerdata") as entries:
+        with os.scandir(player_folder(world, "data")) as entries:
             for entry in entries:
                 uuid = entry.name[:-4].lower()
                 if not entry.name.endswith(".dat") or not UUID_RE.match(uuid):
@@ -524,7 +540,7 @@ def list_players(server_path) -> t.List[dict]:
             "name": names.get(uuid),
             "last_played": int(mtime),
             "play_time": (
-                _cached_play_time(world / "stats" / f"{uuid}.json")
+                _cached_play_time(player_folder(world, "stats") / f"{uuid}.json")
                 if read_play_time
                 else None
             ),
@@ -608,9 +624,9 @@ def has_player(server_path, uuid: str) -> bool:
     if world is None:
         return False
     return any(
-        (world / folder / f"{uuid}{suffix}").is_file()
-        for folder, suffix in (
-            ("playerdata", ".dat"),
+        (player_folder(world, kind) / f"{uuid}{suffix}").is_file()
+        for kind, suffix in (
+            ("data", ".dat"),
             ("stats", ".json"),
             ("advancements", ".json"),
         )
@@ -634,12 +650,14 @@ def player_details(server_path, uuid: str) -> t.Optional[dict]:
         "equipment": None,
         "ender_chest": None,
         "playerdata_error": False,
-        "stats": normalise_stats(_read_json(world / "stats" / f"{uuid}.json")),
+        "stats": normalise_stats(
+            _read_json(player_folder(world, "stats") / f"{uuid}.json")
+        ),
         "advancements": _advancements(
-            _read_json(world / "advancements" / f"{uuid}.json")
+            _read_json(player_folder(world, "advancements") / f"{uuid}.json")
         ),
     }
-    dat = world / "playerdata" / f"{uuid}.dat"
+    dat = player_folder(world, "data") / f"{uuid}.dat"
     if dat.is_file():
         try:
             details["saved_at"] = int(dat.stat().st_mtime)

@@ -34,7 +34,7 @@ on any machine.
    repo default, so a fresh clone is already on it. In an existing clone:
    `git fetch origin && git checkout claude/login-server-admin-improvements-ctbqdu && git pull`.
 2. **Set up and check** with "Development setup" below (about 10 minutes).
-   You should see 192 passing pytest tests before changing anything.
+   You should see 193 passing pytest tests before changing anything.
 3. **Ask the owner what to work on next.** If it is the Docker work, follow
    "Session 6" from "Next steps, in order". It needs two answers from them:
    their Docker Hub username, and whether to publish to Docker Hub only or
@@ -174,7 +174,8 @@ on any machine.
 | `3d3158b2` | End of the review: odd memory sizes in `test_config.js`, README skin and HUD, this handoff (session 11) |
 | `57ed1545` | Update check reads this fork's GitHub releases; Better Crafty version; tests and Docker publish on GitHub Actions (session 12) |
 | `7bbdc549` | Error pop-ups show the server's text as text; fix for "database is locked" after opening a backup's settings (session 12) |
-| (this commit) | Restart with in-game warnings: panel menu, countdown with Cancel, schedules (session 12) |
+| `5a900db6` | Restart with in-game warnings: panel menu, countdown with Cancel, schedules (session 12) |
+| (this commit) | Players tab reads the new player folders of Minecraft 26.1 and newer (session 12) |
 
 ### 1. Login (`d3946c3f`)
 
@@ -1384,6 +1385,25 @@ first ("Restarting in 5 minutes…"), which you could also schedule."
   minute countdown that restarts the fake server, the schedule form, phone
   width). `test_server.js` and `crawl.js` still pass.
 
+### Minecraft 26.1 save layout (players fixed)
+
+Found while planning the world tools, by reading the 26.3 server jar (it is
+no longer obfuscated): 26.1 moved files inside the world folder, and
+converts older worlds the first time it loads them.
+
+- Player files: `playerdata/`, `stats/`, `advancements/` became
+  `players/data/`, `players/stats/`, `players/advancements/`. The Players
+  tab looked only in the old folders, so it listed nobody on 26.x servers.
+  `player_data.player_folder()` now uses the new folder when it exists.
+  The keys inside the player files did not change. Test:
+  `test_players_folder_of_minecraft_26`.
+- Dimensions: `DIM-1` and `DIM1` became `dimensions/minecraft/the_nether`
+  and `dimensions/minecraft/the_end`; the overworld's region files moved to
+  `dimensions/minecraft/overworld`. World-level data moved out of
+  `level.dat` into `data/minecraft/*.dat`, and the dragon fight is in
+  `dimensions/minecraft/the_end/data/minecraft/ender_dragon_fight.dat`.
+  The world tools (next) handle both layouts.
+
 ### Upstream (checked 2026-10-17)
 
 - Upstream's newest release is still `v4.11.0` (`fe65b372`). Their `dev`
@@ -1409,6 +1429,8 @@ first ("Restarting in 5 minutes…"), which you could also schedule."
   `app/classes/web/base_handler.py`
 - Database lock: `app/classes/models/management.py`,
   `tests/classes/models/test_backups_query.py` (new)
+- 26.1 player folders: `app/classes/helpers/player_data.py`,
+  `tests/classes/helpers/test_player_data.py`
 - Warned restart: `app/classes/shared/restart_countdown.py` (new),
   `server.py`, `tasks.py`, `app/classes/controllers/servers_controller.py`,
   `app/classes/web/routes/api/servers/server/action.py`, `stats.py`,
@@ -1438,7 +1460,7 @@ section. Commands are for a terminal in the repo root. On Windows use
 python3 -m venv .venv
 . .venv/bin/activate            # Windows: .venv\Scripts\activate
 pip install -r requirements.txt pytest black pylint
-pytest -q tests                 # 192 pass
+pytest -q tests                 # 193 pass
 black --check app tests
 node dev/command-data/test_complete.js   # command suggestions engine, no browser
 ```
