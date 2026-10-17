@@ -130,10 +130,15 @@ Better Crafty does not ship it. The first time, a super user presses
 Mojang once (about 40 MB, checked against Mojang's checksum), draws a
 picture of every item into `app/config/item_icons/` and deletes the
 download. After that the inventory, ender chest and statistics show the
-items as in the game, with hearts, food, experience and enchantment shine.
-Without the pictures, items are shown by name. A few items with drawn-in
-patterns (banners, decorated pots, dragon and piglin heads, copper golem
-statues) still show their name; player heads show Steve's face.
+items as in the game, with enchantment shine. The inventory then looks like
+the game's own screen: the player's skin turns to follow your mouse, the
+empty crafting grid sits beside it, and the experience level, hearts and
+food are below it. Players with a Minecraft account get their own skin from
+Mojang (kept for a few hours); offline-mode players get the default skin the
+game would give them. Without the pictures, items are shown by name. A few
+items the game draws with special code (banners, decorated pots, dragon and
+piglin heads, copper golem statues) still show their name; player heads in
+the inventory show Steve's face.
 
 All of this is read from the world's save files, so nothing is changed and
 it works while the server is stopped. The game saves player data every few

@@ -8,13 +8,12 @@ commits table.
 
 ## Start here
 
-**State (2026-10-16, session 11 stopped early: the owner hit their usage
-limit).** Everything is committed and pushed. **Session 11 is half done:**
-the skin and HUD layout are finished, but the bug review the owner asked
-for is not, and one fix is not yet checked in a browser. **Read "Session
-11" below and do its "Next steps" first.** The owner also asked a question
-that still needs an answer (why banners and some heads have no picture;
-the answer is written there too).
+**State (2026-10-17, end of session 11):** everything is committed and
+pushed; nothing is half-edited. Session 11 added the player's skin and the
+game's HUD layout to the inventory, and reviewed the whole fork for serious
+bugs (four found and fixed, see "Session 11"). The owner was asked which
+special items (banners, pots, dragon/piglin heads, copper golem statues)
+they want drawn; no answer yet.
 Done before: login, server pages, security fixes, README with screenshots,
 player management (session 7), command suggestions in the Terminal
 (session 8), portable test tools (session 9), and item pictures with a
@@ -30,8 +29,7 @@ on any machine.
    `git fetch origin && git checkout claude/login-server-admin-improvements-ctbqdu && git pull`.
 2. **Set up and check** with "Development setup" below (about 10 minutes).
    You should see 164 passing pytest tests before changing anything.
-3. **Finish session 11** ("Next steps" in its section). Then ask the
-   owner what to work on next. If it is the Docker work, follow
+3. **Ask the owner what to work on next.** If it is the Docker work, follow
    "Session 6" from "Next steps, in order". It needs two answers from them:
    their Docker Hub username, and whether to publish to Docker Hub only or
    also to GitHub's registry (`ghcr.io`).
@@ -110,9 +108,11 @@ on any machine.
     done; **bug review half done**, see Session 11.
 15. Session 11, later: "Also, why do banners, decorated pots, dragon, piglin
     heads, copper golem statues and all of that cannot be shown as an
-    image?" **Not answered yet in chat**; the answer is under Session 11.
-    Then the owner hit their usage limit and asked for this file to be
-    brought up to date.
+    image?" Answered in chat (see Session 11). Then the owner hit their
+    usage limit, asked for this file to be brought up to date, and told
+    the session to stop.
+16. Session 11, next day: "ok finish what you were doing now". Done: the
+    config page fix checked in a browser, the rest of the review, README.
 
 ### Questions still waiting on the owner
 
@@ -156,7 +156,8 @@ on any machine.
 | `3363122c` | Handoff for the owner's PC: `CLAUDE.md`, portable test tools, test data setup, role page fix (session 9) |
 | `6ee33fd2` | Item pictures drawn from the Minecraft game; inventory, ender chest and tooltips like the game's (session 10) |
 | `423d2a9c` | Player skin in the inventory; hearts, food and XP below the inventory like the game; 2x2 crafting grid (session 11) |
-| (this commit) | Bug-review fixes: safe `server.properties` writes, trailing backslash, memory flags, config memory boxes; this handoff (session 11, unfinished) |
+| `46684a64` | Bug-review fixes: safe `server.properties` writes, trailing backslash, memory flags, config memory boxes (session 11) |
+| (this commit) | End of the review: odd memory sizes in `test_config.js`, README skin and HUD, this handoff (session 11) |
 
 ### 1. Login (`d3946c3f`)
 
@@ -1018,47 +1019,22 @@ the progress, the switch to pictures and the error, without downloading.
   servers.
 - Show the player's own skin in the black box.
 
-## Session 11: skin, HUD layout, bug review (UNFINISHED)
+## Session 11: skin, HUD layout, bug review (done)
 
 The owner asked for the HUD below the inventory like the game, the
 player's skin, and a check for serious bugs because they will run their
 real server on this fork.
 
-### Next steps, in order
+### Left for later
 
-1. **Browser-check the config page fix** (`server_config.html`, not yet
-   checked in a browser). Restart Crafty first (templates are cached).
-   Run `test_config.js`; it should still pass. Then add to it: set the start
-   command to `java -Xms512M -Xmx3000M -jar server.jar nogui`, save, and
-   check that saving the page again (any other change) works and the
-   command keeps `-Xmx3000M`; set it back to `-Xmx1024M` at the end.
-   Also check `-Xmx448M` stays `448M` after a save that does not touch
-   memory. Look at the page at phone width.
-2. **Finish the bug review.** Compare the fork with upstream:
-   `git diff fe65b372 HEAD -- <path>` (`fe65b372` is upstream 4.11.0).
-   Still to read:
-   - `app/frontend/templates/panel/server_term.html` and
-     `static/assets/js/shared/command-complete.js` (sending commands,
-     start/stop/restart/kill buttons)
-   - `app/frontend/templates/panel/parts/details_stats.html`
-     (start/stop buttons in the server header)
-   - `app/frontend/templates/panel/dashboard.html` (start/stop on the
-     server list)
-   - `server_schedules.html`, `server_webhooks.html`,
-     `server_webhook_edit.html`, `server_backup_edit.html` (save flows)
-   - the wizards (`server/wizard.html`, `bedrock_wizard.html`,
-     `steam_wizard.html`, `hytale_wizard.html`): creating a server
-   - `public/login.html` front end (back end already read)
-   - DB: confirm there are no new migrations (none expected)
-   Fix anything that can lose data, stop a server by mistake, or break a
-   page; add tests for back-end fixes.
-3. **Answer the owner's question** about banners and other items with no
-   picture (answer below), and ask if they want any of them drawn.
-4. Run black, pylint on changed files, `pytest -q tests` (164), and
-   `test_item_icons.js`. Update this file (move "UNFINISHED" to "done",
-   fill in the commits table), add the skin and HUD to the README
-   Players section, commit and push. Give the owner a short list of the
-   bugs found and fixed (below).
+- About 90 error pop-ups (`bootbox.alert({ title: responseData.error,
+  message: responseData.error_data })`), almost all from upstream, put the
+  API's error text into the page without `escapeHtml()`. The text is
+  nearly always a fixed error code or translation, so this is not
+  serious; a quick way to find them:
+  `grep -rnE "title: *(responseData|data)\.error" app/frontend | grep -v escapeHtml`.
+- Drawing the special items the owner asked about (waiting for their
+  choice; see the answer below).
 
 ### Done and pushed (`423d2a9c`)
 
@@ -1096,7 +1072,7 @@ real server on this fork.
   `test_has_player` in `test_player_data.py`; `test_item_icons.js` checks
   46 slots, the HUD position, the skin drawn and turning with the pointer.
 
-### Bug review: found and fixed (in "this commit", tested with pytest)
+### Bug review: found and fixed (`46684a64`)
 
 - **`server.properties` could be emptied** by a crash or a full disk while
   saving game settings: it was rewritten in place. Now it is written to a
@@ -1109,13 +1085,13 @@ real server on this fork.
 - **Changing only the max memory rewrote the min flag too** (and the other
   way round), e.g. `-Xms512k` became `-Xms0M`. Now the flag that is not
   being changed stays exactly as written. `java_memory.set_memory`.
-- **Config page, memory boxes** (`server_config.html`, NOT yet
-  browser-checked): the boxes only allowed steps of 0.125 GB, so a start
+- **Config page, memory boxes** (`server_config.html`): the boxes only allowed steps of 0.125 GB, so a start
   command like `-Xmx3000M` (2.93 GB) made the browser refuse to save the
   whole config page. Now `step="any"`, `min="0"` (the server still checks
   128 MiB to 1 TiB). Also, GB rounding could change an untouched value by
   1 MiB on every save (`-Xmx448M` became `-Xmx449M`): `memoryChanges()` now
-  skips a box whose value equals its `defaultValue`.
+  skips a box whose value equals its `defaultValue`. `test_config.js` now
+  checks both (`-Xms448M -Xmx3000M` saves and stays as written).
 - Tests: `test_trailing_backslash_does_not_swallow_the_next_line`,
   `test_write_replaces_the_file_in_one_step` (symlink and mode kept, no
   leftover files), and a `-Xms512k` test in `test_java_memory.py`.
@@ -1131,7 +1107,13 @@ backup and role ids checked against the server), schedule and webhook APIs
 Front end: `files.js` (delete, rename, upload, editor links now
 `encodeURIComponent`), `editor.js` (save queue, conflict prompt),
 `server_backup.html` and `server_backup_edit.html` (start, delete plan,
-restore), `server_config.html` (save, delete server).
+restore), `server_config.html` (save, delete server), server header
+start/stop/kill (`details_stats.html`), dashboard start/stop and stop all,
+Terminal command sending, schedules and webhooks pages, the four new-server
+wizards. Small back-end changes (`roles/index.py`, `passkey.py`,
+`server_stats.py`: upstream already stored raw bytes, so old databases
+read fine). **No database migrations were added**, so moving from upstream
+4.11.0 keeps the database as is.
 
 ### Answer to the owner's question: why some items have no picture
 

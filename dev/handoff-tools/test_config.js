@@ -47,6 +47,24 @@ const ok = (c, m) => console.log((c ? 'PASS ' : 'FAIL ') + m);
   ok(cmd === 'java -Xms512M -Xmx1024M -jar server.jar nogui', 'start command updated: ' + cmd);
   ok(await p.inputValue('#mem_max') === '1', 'memory field shows new value');
 
+  // Sizes that are not a whole step of GB: saving must still work, and the
+  // untouched boxes must keep their exact MiB values (448M shows as 0.438)
+  const odd = 'java -Xms448M -Xmx3000M -jar server.jar nogui';
+  await p.fill('#execution_command', odd);
+  await Promise.all([p.waitForNavigation({ waitUntil: 'networkidle' }), p.click('#config_save')]);
+  ok(await p.inputValue('#mem_max') === '2.93', 'odd size shown: ' + await p.inputValue('#mem_max'));
+  let saved = true;
+  try {
+    await Promise.all([p.waitForNavigation({ waitUntil: 'networkidle', timeout: 5000 }), p.click('#config_save')]);
+  } catch (e) {
+    saved = false;
+  }
+  ok(saved, 'page with odd sizes can be saved');
+  const oddCmd = await p.inputValue('#execution_command');
+  ok(oddCmd === odd, 'untouched sizes kept: ' + oddCmd);
+  await p.fill('#execution_command', 'java -Xms512M -Xmx1024M -jar server.jar nogui');
+  await Promise.all([p.waitForNavigation({ waitUntil: 'networkidle' }), p.click('#config_save')]);
+
   // Server whose server.properties has no known settings: section stays hidden
   await p.goto(`${BASE}/panel/server_detail?id=${S2}&subpage=config`, { waitUntil: 'networkidle' });
   await p.waitForTimeout(800);
