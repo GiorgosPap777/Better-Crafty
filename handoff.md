@@ -12,11 +12,10 @@ commits table.
 Docker Hub release is done on our side: the image
 `giorgospap777/better-crafty` was run and checked, moving from the original
 Crafty and back was tested (Docker and Linux), the README's Install,
-Updating and Moving sections use the image. **Waiting on the owner:** make
-the GitHub Release `v1.0.0`, which also creates the tag (this session may
-push only its branch), and decide about `ghcr.io` (see "Docker Hub release
-(done)"). Until the tag exists Docker Hub has no `latest`, so the README's
-commands fail; check that first. **Next: the Modrinth
+Updating and Moving sections use the image. The Release `v1.0.0` is out:
+Docker Hub has `latest`, `1.0.0` and `1.0` (amd64 and arm64) and the page
+text (see "Docker Hub page (done)"). **Waiting on the owner:** decide about
+`ghcr.io` (see "Docker Hub release (done)"). **Next: the Modrinth
 installer.** Older notes follow; see "Session 12" for the details. The owner approved a list of suggestions (update
 check, tests on GitHub, versions, upstream, error pop-ups, then bigger
 features). Items 1 to 5 are done, plus a fix for an upstream bug that made
@@ -44,8 +43,8 @@ on any machine.
 2. **Set up and check** with "Development setup" below (about 10 minutes).
    You should see 252 passing pytest tests before changing anything.
 3. **Build the Modrinth installer** (Session 12, item 6), unless the owner
-   asks for something else. Check first whether the owner made the
-   `v1.0.0` GitHub Release and answered the `ghcr.io` question.
+   asks for something else. Check first whether the owner answered the
+   `ghcr.io` question.
 4. Before you finish, update this file, commit and push (see "The project").
 
 ### How the owner likes to work
@@ -152,6 +151,8 @@ on any machine.
     because right now it has nothing?" The release's tag was `1.0.0`
     (no `v`), so no build ran and Docker Hub had no `latest`. See "Docker
     Hub page" in Session 12.
+24. Session 12, after making a new Docker Hub token and re-tagging the
+    release `v1.0.0`: "Okay, I did both steps, check Docker Hub now".
 
 ### Questions still waiting on the owner
 
@@ -163,10 +164,6 @@ on any machine.
   README mentions Docker Hub only. If they want Docker Hub only, remove the
   `ghcr.io` login step and image line from `.github/workflows/ci.yml`.
   Never ask them to paste a password or token into the chat.
-- Asked to create the GitHub Release `v1.0.0` together with its tag (no
-  tool here can create either; see "Docker Hub release (done)", step 6).
-  The panel's update check reads GitHub Releases, so until then it sees no
-  release, and Docker Hub has no `latest`.
 - Which special items (banners, pots, dragon/piglin heads, copper golem
   statues) to draw (session 11).
 - (Answered in session 5.) The token cookie is now `SameSite=Lax`
@@ -216,7 +213,8 @@ on any machine.
 | `15f7b4df` | README: install from Docker Hub, updating, moving from Crafty and back; handoff for the release (session 12) |
 | `3e8e605f` | Handoff: the tag push was refused, the owner makes the tag with the Release (session 12) |
 | `90f0ef49` | Docker Hub page text and a workflow that copies it; release tags with or without `v` (session 12) |
-| (this commit) | Handoff: the first Docker Hub page run was refused (token scope) (session 12) |
+| `39f3b3b1` | Handoff: the first Docker Hub page run was refused (token scope) (session 12); tagged `v1.0.0` |
+| (this commit) | Handoff: release 1.0.0 and the Docker Hub page checked (session 12) |
 
 ### 1. Login (`d3946c3f`)
 
@@ -1307,7 +1305,7 @@ and a backup is started with `POST /api/v2/servers/<id>/action/backup_server/<ba
 **Still for the owner:** the Release with the new tag `v1.0.0` (step 6), and
 the `ghcr.io` question (see "Questions still waiting on the owner").
 
-### Docker Hub page
+### Docker Hub page (done)
 
 - The owner made the Release `Better Crafty 1.0.0` with the tag `1.0.0`
   (no `v`) on `3e8e605f`. The build only started for `v*` tags, so nothing
@@ -1329,10 +1327,15 @@ the `ghcr.io` question (see "Questions still waiting on the owner").
   Hub description → Run workflow); or paste the text on hub.docker.com by
   hand.
 - First run (on `90f0ef49`): the PATCH to Docker Hub got `Forbidden`, as
-  expected with the "Read & Write" token. Tests and the `edge` build on that
-  commit passed. Waiting on the owner for the new token and for the
-  `v1.0.0` tag; after that, check `latest`, `1.0.0` and `1.0` on Docker Hub
-  and that the page shows the text.
+  expected with the "Read & Write" token. The owner then put a "Read,
+  Write, Delete" token in `DOCKERHUB_TOKEN`, ran the workflow by hand, and
+  edited the Release to the tag `v1.0.0` (on `39f3b3b1`). Checked after:
+  the Docker Hub page has the summary and the text; tags `latest`, `1.0.0`,
+  `1.0` and `sha-39f3b3b` (amd64 and arm64). `latest` was pulled and run
+  with the README's volumes: `version.json` says `better_crafty` 1.0.0,
+  admin login works, the dashboard and Panel Config open, and the footer
+  shows 1.0.0 and 4.11.0. The old tag `1.0.0` (on `3e8e605f`) is still
+  there; it does nothing and can be deleted.
 - Keep `docker/DOCKERHUB.md` in step with the README's Install section.
 
 ### Update check (done)
