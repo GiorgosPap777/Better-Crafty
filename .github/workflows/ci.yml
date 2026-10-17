@@ -5,13 +5,11 @@
 # Crafty itself. The image is only built when they all pass.
 #
 # Docker image (amd64 and arm64), only from the default branch and from
-# version tags:
-# - GitHub Container Registry: ghcr.io/<owner>/better-crafty
-#   Needs no setup; it uses the built-in GITHUB_TOKEN.
-# - Docker Hub: <DOCKERHUB_USERNAME>/better-crafty
-#   Only when the repository secrets DOCKERHUB_USERNAME and DOCKERHUB_TOKEN
-#   (a Docker Hub access token with "Read & Write" access) are set. Docker
-#   Hub creates the repository on the first push.
+# version tags, to Docker Hub only: <DOCKERHUB_USERNAME>/better-crafty. Needs
+# the repository secrets DOCKERHUB_USERNAME and DOCKERHUB_TOKEN (a Docker Hub
+# access token; "Read & Write" is enough for the image, the Docker Hub page
+# needs "Read, Write, Delete"). Without them nothing is published. Docker Hub
+# creates the repository on the first push.
 #
 # Image tags: "edge" for every push to the default branch; "latest", "1.2.3"
 # and "1.2" for a v1.2.3 (or 1.2.3) git tag, which must match "better_crafty"
@@ -131,16 +129,13 @@ jobs:
       startsWith(github.ref, 'refs/tags/'))
     runs-on: ubuntu-latest
     timeout-minutes: 180
-    permissions:
-      contents: read
-      packages: write
     env:
       DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
       DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
     steps:
       - uses: actions/checkout@v7
 
-      - name: Choose image names
+      - name: Choose the image name
         id: names
         run: |
           version="$(jq -r .better_crafty app/config/version.json)"
@@ -148,24 +143,23 @@ jobs:
             echo "::error::Tag $GITHUB_REF_NAME does not match better_crafty $version in app/config/version.json"
             exit 1
           fi
-          images="ghcr.io/${GITHUB_REPOSITORY_OWNER,,}/better-crafty"
-          if [ -n "$DOCKERHUB_USERNAME" ] && [ -n "$DOCKERHUB_TOKEN" ]; then
-            images="$images"$'\n'"${DOCKERHUB_USERNAME,,}/better-crafty"
-          else
-            echo "::notice::Docker Hub secrets not set, publishing to ghcr.io only"
+          if [ -z "$DOCKERHUB_USERNAME" ] || [ -z "$DOCKERHUB_TOKEN" ]; then
+            echo "::notice::Docker Hub secrets not set, nothing to publish"
+            echo "publish=false" >> "$GITHUB_OUTPUT"
+            exit 0
           fi
           {
-            echo "images<<EOF"
-            echo "$images"
-            echo "EOF"
+            echo "image=${DOCKERHUB_USERNAME,,}/better-crafty"
             echo "version=$version"
+            echo "publish=true"
           } >> "$GITHUB_OUTPUT"
 
       - name: Image tags and labels
+        if: steps.names.outputs.publish == 'true'
         id: meta
         uses: docker/metadata-action@v6
         with:
-          images: ${{ steps.names.outputs.images }}
+          images: ${{ steps.names.outputs.image }}
           flavor: latest=false
           tags: |
             type=edge
@@ -178,24 +172,20 @@ jobs:
             org.opencontainers.image.version=${{ steps.names.outputs.version }}
 
       - uses: docker/setup-qemu-action@v4
+        if: steps.names.outputs.publish == 'true'
 
       - uses: docker/setup-buildx-action@v4
-
-      - name: Log in to GitHub Container Registry
-        uses: docker/login-action@v4
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
+        if: steps.names.outputs.publish == 'true'
 
       - name: Log in to Docker Hub
-        if: env.DOCKERHUB_USERNAME != '' && env.DOCKERHUB_TOKEN != ''
+        if: steps.names.outputs.publish == 'true'
         uses: docker/login-action@v4
         with:
           username: ${{ env.DOCKERHUB_USERNAME }}
           password: ${{ env.DOCKERHUB_TOKEN }}
 
       - name: Build and push
+        if: steps.names.outputs.publish == 'true'
         uses: docker/build-push-action@v7
         with:
           context: .

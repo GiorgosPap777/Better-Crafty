@@ -14,8 +14,8 @@ Docker Hub release is done on our side: the image
 Crafty and back was tested (Docker and Linux), the README's Install,
 Updating and Moving sections use the image. The Release `v1.0.0` is out:
 Docker Hub has `latest`, `1.0.0` and `1.0` (amd64 and arm64) and the page
-text (see "Docker Hub page (done)"). **Waiting on the owner:** decide about
-`ghcr.io` (see "Docker Hub release (done)"). **Next: the Modrinth
+text (see "Docker Hub page (done)"). Images go to Docker Hub only (the
+owner's choice; see "Docker Hub only (done)"). **Next: the Modrinth
 installer.** Older notes follow; see "Session 12" for the details. The owner approved a list of suggestions (update
 check, tests on GitHub, versions, upstream, error pop-ups, then bigger
 features). Items 1 to 5 are done, plus a fix for an upstream bug that made
@@ -43,8 +43,7 @@ on any machine.
 2. **Set up and check** with "Development setup" below (about 10 minutes).
    You should see 252 passing pytest tests before changing anything.
 3. **Build the Modrinth installer** (Session 12, item 6), unless the owner
-   asks for something else. Check first whether the owner answered the
-   `ghcr.io` question.
+   asks for something else.
 4. Before you finish, update this file, commit and push (see "The project").
 
 ### How the owner likes to work
@@ -153,17 +152,12 @@ on any machine.
     Hub page" in Session 12.
 24. Session 12, after making a new Docker Hub token and re-tagging the
     release `v1.0.0`: "Okay, I did both steps, check Docker Hub now".
+25. Session 12, asked whether to keep `ghcr.io`: "No, only published to
+    Docker Hub." See "Docker Hub only (done)" in Session 12.
 
 ### Questions still waiting on the owner
 
 - Should a PR to `main` be opened? (Explained what it means; not opened.)
-- Publish to Docker Hub only, or also to GitHub's registry (`ghcr.io`)?
-  They only asked for Docker Hub; the workflow publishes to both, and the
-  `ghcr.io` package may be private (GitHub profile → Packages →
-  better-crafty → Package settings → Change visibility → Public). The
-  README mentions Docker Hub only. If they want Docker Hub only, remove the
-  `ghcr.io` login step and image line from `.github/workflows/ci.yml`.
-  Never ask them to paste a password or token into the chat.
 - Which special items (banners, pots, dragon/piglin heads, copper golem
   statues) to draw (session 11).
 - (Answered in session 5.) The token cookie is now `SameSite=Lax`
@@ -214,7 +208,8 @@ on any machine.
 | `3e8e605f` | Handoff: the tag push was refused, the owner makes the tag with the Release (session 12) |
 | `90f0ef49` | Docker Hub page text and a workflow that copies it; release tags with or without `v` (session 12) |
 | `39f3b3b1` | Handoff: the first Docker Hub page run was refused (token scope) (session 12); tagged `v1.0.0` |
-| (this commit) | Handoff: release 1.0.0 and the Docker Hub page checked (session 12) |
+| `ab260582` | Handoff: release 1.0.0 and the Docker Hub page checked (session 12) |
+| (this commit) | Image published to Docker Hub only, no more `ghcr.io` (session 12) |
 
 ### 1. Login (`d3946c3f`)
 
@@ -530,11 +525,9 @@ the GitHub repo. The arm64 half builds under emulation and can be slow.
 - Publishes only from the default branch and from `v*` tags; it can also be
   run by hand. Pushes that change only `**.md`, `docs/**` or `dev/**` do not
   trigger a build.
-- Always pushes to `ghcr.io/<owner, lower case>/better-crafty` using the
-  built-in `GITHUB_TOKEN` (`packages: write` is set in the file). It also
-  pushes to Docker Hub as `<DOCKERHUB_USERNAME>/better-crafty`, but only
-  when the repository secrets `DOCKERHUB_USERNAME` and `DOCKERHUB_TOKEN`
-  exist. The token is a Docker Hub personal access token with Read & Write
+- Pushes to Docker Hub as `<DOCKERHUB_USERNAME>/better-crafty`, only when
+  the repository secrets `DOCKERHUB_USERNAME` and `DOCKERHUB_TOKEN` exist
+  (`ghcr.io` was removed in session 12 at the owner's request). The token is a Docker Hub personal access token with Read & Write
   access (Docker Hub → Account settings → Personal access tokens). The
   owner adds both under GitHub repo → Settings → Secrets and variables →
   Actions.
@@ -546,12 +539,8 @@ the GitHub repo. The arm64 half builds under emulation and can be slow.
   dry-run in bash both with and without the Docker Hub secrets. (An earlier
   version leaked a `::notice::` line into the image list; that is fixed.)
   **It has never run on GitHub.**
-- New `ghcr.io` packages may start out private. To fix: GitHub profile →
-  Packages → better-crafty → Package settings → Change visibility → Public.
 - Pushing a file under `.github/workflows/` needs a git credential with
   the `workflow` scope. If GitHub refuses the push, that is why.
-- If the owner wants Docker Hub only, remove the `ghcr.io` login step and
-  image line.
 
 ### README plan
 
@@ -1302,8 +1291,8 @@ newline for the original Crafty), and check the API and pages as above.
 The backups list API answers with the plans keyed by id (both versions),
 and a backup is started with `POST /api/v2/servers/<id>/action/backup_server/<backup_id>`.
 
-**Still for the owner:** the Release with the new tag `v1.0.0` (step 6), and
-the `ghcr.io` question (see "Questions still waiting on the owner").
+Both done later in session 12: the Release `v1.0.0` (see "Docker Hub page
+(done)") and Docker Hub only (see "Docker Hub only (done)").
 
 ### Docker Hub page (done)
 
@@ -1337,6 +1326,17 @@ the `ghcr.io` question (see "Questions still waiting on the owner").
   shows 1.0.0 and 4.11.0. The old tag `1.0.0` (on `3e8e605f`) is still
   there; it does nothing and can be deleted.
 - Keep `docker/DOCKERHUB.md` in step with the README's Install section.
+
+### Docker Hub only (done)
+
+The owner wants the image on Docker Hub only. `ci.yml`'s `docker` job no
+longer logs in to `ghcr.io` or pushes there, and no longer asks for
+`packages: write`. Without the Docker Hub secrets (for example in someone
+else's fork) the job prints a notice and skips the build. The `ghcr.io`
+package made by earlier builds is still on GitHub; only the owner can delete
+it (GitHub profile → Packages → better-crafty → Package settings → Delete
+this package). Checked here: the workflow parses and the step that picks
+the image name was run in bash with and without the secrets.
 
 ### Update check (done)
 
@@ -1401,8 +1401,9 @@ pull request except ones that change only `**.md` or `docs/**`:
   `/api/v2/crafty/check` to say ok, then expects `/login` to return 200 and
   `app/config/default-creds.txt` to exist (simulated here on a clean copy).
 - `docker`: needs all four; runs on pushes to the default branch and on
-  `v*` tags only. Publishes `ghcr.io/<owner>/better-crafty` always and
-  `<DOCKERHUB_USERNAME>/better-crafty` when both secrets exist. Tags:
+  version tags only (`v*` or `[0-9]*`). Publishes
+  `<DOCKERHUB_USERNAME>/better-crafty` when both secrets exist; without
+  them it says so and publishes nothing. Tags:
   `edge` for every default-branch push, `latest` + `X.Y.Z` + `X.Y` for a
   `vX.Y.Z` tag (so `latest` only moves on a release), `sha-<commit>`
   always. A tag that does not match `better_crafty` fails the job.
