@@ -157,6 +157,9 @@ except ModuleNotFoundError as err:
 
 class Helpers:
     allowed_quotes = ['"', "'", "`"]
+    # Where Better Crafty is published; the update check reads its releases
+    FORK_REPO = "GiorgosPap777/Better-Crafty"
+    FORK_RELEASES = f"https://github.com/{FORK_REPO}/releases"
 
     def __init__(self):
         self.root_dir = os.path.abspath(os.path.curdir)
@@ -206,25 +209,25 @@ class Helpers:
 
     def check_remote_version(self):
         """
-        Check if the remote version is newer than the local version
-        Returning remote version if it is newer, otherwise False.
+        Check if the latest Better Crafty release is newer than this one.
+        Returning the release's version if it is newer, otherwise False.
         """
         try:
-            # Get tags from Gitlab, select the latest and parse the semver
+            # The newest release on GitHub; drafts and pre-releases are skipped
             response = get(
-                "https://gitlab.com/api/v4/projects/20430749/repository/tags", timeout=1
+                f"https://api.github.com/repos/{self.FORK_REPO}/releases/latest",
+                headers={"Accept": "application/vnd.github+json"},
+                timeout=5,
             )
             if response.status_code == 200:
-                remote_version = pkg_version.parse(json.loads(response.text)[0]["name"])
-
-                # Get local version data from the file and parse the semver
-                local_version = pkg_version.parse(self.get_version_string())
+                remote_version = pkg_version.parse(response.json()["tag_name"])
+                local_version = pkg_version.parse(self.get_fork_version())
 
                 if remote_version > local_version:
                     return remote_version
 
         except Exception as e:
-            logger.exception(f"Unable to check for new crafty version! \n{e}")
+            logger.exception(f"Unable to check for new Better Crafty version! \n{e}")
         return False
 
     @staticmethod
@@ -837,6 +840,10 @@ class Helpers:
                 data = [self.update_available]
             else:
                 return False
+
+    def get_fork_version(self):
+        """The Better Crafty version; get_version_string() is the Crafty one"""
+        return str(self.get_version().get("better_crafty", "?"))
 
     def get_version_string(self):
         version_data = self.get_version()

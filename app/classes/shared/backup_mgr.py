@@ -453,8 +453,9 @@ class BackupManager:
 
     def remove_old_backups(self, backup_config, server):
         while (
-            len(self.list_backups(backup_config, server)) > backup_config["max_backups"]
-            and backup_config["max_backups"] > 0
+            0
+            < backup_config["max_backups"]
+            < len(self.list_backups(backup_config, server))
         ):
             backup_list = self.list_backups(backup_config, server.server_id)
             oldfile = backup_list[0]

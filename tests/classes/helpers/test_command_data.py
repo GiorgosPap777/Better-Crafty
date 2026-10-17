@@ -19,6 +19,6 @@ def test_missing_folder(monkeypatch, tmp_path):
     monkeypatch.setattr(command_data, "DATA_DIR", tmp_path / "missing")
     command_data.java_versions.cache_clear()
     try:
-        assert command_data.java_versions() == ()
+        assert not command_data.java_versions()
     finally:
         command_data.java_versions.cache_clear()

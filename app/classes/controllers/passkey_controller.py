@@ -272,10 +272,7 @@ class PasskeyController:
             self.passkey_helper.update_sign_count(
                 passkey.id, verification.new_sign_count
             )
-        elif (
-            verification.new_sign_count > 0
-            and verification.new_sign_count <= passkey.sign_count
-        ):
+        elif 0 < verification.new_sign_count <= passkey.sign_count:
             logger.warning(
                 "Possible cloned authenticator detected for passkey %s", passkey.id
             )

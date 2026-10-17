@@ -19,8 +19,8 @@ JAVA_FILE = (
 )
 
 
-@pytest.fixture
-def java_props(tmp_path):
+@pytest.fixture(name="java_props")
+def java_props_fixture(tmp_path):
     path = tmp_path / "server.properties"
     path.write_bytes(JAVA_FILE.encode())
     return path
@@ -120,6 +120,6 @@ def test_validate_rejects_bad_changes(changes):
 
 
 def test_unsupported_server_type(java_props):
-    assert read_settings(java_props, "hytale") == []
+    assert not read_settings(java_props, "hytale")
     with pytest.raises(ValueError):
         validate_changes({"pvp": True}, "hytale")

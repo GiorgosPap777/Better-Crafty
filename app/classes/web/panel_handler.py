@@ -367,6 +367,7 @@ class PanelHandler(BaseHandler):
             "serverTZ": tz,
             "monitored": self.helper.get_setting("monitored_mounts"),
             "version_data": self.helper.get_version_string(),
+            "fork_version": self.helper.get_fork_version(),
             "failed_servers": self.controller.servers.failed_servers,
             "user_data": exec_user,
             "user_role": exec_user_role,

@@ -8,12 +8,14 @@ commits table.
 
 ## Start here
 
-**State (2026-10-17, end of session 11):** everything is committed and
-pushed; nothing is half-edited. Session 11 added the player's skin and the
-game's HUD layout to the inventory, and reviewed the whole fork for serious
-bugs (four found and fixed, see "Session 11"). The owner was asked which
-special items (banners, pots, dragon/piglin heads, copper golem statues)
-they want drawn; no answer yet.
+**State (2026-10-17, session 12 in progress):** see "Session 12" for what
+is done and what is next. The owner approved a list of suggestions (update
+check, tests on GitHub, versions, upstream, error pop-ups, then bigger
+features) and is setting up Docker Hub themselves; they will say when to
+check it. Session 11 added the player's skin and the game's HUD layout to
+the inventory, and reviewed the whole fork for serious bugs (four found and
+fixed). The owner has not yet said which special items (banners, pots,
+dragon/piglin heads, copper golem statues) they want drawn.
 Done before: login, server pages, security fixes, README with screenshots,
 player management (session 7), command suggestions in the Terminal
 (session 8), portable test tools (session 9), and item pictures with a
@@ -28,7 +30,7 @@ on any machine.
    repo default, so a fresh clone is already on it. In an existing clone:
    `git fetch origin && git checkout claude/login-server-admin-improvements-ctbqdu && git pull`.
 2. **Set up and check** with "Development setup" below (about 10 minutes).
-   You should see 164 passing pytest tests before changing anything.
+   You should see 170 passing pytest tests before changing anything.
 3. **Ask the owner what to work on next.** If it is the Docker work, follow
    "Session 6" from "Next steps, in order". It needs two answers from them:
    their Docker Hub username, and whether to publish to Docker Hub only or
@@ -113,6 +115,14 @@ on any machine.
     the session to stop.
 16. Session 11, next day: "ok finish what you were doing now". Done: the
     config page fix checked in a browser, the rest of the review, README.
+17. Session 12: "Okay, now tell me if you have any suggestions, and also
+    what do I need to do to also publish the image in Docker Hub to be
+    easier to deploy." Answered in chat: Docker Hub steps (account, access
+    token, two GitHub repo secrets, tell us the username) and a list of
+    suggestions (see Session 12).
+18. Session 12: "Okay, the suggestions you said are awesome. So, can we
+    start doing them? I will do the Docker thing you mentioned in parallel,
+    and when I'm done, I will tell you to check it." See Session 12.
 
 ### Questions still waiting on the owner
 
@@ -157,7 +167,8 @@ on any machine.
 | `6ee33fd2` | Item pictures drawn from the Minecraft game; inventory, ender chest and tooltips like the game's (session 10) |
 | `423d2a9c` | Player skin in the inventory; hearts, food and XP below the inventory like the game; 2x2 crafting grid (session 11) |
 | `46684a64` | Bug-review fixes: safe `server.properties` writes, trailing backslash, memory flags, config memory boxes (session 11) |
-| (this commit) | End of the review: odd memory sizes in `test_config.js`, README skin and HUD, this handoff (session 11) |
+| `3d3158b2` | End of the review: odd memory sizes in `test_config.js`, README skin and HUD, this handoff (session 11) |
+| (this commit) | Update check reads this fork's GitHub releases; Better Crafty version; tests and Docker publish on GitHub Actions (session 12) |
 
 ### 1. Login (`d3946c3f`)
 
@@ -388,8 +399,8 @@ Done (committed with this file):
   cloud sandbox pip needed the sandbox proxy's certificate, so that test
   build used a throwaway copy of the Dockerfile with two extra lines. The
   committed Dockerfile has no such lines and needs none elsewhere.
-- Draft publish workflow, parked at `dev/handoff-tools/docker-publish.yml`
-  so that it does not run before the owner agrees (details below).
+- Draft publish workflow (session 12: now live as the `docker` job of
+  `.github/workflows/ci.yml`, see "Session 12").
 
 Not done:
 
@@ -463,8 +474,8 @@ visibility follows the account's default privacy setting, so check on
 hub.docker.com that it is public, and add a short description that links to
 the GitHub repo. The arm64 half builds under emulation and can be slow.
 
-**b. GitHub Actions** (`dev/handoff-tools/docker-publish.yml`; move it to
-`.github/workflows/` to turn it on):
+**b. GitHub Actions** (session 12: this is now the `docker` job in
+`.github/workflows/ci.yml`; tags changed, see "Session 12"):
 
 - Publishes only from the default branch and from `v*` tags; it can also be
   run by hand. Pushes that change only `**.md`, `docs/**` or `dev/**` do not
@@ -1159,6 +1170,136 @@ two heads are the best value.
 - `app/translations/en_EN.json`: `serverPlayerManagement.crafting`
 - tests listed above; `dev/handoff-tools/test_item_icons.js`
 
+## Session 12: suggestions (in progress)
+
+The owner approved this list (from the session 12 chat) and asked to start;
+they are doing the Docker Hub part themselves in parallel:
+
+1. Update check pointed at this fork. **Done.**
+2. Tests on GitHub, image published only when they pass. **Done.**
+3. Version numbers and releases. **Done** (the machinery; the first
+   release, `v1.0.0`, is not tagged yet, see below).
+4. Keep up with the original Crafty. **Checked, nothing to merge yet.**
+5. Escape the ~90 error pop-ups. Next.
+6. Bigger features, in this order unless the owner says otherwise:
+   restart with in-game warnings, world tools (download the world as a
+   zip, reset the Nether or the End), backups to another disk / network
+   share / cloud, a Modrinth plugin and mod installer. Plus the special
+   item pictures once the owner picks which.
+
+### Waiting on the owner: Docker Hub
+
+They were told to: make a Docker Hub account, create a personal access
+token with Read & Write access, add the GitHub repo secrets
+`DOCKERHUB_USERNAME` and `DOCKERHUB_TOKEN`, and tell us their username
+(never the token). When they say it is done:
+
+1. Check the latest "Tests and Docker image" run on GitHub (the `docker`
+   job's "Choose image names" step says whether the Docker Hub secrets
+   were found). The cloud session can read runs with the GitHub MCP tools
+   (`actions_list`, `get_job_logs`).
+2. Tag the first release (see "Making a release"), which publishes
+   `latest`, `1.0.0` and `1.0`.
+3. Ask them to check on hub.docker.com that the repo is Public; on GitHub,
+   Packages → better-crafty → Package settings → Change visibility →
+   Public for the `ghcr.io` copy.
+4. Do the rest of "Session 6" (run the image, README install, update and
+   migration sections) using `<username>/better-crafty:latest`.
+
+### Update check (done)
+
+- Upstream asked GitLab for Crafty's tags, so the fork would have shown
+  "Update Available!" (linking to upstream's releases) for every upstream
+  release; following it replaces the fork with upstream.
+- `Helpers.check_remote_version()` now reads
+  `https://api.github.com/repos/GiorgosPap777/Better-Crafty/releases/latest`
+  (drafts and pre-releases are skipped; no release yet means 404, which is
+  "no update") and compares its `tag_name` with the Better Crafty version.
+  `Helpers.FORK_REPO` and `FORK_RELEASES` hold the repo name and the link.
+  The announcement (bell menu) and the footer link go to the fork's
+  releases page. Runs at start and every 12 hours, as before.
+- Upstream's announcements feed (`craftycontrol.com/notify`) is still
+  shown; it carries Crafty news and security notes.
+- In the cloud sandbox the check logs "Unable to check" because the crafty
+  user cannot read the sandbox's CA bundle; that is the sandbox only.
+
+### Versions (done)
+
+- `app/config/version.json` keeps upstream's `major`/`minor`/`sub` (the
+  Crafty version the fork is based on: user agents, webhooks, support logs
+  and the API still report it) and gains `"better_crafty": "1.0.0"`.
+  `Helpers.get_fork_version()` reads it. The footer shows
+  "Version: Better Crafty 1.0.0 (Crafty 4.11.0)".
+- Docker installs get the new file on every start: `docker_launcher.sh`
+  copies `version.json` from the image into the config volume.
+- Semantic versions: bump the third number for fixes, the second for new
+  features, the first for big or breaking changes. When merging a new
+  upstream release, update `major`/`minor`/`sub` to it as well.
+
+### Making a release
+
+1. Set `better_crafty` in `app/config/version.json` (for example `1.1.0`),
+   add a section to `CHANGELOG.md` if wanted, commit and push.
+2. `git tag v1.1.0 && git push origin v1.1.0` (the tag must be `v` + the
+   version, or the `docker` job stops with an error).
+3. GitHub Actions runs the checks and publishes the image as `1.1.0`,
+   `1.1` and `latest`.
+4. On GitHub, Releases → Draft a new release → pick the tag, write what
+   changed, Publish. Publishing it is what makes running panels show
+   "Update Available!" (the check reads releases, not bare tags).
+
+### Tests on GitHub (done)
+
+`.github/workflows/ci.yml` ("Tests and Docker image"), on every push and
+pull request except ones that change only `**.md` or `docs/**`:
+
+- `lint`: `black --check app tests main.py` and `pylint app tests main.py`
+  (tool versions pinned: black 26.5.1, pylint 4.1.3, pytest 9.1.1). To
+  make pylint pass: renamed the `java_props` fixture
+  (`@pytest.fixture(name=...)`), two `not x` instead of `x == []`, and two
+  upstream chained comparisons (`backup_mgr.remove_old_backups`,
+  `passkey_controller`), same behaviour.
+- `tests`: pytest on Python 3.10, 3.11, 3.12, 3.13 and 3.14 (3.10 and 3.14
+  checked here with `uv`: 170 pass).
+- `commands`: `node dev/command-data/test_complete.js`.
+- `startup`: starts Crafty with `--daemon --ignore`, waits for
+  `/api/v2/crafty/check` to say ok, then expects `/login` to return 200 and
+  `app/config/default-creds.txt` to exist (simulated here on a clean copy).
+- `docker`: needs all four; runs on pushes to the default branch and on
+  `v*` tags only. Publishes `ghcr.io/<owner>/better-crafty` always and
+  `<DOCKERHUB_USERNAME>/better-crafty` when both secrets exist. Tags:
+  `edge` for every default-branch push, `latest` + `X.Y.Z` + `X.Y` for a
+  `vX.Y.Z` tag (so `latest` only moves on a release), `sha-<commit>`
+  always. A tag that does not match `better_crafty` fails the job.
+- Action versions are the newest majors as of 2026-10-17 (checkout,
+  setup-python, setup-node v7; metadata-action v6; qemu, buildx, login v4;
+  build-push v7), checked with actionlint 1.7.7. **Not yet run on GitHub**
+  when this was written.
+- The browser tests in `dev/handoff-tools/` are not in CI (they need Java,
+  the fake server and test data); run them by hand as before.
+- The draft `dev/handoff-tools/docker-publish.yml` was removed.
+
+### Upstream (checked 2026-10-17)
+
+- Upstream's newest release is still `v4.11.0` (`fe65b372`). Their `dev`
+  branch has 21 commits towards 4.11.1 (Hytale bans format, a file manager
+  speed-up, ANSI colours in the terminal, Bedrock NetherNet stats, a
+  per-server ping mode with a database migration `20261005_ping_mode`).
+- Not merged: it is unreleased, it has a database migration, and the
+  terminal and config tab parts will conflict with this fork's changes.
+  Merge when 4.11.1 is released (`git fetch upstream`, merge the tag,
+  resolve conflicts, run every check and browser test), then bump
+  `major`/`minor`/`sub` and release.
+
+### Files (session 12)
+
+- `app/classes/helpers/helpers.py`, `app/classes/shared/tasks.py`,
+  `app/classes/web/panel_handler.py`, `server_handler.py`,
+  `app/frontend/templates/footer.html`, `app/config/version.json`
+- `.github/workflows/ci.yml` (new), `tests/classes/helpers/test_update_check.py`
+  (new), `test_server_properties.py`, `test_command_data.py`,
+  `app/classes/shared/backup_mgr.py`, `app/classes/controllers/passkey_controller.py`
+
 ## Development setup (any machine)
 
 Written for Linux, macOS and Windows, but so far only run on Linux (the
@@ -1179,12 +1320,14 @@ section. Commands are for a terminal in the repo root. On Windows use
 python3 -m venv .venv
 . .venv/bin/activate            # Windows: .venv\Scripts\activate
 pip install -r requirements.txt pytest black pylint
-pytest -q tests                 # 164 pass
+pytest -q tests                 # 170 pass
 black --check app tests
 node dev/command-data/test_complete.js   # command suggestions engine, no browser
 ```
 
-`pylint` uses the repo's `.pylintrc`; run it on the files you changed.
+`pylint` uses the repo's `.pylintrc`. Since session 12 the whole code base
+is clean and GitHub fails the build otherwise: `pylint app tests main.py`
+must print no messages (about 40 seconds).
 
 ### Run Crafty from the checkout
 

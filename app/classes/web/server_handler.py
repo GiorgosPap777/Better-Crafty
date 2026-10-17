@@ -107,6 +107,7 @@ class ServerHandler(BaseHandler):
             "support_perm": self.helper.get_setting("general_user_log_access")
             or exec_user["superuser"],
             "version_data": self.helper.get_version_string(),
+            "fork_version": self.helper.get_fork_version(),
             "user_data": exec_user,
             "user_role": exec_user_role,
             "online": Helpers.check_internet(),
