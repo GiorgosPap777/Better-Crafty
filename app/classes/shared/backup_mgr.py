@@ -19,6 +19,7 @@ from app.classes.models.management import HelpersManagement
 from app.classes.models.server_permissions import PermissionsServers
 from app.classes.models.users import HelperUsers
 from app.classes.shared.console import Console
+from app.classes.shared.offsite_copies import OffsiteCopies
 from app.classes.shared.server import ServerInstance
 from app.classes.shared.websocket_manager import WebSocketManager
 
@@ -36,6 +37,8 @@ class BackupManager:
         self.helper = helper
         self.file_helper = file_helper
         self.management_helper = management_helper
+        # Copies of zip backups on another disk or in the cloud
+        self.offsite = OffsiteCopies(helper, self)
         try:
             self.tz = get_localzone()
         except ZoneInfoNotFoundError as e:

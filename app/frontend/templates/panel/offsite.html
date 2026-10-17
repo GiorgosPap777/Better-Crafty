@@ -1,0 +1,370 @@
+{% extends ../base.html %}
+
+{% block meta %}
+<link rel="stylesheet" href="/static/assets/css/partial/crafty-offsite.css">
+{% end %}
+
+{% block title %}Crafty Controller - {{ data['offsite_text']['title'] }}{% end %}
+
+{% block content %}
+{% set text = data['offsite_text'] %}
+
+<div class="content-wrapper">
+  <!-- Page Title Header Starts-->
+  <div class="row page-title-header">
+    <div class="col-12">
+      <div class="page-header">
+        <h4 class="page-title">{{ translate('panelConfig', 'title', data['lang']) }}</h4>
+      </div>
+    </div>
+  </div>
+  <!-- Page Title Header Ends-->
+
+  <div class="row">
+    <div class="col-md-12 grid-margin">
+      <div class="card">
+        <div class="card-body">
+
+          <span class="d-none d-sm-block">
+            {% include "parts/crafty_config_list.html %}
+          </span>
+          <span class="d-block d-sm-none">
+            {% include "parts/m_crafty_config_list.html %}
+          </span>
+
+          <div class="offsite-head">
+            <div>
+              <h3><i class="ph-bold ph-cloud-arrow-up" aria-hidden="true"></i> {{ text['title'] }}</h3>
+              <p class="text-muted mb-0">{{ text['intro'] }}</p>
+            </div>
+            <button type="button" class="btn btn-primary" id="offsite_add">
+              <i class="ph-bold ph-plus" aria-hidden="true"></i> {{ text['add'] }}</button>
+          </div>
+
+          <div id="offsite_status" class="alert d-none" role="status"></div>
+          <div id="offsite_loading" class="text-center py-4">
+            <span class="spinner-border" aria-hidden="true"></span>
+          </div>
+          <div id="offsite_places" class="offsite-places"></div>
+
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+<!-- content-wrapper ends -->
+
+<div class="modal fade" id="offsite_modal" tabindex="-1" role="dialog" aria-labelledby="offsite_modal_title" aria-hidden="true">
+  <div class="modal-dialog modal-lg" role="document">
+    <form class="modal-content" id="offsite_form" novalidate>
+      <div class="modal-header">
+        <h5 class="modal-title" id="offsite_modal_title"></h5>
+        <button type="button" class="close" data-dismiss="modal" aria-label="{{ text['close'] }}">
+          <span aria-hidden="true">&times;</span>
+        </button>
+      </div>
+      <div class="modal-body">
+        <div class="form-group">
+          <label for="offsite_name">{{ text['name'] }}</label>
+          <input type="text" class="form-control" id="offsite_name" maxlength="60" required placeholder="{{ text['namePlaceholder'] }}">
+        </div>
+        <div class="form-group">
+          <span class="d-block mb-2" id="offsite_kind_label">{{ text['kind'] }}</span>
+          <div class="btn-group btn-group-toggle offsite-kinds" role="group" aria-labelledby="offsite_kind_label">
+            <label class="btn btn-outline-primary" for="offsite_kind_folder">
+              <input type="radio" name="offsite_kind" id="offsite_kind_folder" value="folder">
+              <i class="ph-bold ph-hard-drives" aria-hidden="true"></i> {{ text['kindFolder'] }}</label>
+            <label class="btn btn-outline-primary" for="offsite_kind_s3">
+              <input type="radio" name="offsite_kind" id="offsite_kind_s3" value="s3">
+              <i class="ph-bold ph-cloud" aria-hidden="true"></i> {{ text['kindS3'] }}</label>
+          </div>
+        </div>
+
+        <div class="offsite-fields" data-kind="folder">
+          <div class="form-group">
+            <label for="offsite_path">{{ text['path'] }}</label>
+            <input type="text" class="form-control offsite-mono" id="offsite_path" placeholder="/mnt/usb/crafty" autocomplete="off" spellcheck="false">
+            <small class="form-text text-muted">{{ text['pathHelp'] }}</small>
+          </div>
+        </div>
+
+        <div class="offsite-fields" data-kind="s3">
+          <div class="form-group">
+            <label for="offsite_endpoint">{{ text['endpoint'] }}</label>
+            <input type="text" class="form-control offsite-mono" id="offsite_endpoint" placeholder="https://s3.eu-central-003.backblazeb2.com" autocomplete="off" spellcheck="false">
+            <small class="form-text text-muted">{{ text['endpointHelp'] }}</small>
+          </div>
+          <div class="form-row">
+            <div class="form-group col-sm-6">
+              <label for="offsite_bucket">{{ text['bucket'] }}</label>
+              <input type="text" class="form-control offsite-mono" id="offsite_bucket" maxlength="63" autocomplete="off" spellcheck="false">
+              <small class="form-text text-muted">{{ text['bucketHelp'] }}</small>
+            </div>
+            <div class="form-group col-sm-6">
+              <label for="offsite_prefix">{{ text['prefix'] }} <span class="text-muted">({{ text['optional'] }})</span></label>
+              <input type="text" class="form-control offsite-mono" id="offsite_prefix" maxlength="200" placeholder="crafty" autocomplete="off" spellcheck="false">
+            </div>
+          </div>
+          <div class="form-group">
+            <label for="offsite_region">{{ text['region'] }} <span class="text-muted">({{ text['optional'] }})</span></label>
+            <input type="text" class="form-control offsite-mono" id="offsite_region" maxlength="40" autocomplete="off" spellcheck="false">
+            <small class="form-text text-muted">{{ text['regionHelp'] }}</small>
+          </div>
+          <div class="form-row">
+            <div class="form-group col-sm-6">
+              <label for="offsite_access_key">{{ text['accessKey'] }}</label>
+              <input type="text" class="form-control offsite-mono" id="offsite_access_key" autocomplete="off" spellcheck="false">
+            </div>
+            <div class="form-group col-sm-6">
+              <label for="offsite_secret_key">{{ text['secretKey'] }}</label>
+              <input type="password" class="form-control offsite-mono" id="offsite_secret_key" autocomplete="new-password" spellcheck="false">
+              <small class="form-text text-muted d-none" id="offsite_secret_saved">{{ text['secretSaved'] }}</small>
+            </div>
+          </div>
+          <p class="small text-muted mb-0">{{ text['keysHelp'] }}</p>
+        </div>
+
+        <div id="offsite_form_status" class="alert d-none mt-3 mb-0" role="status"></div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-outline-info mr-auto" id="offsite_form_test">
+          <i class="ph-bold ph-plugs-connected" aria-hidden="true"></i> {{ text['test'] }}</button>
+        <button type="button" class="btn btn-secondary" data-dismiss="modal">{{ text['cancel'] }}</button>
+        <button type="submit" class="btn btn-primary" id="offsite_form_save">{{ text['save'] }}</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+{% end %}
+
+{% block js %}
+<script>
+  const offsiteText = {% raw json_encode(data['offsite_text']) %};
+  const offsiteKinds = {
+    folder: { name: offsiteText.kindFolder, icon: "ph-hard-drives" },
+    s3: { name: offsiteText.kindS3, icon: "ph-cloud" },
+  };
+  const offsiteFields = {
+    folder: ["path"],
+    s3: ["endpoint", "bucket", "prefix", "region", "access_key", "secret_key"],
+  };
+  let places = [];
+  // The place being edited; null while adding one
+  let editing = null;
+
+  function fill(words, values) {
+    return String(words).replace(/\{(\w+)\}/g, (match, key) => (key in values ? values[key] : match));
+  }
+
+  function showStatus(box, kind, words) {
+    $(box).removeClass("d-none alert-success alert-danger alert-warning alert-info").addClass("alert-" + kind).text(words);
+  }
+
+  async function offsiteApi(path, options) {
+    const res = await fetch(`/api/v2/crafty/offsite${path}`, {
+      headers: { "X-XSRFToken": getCookie("_xsrf") },
+      ...options,
+    });
+    let data = {};
+    try { data = await res.json(); } catch (e) { /* not JSON */ }
+    if (!res.ok || data.status !== "ok") {
+      throw new Error(data.error_data || data.error || res.statusText || res.status);
+    }
+    return data.data;
+  }
+
+  function usedBy(count) {
+    if (!count) return offsiteText.usedByNone;
+    return count === 1 ? offsiteText.usedByOne : fill(offsiteText.usedBy, { count: count });
+  }
+
+  function placeCard(place) {
+    const kind = offsiteKinds[place.kind] || offsiteKinds.folder;
+    const card = $('<section class="offsite-place"></section>').attr("data-place", place.target_id);
+    const main = $('<div class="offsite-place-main"></div>');
+    main.append($('<div class="offsite-place-title"></div>')
+      .append($("<i aria-hidden=\"true\"></i>").addClass("ph-bold " + kind.icon))
+      .append($("<h4></h4>").text(place.name))
+      .append($('<span class="badge badge-pill badge-outline-info"></span>').text(kind.name)));
+    main.append($('<div class="offsite-where"></div>').text(place.where));
+    main.append($('<div class="small text-muted"></div>').text(usedBy(place.used_by)));
+    main.append($('<div class="offsite-test-result small d-none" role="status"></div>'));
+    const actions = $('<div class="offsite-place-actions"></div>');
+    actions.append($('<button type="button" class="btn btn-outline-info offsite-test"></button>')
+      .append('<i class="ph-bold ph-plugs-connected" aria-hidden="true"></i> ')
+      .append(document.createTextNode(offsiteText.test))
+      .on("click", function () { testPlace(place, $(this), card.find(".offsite-test-result")); }));
+    actions.append($('<button type="button" class="btn btn-outline-primary offsite-edit"></button>')
+      .append('<i class="ph-bold ph-pencil-simple" aria-hidden="true"></i> ')
+      .append(document.createTextNode(offsiteText.edit))
+      .on("click", () => openForm(place)));
+    actions.append($('<button type="button" class="btn btn-outline-danger offsite-delete"></button>')
+      .attr({ title: offsiteText.delete, "aria-label": offsiteText.delete })
+      .append('<i class="ph-bold ph-trash-simple" aria-hidden="true"></i>')
+      .on("click", () => confirmDelete(place)));
+    return card.append(main, actions);
+  }
+
+  function renderPlaces() {
+    $("#offsite_loading").addClass("d-none");
+    const box = $("#offsite_places").empty();
+    if (!places.length) {
+      box.append($('<div class="offsite-empty text-muted"></div>')
+        .append('<i class="ph ph-cloud-slash" aria-hidden="true"></i>')
+        .append($("<p></p>").text(offsiteText.none)));
+      return;
+    }
+    places.forEach((place) => box.append(placeCard(place)));
+  }
+
+  async function loadPlaces() {
+    try {
+      places = await offsiteApi("/");
+    } catch (e) {
+      $("#offsite_loading").addClass("d-none");
+      showStatus("#offsite_status", "danger", `${offsiteText.loadFailed}: ${e.message}`);
+      return;
+    }
+    renderPlaces();
+  }
+
+  function testedText(warnings) {
+    return [offsiteText.testOk].concat(warnings || []).join(" ");
+  }
+
+  function busyButton(button, busy, words) {
+    if (busy) {
+      button.data("label", button.html()).prop("disabled", true).empty()
+        .append('<span class="spinner-border spinner-border-sm" aria-hidden="true"></span> ')
+        .append(document.createTextNode(words));
+    } else if (button.data("label") !== undefined) {
+      button.html(button.data("label")).prop("disabled", false);
+    }
+  }
+
+  async function testPlace(place, button, result) {
+    busyButton(button, true, offsiteText.testing);
+    result.addClass("d-none");
+    try {
+      const data = await offsiteApi("/test", {
+        method: "POST",
+        body: JSON.stringify({ target_id: place.target_id, kind: place.kind, settings: place.settings }),
+      });
+      result.removeClass("d-none text-danger text-warning text-success")
+        .addClass(data.warnings.length ? "text-warning" : "text-success").text(testedText(data.warnings));
+    } catch (e) {
+      result.removeClass("d-none text-warning text-success").addClass("text-danger").text(e.message);
+    }
+    busyButton(button, false);
+  }
+
+  function formKind() {
+    return $("input[name=offsite_kind]:checked").val() || "folder";
+  }
+
+  function showKind(kind) {
+    $("input[name=offsite_kind]").each(function () {
+      this.checked = this.value === kind;
+      $(this).closest("label").toggleClass("active", this.checked);
+    });
+    $(".offsite-fields").each(function () {
+      $(this).toggleClass("d-none", this.dataset.kind !== kind);
+    });
+  }
+
+  function openForm(place) {
+    editing = place || null;
+    const settings = (place && place.settings) || {};
+    $("#offsite_modal_title").text(place ? fill(offsiteText.editTitle, { name: place.name }) : offsiteText.addTitle);
+    $("#offsite_name").val(place ? place.name : "");
+    Object.values(offsiteFields).flat().forEach((field) => $("#offsite_" + field).val(settings[field] || ""));
+    $("#offsite_secret_saved").toggleClass("d-none", !settings.has_secret);
+    $("#offsite_form_status").addClass("d-none");
+    showKind(place ? place.kind : "folder");
+    $("#offsite_modal").modal("show");
+  }
+
+  function formData() {
+    const kind = formKind();
+    const settings = {};
+    offsiteFields[kind].forEach((field) => { settings[field] = $("#offsite_" + field).val().trim(); });
+    const data = { name: $("#offsite_name").val().trim(), kind: kind, settings: settings };
+    if (editing) data.target_id = editing.target_id;
+    return data;
+  }
+
+  async function testForm() {
+    const button = $("#offsite_form_test");
+    busyButton(button, true, offsiteText.testing);
+    $("#offsite_form_save").prop("disabled", true);
+    try {
+      const data = await offsiteApi("/test", { method: "POST", body: JSON.stringify(formData()) });
+      showStatus("#offsite_form_status", data.warnings.length ? "warning" : "success", testedText(data.warnings));
+    } catch (e) {
+      showStatus("#offsite_form_status", "danger", e.message);
+    }
+    busyButton(button, false);
+    $("#offsite_form_save").prop("disabled", false);
+  }
+
+  async function saveForm(event) {
+    event.preventDefault();
+    const button = $("#offsite_form_save");
+    busyButton(button, true, offsiteText.testing);
+    $("#offsite_form_test").prop("disabled", true);
+    try {
+      const body = JSON.stringify(formData());
+      const data = editing
+        ? await offsiteApi(`/${editing.target_id}`, { method: "PATCH", body: body })
+        : await offsiteApi("/", { method: "POST", body: body });
+      $("#offsite_modal").modal("hide");
+      if (data.warnings.length) {
+        showStatus("#offsite_status", "warning", `${data.target.name}: ${data.warnings.join(" ")}`);
+      } else {
+        $("#offsite_status").addClass("d-none");
+      }
+      loadPlaces();
+    } catch (e) {
+      showStatus("#offsite_form_status", "danger", e.message);
+    }
+    busyButton(button, false);
+    $("#offsite_form_test").prop("disabled", false);
+  }
+
+  function confirmDelete(place) {
+    let message = offsiteText.deleteUnused;
+    if (place.used_by) message = place.used_by === 1 ? offsiteText.deleteUsedOne : fill(offsiteText.deleteUsed, { count: place.used_by });
+    bootbox.confirm({
+      title: escapeHtml(fill(offsiteText.deleteTitle, { name: place.name })),
+      message: escapeHtml(message),
+      buttons: {
+        cancel: { label: escapeHtml(offsiteText.cancel), className: "btn-secondary" },
+        confirm: { label: escapeHtml(offsiteText.delete), className: "btn-danger" },
+      },
+      callback: async function (sure) {
+        if (!sure) return;
+        try {
+          await offsiteApi(`/${place.target_id}`, { method: "DELETE" });
+          $("#offsite_status").addClass("d-none");
+        } catch (e) {
+          showStatus("#offsite_status", "danger", e.message);
+        }
+        loadPlaces();
+      },
+    });
+  }
+
+  $(function () {
+    $("#offsite_add").on("click", () => openForm(null));
+    $("input[name=offsite_kind]").on("change", function () {
+      showKind(this.value);
+      $("#offsite_form_status").addClass("d-none");
+    });
+    $("#offsite_form_test").on("click", testForm);
+    $("#offsite_form").on("submit", saveForm);
+    $("#offsite_modal").on("shown.bs.modal", () => $("#offsite_name").trigger("focus"));
+    loadPlaces();
+  });
+</script>
+{% end %}

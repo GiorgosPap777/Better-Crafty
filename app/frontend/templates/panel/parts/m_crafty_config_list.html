@@ -10,6 +10,8 @@
                 <i class="ph-bold ph-code"></i> Config.json</a>
             <a class="dropdown-item {% if data['active_link'] == 'custom_login' %}active{% end %}" href="/panel/custom_login" role="tab" aria-selected="false">
                 <i class="ph-bold ph-palette"></i> Custom Login</a>
+            <a class="dropdown-item {% if data['active_link'] == 'offsite' %}active{% end %}" href="/panel/offsite" role="tab" aria-selected="false">
+                <i class="ph-bold ph-cloud-arrow-up"></i> {{ translate('offsite', 'title', data['lang']) }}</a>
         </div>
     </div>
 </div>

@@ -5,7 +5,7 @@ const SP = __dirname, BASE = L.BASE;
 const TOKEN = L.token();
 const S1 = L.S1, B1 = L.B1;
 const pages = [
-  '/panel/dashboard', '/panel/panel_config', '/panel/config_json', '/panel/custom_login', '/panel/activity_logs',
+  '/panel/dashboard', '/panel/panel_config', '/panel/config_json', '/panel/custom_login', '/panel/offsite', '/panel/activity_logs',
   '/panel/credits', '/panel/contribute', '/panel/wiki', '/panel/add_user', '/panel/edit_user?id=3', '/panel/edit_user?id=1',
   '/panel/add_role', '/panel/edit_role?id=1', '/panel/edit_user_apikeys?id=1', '/panel/edit_user_otp?id=1', '/panel/edit_user_passkey?id=1',
   `/panel/server_detail?id=${S1}&subpage=logs`, `/panel/server_detail?id=${S1}&subpage=files`, `/panel/server_detail?id=${S1}&subpage=backup`, `/panel/server_detail?id=${S1}&subpage=world`,

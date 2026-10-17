@@ -21,12 +21,14 @@ from app.classes.models.servers import Servers
 from app.classes.models.server_permissions import EnumPermissionsServer
 from app.classes.models.crafty_permissions import EnumPermissionsCrafty
 from app.classes.models.management import HelpersManagement
+from app.classes.models.offsite import HelperOffsite
 from app.classes.controllers.roles_controller import RolesController
 from app.classes.helpers import command_data
 from app.classes.helpers.helpers import Helpers, MASTER_CONFIG
 from app.classes.helpers.java_memory import read_memory
 from app.classes.shared.main_models import DatabaseShortcuts
 from app.classes.shared.metrics_time_helper import MetricsTimeRangeHelper
+from app.classes.shared.offsite_copies import last_status
 from app.classes.shared.stats_helpers import StatsConverter
 from app.classes.web.base_handler import BaseHandler
 from app.classes.web.webhooks.webhook_factory import WebhookFactory
@@ -280,6 +282,23 @@ class PanelHandler(BaseHandler):
         async with aiofiles.open(file_path, "r") as file:
             data = await file.read()
         return data
+
+    @staticmethod
+    def _offsite_summaries(backups, server_instance) -> dict:
+        """Where each zip backup is copied off-site and how the last copy went"""
+        places = {
+            place["target_id"]: place["name"] for place in HelperOffsite.get_all()
+        }
+        summaries = {}
+        for backup in backups:
+            if backup.offsite_id in places and backup.backup_type == "zip_vault":
+                summaries[backup.backup_id] = {
+                    "place": places[backup.offsite_id],
+                    "status": last_status({"offsite_status": backup.offsite_status}),
+                    "copying": server_instance.backup_mgr.offsite.job(backup.backup_id)
+                    is not None,
+                }
+        return summaries
 
     def _list_embed_images(self):
         embed_dir = os.path.join(
@@ -815,6 +834,9 @@ class PanelHandler(BaseHandler):
                     server_id
                 )
                 page_data["backing_up"] = server_instance.is_backingup
+                page_data["offsite"] = self._offsite_summaries(
+                    page_data["backups"], server_instance
+                )
                 page_data["backup_summaries"] = {
                     backup.backup_id: server_instance.backup_mgr.backup_summary(
                         {
@@ -1123,6 +1145,14 @@ class PanelHandler(BaseHandler):
 
                 page_data["active_link"] = "config_json"
                 template = "panel/config_json.html"
+
+        elif page == "offsite":
+            if exec_user["superuser"]:
+                page_data["offsite_text"] = self.translator.translate_section(
+                    "offsite", page_data["lang"]
+                )
+                page_data["active_link"] = "offsite"
+                template = "panel/offsite.html"
 
         elif page == "custom_login":
             if exec_user["superuser"]:
@@ -1581,6 +1611,9 @@ class PanelHandler(BaseHandler):
                 if not superuser:
                     self.redirect(SCHEDULE_AUTH_ERROR_URL)
                     return
+            page_data["offsite_text"] = self.translator.translate_section(
+                "offsite", page_data["lang"]
+            )
             template = "panel/server_backup_edit.html"
 
         elif page == "add_backup":
@@ -1640,6 +1673,9 @@ class PanelHandler(BaseHandler):
                 if not superuser:
                     self.redirect(SCHEDULE_AUTH_ERROR_URL)
                     return
+            page_data["offsite_text"] = self.translator.translate_section(
+                "offsite", page_data["lang"]
+            )
             template = "panel/server_backup_edit.html"
 
         elif page == "edit_user":

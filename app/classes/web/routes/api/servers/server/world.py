@@ -10,6 +10,7 @@ import tornado.ioloop
 from app.classes.helpers import world_tools
 from app.classes.models.server_permissions import EnumPermissionsServer
 from app.classes.web.base_api_handler import BaseApiHandler
+from app.classes.web.routes.api.refused import Refused
 
 logger = logging.getLogger(__name__)
 
@@ -21,21 +22,6 @@ WORLD_ERROR_STATUS = {
 }
 # Room for the zip's own records on top of the world's size
 ZIP_SPARE_SPACE = 64 * 1024 * 1024
-
-
-class Refused(Exception):
-    """An error answer: the HTTP status, the error name and a message."""
-
-    def __init__(self, status: int, error: str, message: str):
-        super().__init__(message)
-        self.status = status
-        self.error = error
-
-    def send(self, handler: BaseApiHandler) -> None:
-        handler.finish_json(
-            self.status,
-            {"status": "error", "error": self.error, "error_data": str(self)},
-        )
 
 
 def _authorize_world(handler: BaseApiHandler, server_id: str):

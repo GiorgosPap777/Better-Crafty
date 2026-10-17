@@ -8,15 +8,18 @@ commits table.
 
 ## Start here
 
-**State (2026-10-17, session 12 in progress):** see "Session 12" for what
-is done and what is next. The owner approved a list of suggestions (update
+**State (2026-10-17, end of session 12):** see "Session 12" for what is
+done and what is next. The owner approved a list of suggestions (update
 check, tests on GitHub, versions, upstream, error pop-ups, then bigger
-features) and is setting up Docker Hub themselves; they will say when to
-check it. Items 1 to 5 are done, plus a fix for an upstream bug that made
+features). Items 1 to 5 are done, plus a fix for an upstream bug that made
 saves fail with "database is locked". Of the bigger features, the restart
-with in-game warnings is done; world tools are next. The GitHub Actions
-runs pass and already publish `edge` to Docker Hub (the owner's secrets
-are set). Session 11 added the player's skin and the game's HUD layout to
+with in-game warnings, world tools and off-site backups are done; the
+Modrinth installer is next.
+**First thing next session: the Docker Hub release.** The owner said they
+finished the Docker Hub setup (secrets added) and that their Docker Hub
+username is `giorgospap777`. Follow "Next session: Docker Hub release" in
+Session 12, then carry on with the Modrinth installer. The owner ran out
+of usage at the end of session 12 and asked for these notes. Session 11 added the player's skin and the game's HUD layout to
 the inventory, and reviewed the whole fork for serious bugs (four found and
 fixed). The owner has not yet said which special items (banners, pots,
 dragon/piglin heads, copper golem statues) they want drawn.
@@ -34,11 +37,10 @@ on any machine.
    repo default, so a fresh clone is already on it. In an existing clone:
    `git fetch origin && git checkout claude/login-server-admin-improvements-ctbqdu && git pull`.
 2. **Set up and check** with "Development setup" below (about 10 minutes).
-   You should see 223 passing pytest tests before changing anything.
-3. **Ask the owner what to work on next.** If it is the Docker work, follow
-   "Session 6" from "Next steps, in order". It needs two answers from them:
-   their Docker Hub username, and whether to publish to Docker Hub only or
-   also to GitHub's registry (`ghcr.io`).
+   You should see 251 passing pytest tests before changing anything.
+3. **Do the Docker Hub release** ("Next session: Docker Hub release" in
+   Session 12), then the Modrinth installer, unless the owner asks for
+   something else.
 4. Before you finish, update this file, commit and push (see "The project").
 
 ### How the owner likes to work
@@ -127,14 +129,24 @@ on any machine.
 18. Session 12: "Okay, the suggestions you said are awesome. So, can we
     start doing them? I will do the Docker thing you mentioned in parallel,
     and when I'm done, I will tell you to check it." See Session 12.
+19. Session 12, while off-site backups were being finished: "Okay, I did
+    what you said, added the variables, and my username is
+    (giorgospap777)". So the Docker Hub secrets are set and the Docker Hub
+    username is `giorgospap777`.
+20. Session 12, right after: "Okay, because I am getting lost to my
+    session limit again. Could you write the handoff.md so that you know
+    what you will need to do later to continue on later?" Done: off-site
+    backups committed and pushed, and these notes.
 
 ### Questions still waiting on the owner
 
 - Should a PR to `main` be opened? (Explained what it means; not opened.)
 - Session 6: publish to Docker Hub only, or also to GitHub's registry
-  (`ghcr.io`)? They only asked for Docker Hub. And what is their Docker Hub
-  username (needed for the image name in the README)? Never ask them to
-  paste a password or token into the chat.
+  (`ghcr.io`)? They only asked for Docker Hub; the workflow publishes to
+  both. (Their Docker Hub username is answered: `giorgospap777`.) Never ask
+  them to paste a password or token into the chat.
+- Which special items (banners, pots, dragon/piglin heads, copper golem
+  statues) to draw (session 11).
 - (Answered in session 5.) The token cookie is now `SameSite=Lax`
   (`api/auth/login.py`, `api/auth/passkey.py`): the API turns XSRF checks
   off, so without it another site could call the API as the logged-in user.
@@ -176,7 +188,8 @@ on any machine.
 | `7bbdc549` | Error pop-ups show the server's text as text; fix for "database is locked" after opening a backup's settings (session 12) |
 | `5a900db6` | Restart with in-game warnings: panel menu, countdown with Cancel, schedules (session 12) |
 | `2313ab81` | Players tab reads the new player folders of Minecraft 26.1 and newer (session 12) |
-| (this commit) | World tab: download the world as a zip, reset the Nether or the End (session 12) |
+| `533866c8` | World tab: download the world as a zip, reset the Nether or the End (session 12) |
+| (this commit) | Off-site backups: copy zip backups to another disk, a network share or S3-compatible cloud storage, and bring them back (session 12) |
 
 ### 1. Login (`d3946c3f`)
 
@@ -1190,33 +1203,41 @@ they are doing the Docker Hub part themselves in parallel:
    restart with in-game warnings (**done**, see below), world tools
    (download the world as a zip, reset the Nether or the End; **done**,
    see below), backups to
-   another disk / network share / cloud, a Modrinth plugin and mod
-   installer. Plus the special item pictures once the owner picks which.
+   another disk / network share / cloud (**done**, see "Off-site
+   backups"), a Modrinth plugin and mod installer (**next**). Plus the
+   special item pictures once the owner picks which.
 
-### Waiting on the owner: Docker Hub
+### Next session: Docker Hub release
 
-**Update:** the GitHub runs for `57ed1545` and `7bbdc549` passed every job
-and their `docker` job logged in to Docker Hub and pushed `edge` and
-`sha-...`, so the two secrets are already set. Still to do when the owner
-says they are finished: steps 2 to 4 below (and ask for the username if
-it is not in the run log).
+The owner said the Docker Hub setup is finished: they added the GitHub
+repo secrets `DOCKERHUB_USERNAME` and `DOCKERHUB_TOKEN`, and their Docker
+Hub username is **`giorgospap777`**, so the image is
+`giorgospap777/better-crafty`. (Earlier runs, for `57ed1545` and
+`7bbdc549`, had already pushed `edge` and `sha-...` there.) Not yet
+checked by us. To do, in order:
 
-They were told to: make a Docker Hub account, create a personal access
-token with Read & Write access, add the GitHub repo secrets
-`DOCKERHUB_USERNAME` and `DOCKERHUB_TOKEN`, and tell us their username
-(never the token). When they say it is done:
-
-1. Check the latest "Tests and Docker image" run on GitHub (the `docker`
-   job's "Choose image names" step says whether the Docker Hub secrets
-   were found). The cloud session can read runs with the GitHub MCP tools
-   (`actions_list`, `get_job_logs`).
-2. Tag the first release (see "Making a release"), which publishes
-   `latest`, `1.0.0` and `1.0`.
-3. Ask them to check on hub.docker.com that the repo is Public; on GitHub,
-   Packages → better-crafty → Package settings → Change visibility →
-   Public for the `ghcr.io` copy.
-4. Do the rest of "Session 6" (run the image, README install, update and
-   migration sections) using `<username>/better-crafty:latest`.
+1. Check the "Tests and Docker image" run for the off-site backups commit
+   (the last code push of session 12) on GitHub: every job green, and the
+   `docker` job's "Choose image names" step lists
+   `giorgospap777/better-crafty`. The cloud session reads runs with the
+   GitHub MCP tools (`actions_list`, `get_job_logs`). If a job is red, fix
+   it first.
+2. Tag the first release (see "Making a release"): `better_crafty` is
+   already `1.0.0`, so `git tag v1.0.0 && git push origin v1.0.0`. That
+   publishes `latest`, `1.0.0` and `1.0`. Then make the GitHub Release for
+   the tag (Releases → Draft a new release; or `mcp__github` tools if they
+   can) with a short list of what changed (the README's "What changed"
+   table is a good start). If the session cannot create a release, ask the
+   owner to click it.
+3. Ask the owner to check on hub.docker.com that
+   `giorgospap777/better-crafty` is Public, and on GitHub: Packages →
+   better-crafty → Package settings → Change visibility → Public for the
+   `ghcr.io` copy (or ask whether they want `ghcr.io` at all).
+4. Do the rest of "Session 6": run the image (`docker run` with the
+   volumes from "Publishing"), then rewrite the README's Install section
+   with `giorgospap777/better-crafty:latest`, plus update and migration
+   steps (see "README plan"). Mention mounting an extra disk or share for
+   off-site backups (see "Off-site backups").
 
 ### Update check (done)
 
@@ -1485,6 +1506,70 @@ the Nether or the End)".
   `test_players.js` still pass. The tests' NBT writer moved to
   `tests/classes/helpers/nbt_writer.py`.
 
+### Off-site backups (done)
+
+The owner's pitch: "Backups to another disk, a network share or cloud
+storage. A backup on the same disk doesn't help if that disk dies."
+
+- **Storage places** (superuser only): Panel Config → new tab "Off-site
+  storage" (`/panel/offsite`). A place is a **folder** (another disk or a
+  mounted network share) or **S3-compatible storage** (AWS S3, Backblaze
+  B2, Cloudflare R2, Wasabi, MinIO, ...: address, bucket, optional folder
+  prefix, region, access key, secret key). Add, edit, Test, remove. The
+  secret key never goes to the browser (`has_secret`); leaving it empty
+  when editing keeps the saved one.
+- **Folder safety:** Test writes a marker file `.better-crafty-offsite`
+  into the folder; copies refuse a folder without it ("not connected"), so
+  an unmounted disk's empty mount point is never filled. Test warns when
+  the folder is on the same disk as the backups; folders inside the
+  servers or backups folders are refused.
+- **S3:** hand-written AWS Signature V4 client (`requests` only, no new
+  package), path-style addresses except virtual-host for `*.amazonaws.com`
+  buckets without dots; region guessed from the address; multipart upload
+  above 16 MiB with retries; Test warns about `http://` addresses.
+- **Per backup** (backup's settings page, zip backups only): "Off-site
+  copy" section: choose the place and how many copies to keep there (0
+  keeps all); it saves at once. Shows how the last copy went, a progress
+  bar while copying, "Copy now", and the list of copies there; each copy
+  is marked "Also here" or has "Bring back", which downloads it into the
+  backup folder (named like a local backup, time set from the name) so it
+  can be restored as usual.
+- After every zip backup the newest backup is copied in the background
+  (`server.backup_server` → `backup_mgr.offsite.start_copy`); one copy at a
+  time per backup config, a backup finishing meanwhile is copied after.
+  A failed copy notifies the server's users. Copies are named
+  `<prefix>/<backup_id>/<server-name>_<YYYY-mm-dd_HH-MM-SS>.zip`.
+- The Backups tab shows an "Off-site copy" fact per backup (place, copying,
+  copied when, or the last copy failed).
+- Removing a place stops the backups that used it (they keep their local
+  backups; the copies already there are kept).
+- Database: migration `20261017_offsite_copies` (table `offsite_targets`;
+  columns `offsite_id`, `offsite_keep`, `offsite_status` on `backups`).
+- API: `/api/v2/crafty/offsite` (GET list, POST add),
+  `/api/v2/crafty/offsite/test` (POST, also with `target_id` to reuse the
+  saved secret), `/api/v2/crafty/offsite/<id>` (PATCH, DELETE);
+  `/api/v2/servers/<id>/backups/backup/<id>/offsite` (GET status and
+  copies, `?copies=0` skips the list; PATCH place and keep; POST
+  `{"action": "copy"}` or `{"action": "fetch", "name": ...}`), Backup
+  permission. Errors use `Refused` (moved to
+  `app/classes/web/routes/api/refused.py`, shared with the World API).
+- **Docker:** a folder place must be mounted into the container (for
+  example `-v /mnt/backupdisk:/crafty/offsite`, then use `/crafty/offsite`
+  as the folder). Put that in the README's Install section.
+- **Checked:** 23 unit tests (`tests/classes/helpers/test_offsite.py`: the
+  signer against AWS's published examples, names, settings, folder place,
+  S3 against a fake server with multipart, retries and errors) and 5
+  (`tests/classes/shared/test_offsite_copies.py`: copying after backups,
+  keep, a missing disk, bring back, removing a place);
+  `dev/handoff-tools/test_offsite.js` passed every check against a folder
+  and a local S3 server (versitygw in Docker: `docker run -d -p 7070:7070
+  -e ROOT_ACCESS_KEY=testkey -e ROOT_SECRET_KEY=testsecret123
+  versity/versitygw posix /tmp/vgw`, then create the bucket), desktop and
+  phone. Without the `S3_*` variables the script tests only the folder.
+- **Not done (ideas):** SFTP or WebDAV places, encrypting copies before
+  upload, copying snapshot backups, a test against real AWS or B2 (only
+  versitygw and the fake were used).
+
 ### Upstream (checked 2026-10-17)
 
 - Upstream's newest release is still `v4.11.0` (`fe65b372`). Their `dev`
@@ -1531,6 +1616,21 @@ the Nether or the End)".
   `test_player_data.py`), `dev/handoff-tools/test_world.js`,
   `world_fixtures.py` (new), `setup_testdata.py`, `player_fixtures.py`,
   `crawl.js`, `fake_server/FakeServer.java` and `server.jar`
+- Off-site backups: `app/classes/helpers/offsite.py` (new),
+  `app/classes/models/offsite.py` (new), `management.py`,
+  `app/classes/shared/offsite_copies.py` (new), `backup_mgr.py`,
+  `server.py`, `translation.py` (`translate_section`),
+  `app/classes/web/routes/api/crafty/offsite.py` (new),
+  `.../servers/server/backups/backup/offsite.py` (new),
+  `app/classes/web/routes/api/refused.py` (new), `world.py`,
+  `api_handlers.py`, `panel_handler.py`,
+  `app/migrations/20261017_offsite_copies.py` (new),
+  `templates/panel/offsite.html` (new), `server_backup_edit.html`,
+  `server_backup.html`, `crafty_config_list.html`,
+  `m_crafty_config_list.html`, `css/partial/crafty-offsite.css` (new),
+  `en_EN.json`, `tests/classes/helpers/test_offsite.py` (new),
+  `tests/classes/shared/test_offsite_copies.py` (new),
+  `dev/handoff-tools/test_offsite.js` (new), `crawl.js`
 
 ## Development setup (any machine)
 
@@ -1552,7 +1652,7 @@ section. Commands are for a terminal in the repo root. On Windows use
 python3 -m venv .venv
 . .venv/bin/activate            # Windows: .venv\Scripts\activate
 pip install -r requirements.txt pytest black pylint
-pytest -q tests                 # 223 pass
+pytest -q tests                 # 251 pass
 black --check app tests
 node dev/command-data/test_complete.js   # command suggestions engine, no browser
 ```
@@ -1650,6 +1750,7 @@ Settings come from `local.json`; the environment variables `CRAFTY_URL`,
 | `test_audit.js` | Schedule and webhook switches, restore errors, editor saves |
 | `test_restart_warned.js` | Restart with in-game warnings: dialog, countdown, Cancel, schedules, phone (about 2 minutes; leaves server 1 running) |
 | `test_world.js` | World tab: download (stopped and running), reset of the End and the Nether, phone; writes the test world again at the end |
+| `test_offsite.js` | Off-site storage page and a backup's off-site copy: folder place always; S3 too when `S3_ENDPOINT`, `S3_BUCKET`, `S3_KEY`, `S3_SECRET` are set (see Session 12) |
 | `crawl.js` | Opens every panel page (desktop and phone), reports page errors; `node crawl.js [substring]` |
 | `chk_metrics.js` | Metrics chart zoom |
 | `shot.js`, `panel.js`, `shot_files.js`, `shot_metrics.js`, `shot_header.js` | Screenshots only |

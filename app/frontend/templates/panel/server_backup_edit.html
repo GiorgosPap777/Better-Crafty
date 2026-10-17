@@ -205,6 +205,21 @@
                   data['lang'])
                   }}</button>
               </form>
+
+              {% set offsite_text = data['offsite_text'] %}
+              <section class="offsite-section" id="offsite_section" aria-labelledby="offsite_section_title">
+                <h4 class="card-title" id="offsite_section_title"><i class="ph-bold ph-cloud-arrow-up" aria-hidden="true"></i> {{ offsite_text['section'] }}</h4>
+                <p class="text-muted small">{{ offsite_text['sectionIntro'] }}</p>
+                {% if not data['backup_config'].get('backup_id') %}
+                <p class="offsite-note mb-0">{{ offsite_text['saveFirst'] }}</p>
+                {% elif data['backup_config']['backup_type'] != 'zip_vault' %}
+                <p class="offsite-note mb-0">{{ offsite_text['zipOnly'] }}</p>
+                {% else %}
+                <div id="offsite_body">
+                  <div class="text-center py-3"><span class="spinner-border spinner-border-sm" aria-hidden="true"></span></div>
+                </div>
+                {% end %}
+              </section>
             </div>
 
             <div class="col-md-6 col-sm-12">
@@ -280,6 +295,7 @@
 
 </div>
 <link rel="stylesheet" href="/static/assets/css/partial/crafty-backup.css">
+<link rel="stylesheet" href="/static/assets/css/partial/crafty-offsite.css">
 <!-- content-wrapper ends -->
 
 {% end %}
@@ -794,5 +810,260 @@
   }
 
 </script>
+{% if data['backup_config'].get('backup_id') and data['backup_config']['backup_type'] == 'zip_vault' %}
+<script>
+  // The backup's off-site copy: where it goes, how the last copy went, and
+  // the copies there
+  const offsiteText = {% raw json_encode(data['offsite_text']) %};
+  const offsiteSuperuser = {% raw json_encode(bool(data['superuser'])) %};
+  const offsiteLocal = {% raw json_encode([b['path'] for b in data['backup_list']]) %};
+  const offsiteUrl = `/api/v2/servers/${serverId}/backups/backup/${backup_id}/offsite`;
+  let offsite = null;
+  let offsiteTimer = null;
+  // Set while this page brings a copy back, to show the backup when it is here
+  let offsiteFetching = null;
+
+  function offsiteFill(words, values) {
+    return String(words).replace(/\{(\w+)\}/g, (match, key) => (key in values ? values[key] : match));
+  }
+
+  function offsiteSize(bytes) {
+    const units = ["B", "KB", "MB", "GB", "TB"];
+    let value = Number(bytes) || 0;
+    let unit = 0;
+    while (value >= 1024 && unit < units.length - 1) {
+      value /= 1024;
+      unit++;
+    }
+    return `${unit ? value.toFixed(value < 10 ? 1 : 0) : value} ${units[unit]}`;
+  }
+
+  // The backup a copy was made from: its name without the server's
+  function offsiteLocalName(name) {
+    const found = /(\d{4}-\d\d-\d\d_\d\d-\d\d-\d\d\.zip)$/.exec(name);
+    return found ? found[1] : name;
+  }
+
+  function offsiteWhen(name, time) {
+    const found = /^(\d{4}-\d\d-\d\d)_(\d\d)-(\d\d)-(\d\d)\.zip$/.exec(offsiteLocalName(name));
+    return found ? `${found[1]} ${found[2]}:${found[3]}:${found[4]}` : moment.unix(time).format("YYYY-MM-DD HH:mm");
+  }
+
+  async function offsiteApi(options, query) {
+    const res = await fetch(offsiteUrl + (query || ""), {
+      headers: { "X-XSRFToken": getCookie("_xsrf") },
+      ...options,
+    });
+    let data = {};
+    try { data = await res.json(); } catch (e) { /* not JSON */ }
+    if (!res.ok || data.status !== "ok") {
+      throw new Error(data.error_data || data.error || res.statusText || res.status);
+    }
+    return data.data;
+  }
+
+  function offsiteNoPlaces() {
+    const box = $('<div class="offsite-note"></div>').append($("<p></p>").text(offsiteText.noPlaces));
+    if (offsiteSuperuser) {
+      box.append($('<a class="btn btn-outline-primary btn-sm" href="/panel/offsite"></a>')
+        .append('<i class="ph-bold ph-plus" aria-hidden="true"></i> ')
+        .append(document.createTextNode(offsiteText.addPlaces)));
+    } else {
+      box.find("p").append(document.createTextNode(" " + offsiteText.askAdmin));
+    }
+    return box;
+  }
+
+  function offsiteSettings() {
+    const row = $('<div class="form-row"></div>');
+    const select = $('<select class="form-control" id="offsite_target"></select>')
+      .append($('<option value=""></option>').text(offsiteText.nowhere));
+    offsite.targets.forEach((place) => {
+      select.append($("<option></option>").val(place.target_id).text(place.name));
+    });
+    select.val(offsite.offsite_id).on("change", saveOffsite);
+    row.append($('<div class="form-group col-sm-7"></div>')
+      .append($('<label for="offsite_target"></label>').text(offsiteText.copyTo))
+      .append(select)
+      .append($('<small class="form-text text-muted offsite-where"></small>').text(offsite.where)));
+    const keep = $('<input type="number" class="form-control" id="offsite_keep" min="0" max="1000" step="1">')
+      .val(offsite.offsite_keep).prop("disabled", !offsite.offsite_id).on("change", saveOffsite);
+    row.append($('<div class="form-group col-sm-5"></div>')
+      .append($('<label for="offsite_keep"></label>').text(offsiteText.keep))
+      .append(keep)
+      .append($('<small class="form-text text-muted"></small>').text(offsiteText.keepHelp)));
+    return [row, $('<div class="offsite-saved small" id="offsite_saved" role="status"></div>')];
+  }
+
+  function offsiteState() {
+    const box = $('<div class="offsite-state" role="status"></div>');
+    const job = offsite.job;
+    if (job) {
+      const words = job.action === "fetch"
+        ? offsiteFill(offsiteText.fetching, { file: offsiteLocalName(job.file || ""), percent: job.percent })
+        : (job.file ? offsiteFill(offsiteText.copying, { file: job.file, percent: job.percent }) : offsiteText.copyingShort);
+      box.append($("<p></p>").text(words));
+      box.append($('<div class="progress"></div>').append($('<div class="progress-bar progress-bar-striped progress-bar-animated" role="progressbar"></div>')
+        .css("width", `${job.percent}%`).attr({ "aria-valuenow": job.percent, "aria-valuemin": 0, "aria-valuemax": 100 })));
+      return box;
+    }
+    const status = offsite.status;
+    if (!status) {
+      box.append($('<p class="text-muted"></p>').text(offsiteText.nothingYet));
+    } else if (status.state === "ok") {
+      box.append($('<p class="text-success"></p>').text(offsiteFill(offsiteText.lastOk,
+        { file: status.file, when: moment.unix(status.time).fromNow() })));
+    } else {
+      box.append($('<p class="text-danger"></p>').text(offsiteFill(offsiteText.lastFailed,
+        { when: moment.unix(status.time).fromNow(), message: status.message || "" })));
+    }
+    const fetched = offsite.fetched;
+    if (fetched && fetched.state === "failed") {
+      box.append($('<p class="text-danger"></p>').text(offsiteFill(offsiteText.fetchFailed,
+        { file: offsiteLocalName(fetched.file), message: fetched.message || "" })));
+    }
+    box.append($('<button type="button" class="btn btn-outline-primary btn-sm" id="offsite_copy_now"></button>')
+      .append('<i class="ph-bold ph-cloud-arrow-up" aria-hidden="true"></i> ')
+      .append(document.createTextNode(offsiteText.copyNow))
+      .prop("disabled", !offsiteLocal.length)
+      .on("click", copyOffsiteNow));
+    return box;
+  }
+
+  function offsiteCopies() {
+    const box = $('<div class="offsite-copies"></div>')
+      .append($("<h5></h5>").text(offsiteText.copies));
+    if (offsite.copies_error) {
+      return box.append($('<p class="text-danger"></p>').text(offsiteFill(offsiteText.listFailed, { message: offsite.copies_error })));
+    }
+    const copies = (offsite.copies || []).slice().reverse();
+    if (!copies.length) return box.append($('<p class="text-muted"></p>').text(offsiteText.noCopies));
+    const list = $('<ul class="offsite-copy-list"></ul>');
+    copies.forEach((copy) => {
+      const here = offsiteLocal.includes(offsiteLocalName(copy.name));
+      const item = $("<li></li>")
+        .append($('<span class="offsite-copy-name"></span>').text(offsiteWhen(copy.name, copy.time)).attr("title", copy.name))
+        .append($('<span class="text-muted offsite-copy-size"></span>').text(offsiteSize(copy.size)));
+      if (here) {
+        item.append($('<span class="badge badge-pill badge-outline-success"></span>').text(offsiteText.isHere));
+      } else {
+        item.append($('<button type="button" class="btn btn-outline-warning btn-sm offsite-fetch"></button>')
+          .append('<i class="ph-bold ph-cloud-arrow-down" aria-hidden="true"></i> ')
+          .append(document.createTextNode(offsiteText.bringBack))
+          .prop("disabled", !!offsite.job)
+          .on("click", () => fetchOffsite(copy.name)));
+      }
+      list.append(item);
+    });
+    box.append(list);
+    if (copies.some((copy) => !offsiteLocal.includes(offsiteLocalName(copy.name)))) {
+      box.append($('<p class="small text-muted mb-0"></p>').text(offsiteText.bringBackHelp));
+    }
+    return box;
+  }
+
+  function renderOffsite() {
+    const body = $("#offsite_body").empty();
+    if (!offsite.targets.length && !offsite.offsite_id) {
+      body.append(offsiteNoPlaces());
+      return;
+    }
+    body.append(offsiteSettings());
+    if (offsite.offsite_id) body.append(offsiteState(), offsiteCopies());
+  }
+
+  async function loadOffsite() {
+    try {
+      offsite = await offsiteApi({});
+    } catch (e) {
+      $("#offsite_body").empty().append($('<p class="text-danger"></p>').text(e.message));
+      return;
+    }
+    renderOffsite();
+    watchOffsite();
+  }
+
+  // While a copy runs, ask how it is going every two seconds
+  function watchOffsite() {
+    clearTimeout(offsiteTimer);
+    if (!offsite.job) {
+      offsiteDone(false);
+      return;
+    }
+    offsiteTimer = setTimeout(async () => {
+      try {
+        const data = await offsiteApi({}, "?copies=0");
+        Object.assign(offsite, { job: data.job, status: data.status, fetched: data.fetched });
+      } catch (e) {
+        console.warn("Could not check the off-site copy", e);
+      }
+      if (offsite.job) {
+        renderOffsite();
+        return watchOffsite();
+      }
+      offsiteDone(true);
+    }, 2000);
+  }
+
+  // A copy or a fetch has finished (it may have before the first check)
+  function offsiteDone(refresh) {
+    if (offsiteFetching) {
+      const fetched = offsite.fetched;
+      const here = fetched && fetched.file === offsiteFetching && fetched.state === "ok";
+      offsiteFetching = null;
+      if (here) {
+        // The backup is here now: show it in the list of backups
+        window.location.reload();
+        return;
+      }
+    }
+    if (refresh) loadOffsite();
+  }
+
+  async function saveOffsite() {
+    const keep = Number($("#offsite_keep").val());
+    const saved = $("#offsite_saved").removeClass("text-success text-danger").text("");
+    try {
+      await offsiteApi({
+        method: "PATCH",
+        body: JSON.stringify({ offsite_id: $("#offsite_target").val(), offsite_keep: Number.isInteger(keep) ? keep : -1 }),
+      });
+    } catch (e) {
+      saved.addClass("text-danger").text(e.message);
+      return;
+    }
+    await loadOffsite();
+    $("#offsite_saved").addClass("text-success").text(offsiteText.saved);
+  }
+
+  async function copyOffsiteNow() {
+    $("#offsite_copy_now").prop("disabled", true);
+    let failed = null;
+    try {
+      await offsiteApi({ method: "POST", body: JSON.stringify({ action: "copy" }) });
+    } catch (e) {
+      failed = e.message;
+    }
+    await loadOffsite();
+    if (failed) $("#offsite_saved").addClass("text-danger").text(failed);
+  }
+
+  async function fetchOffsite(name) {
+    $(".offsite-fetch").prop("disabled", true);
+    offsiteFetching = name;
+    let failed = null;
+    try {
+      await offsiteApi({ method: "POST", body: JSON.stringify({ action: "fetch", name: name }) });
+    } catch (e) {
+      offsiteFetching = null;
+      failed = offsiteFill(offsiteText.fetchFailed, { file: offsiteLocalName(name), message: e.message });
+    }
+    await loadOffsite();
+    if (failed) $("#offsite_saved").addClass("text-danger").text(failed);
+  }
+
+  $(() => loadOffsite());
+</script>
+{% end %}
 
 {% end %}

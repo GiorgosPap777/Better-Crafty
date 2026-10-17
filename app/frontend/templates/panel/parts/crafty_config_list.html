@@ -11,4 +11,8 @@
         <a class="nav-link {% if data['active_link'] == 'custom_login' %}active{% end %}" href="/panel/custom_login" role="tab" aria-selected="false">
             <i class="ph-bold ph-palette"></i>{{ translate('panelConfig', 'custom', data['lang']) }}</a>
     </li>
+    <li class="nav-item term-nav-item">
+        <a class="nav-link {% if data['active_link'] == 'offsite' %}active{% end %}" href="/panel/offsite" role="tab" aria-selected="false">
+            <i class="ph-bold ph-cloud-arrow-up"></i>{{ translate('offsite', 'title', data['lang']) }}</a>
+    </li>
 </ul>

@@ -41,6 +41,22 @@ class Translation:
             return "Error while getting translation"
         return word
 
+    def translate_section(self, page: str, language: str) -> dict:
+        """Every string of a page, in the language or else in English, for a
+        page's script. Reads each file once (translate() reloads the file
+        whenever it falls back to English)."""
+        own = self._section(language, page)
+        english = self._section("en_EN", page)
+        return {word: own.get(word, text) for word, text in english.items()}
+
+    def _section(self, language: str, page: str) -> dict:
+        try:
+            with open(self.get_language_file(language), "r", encoding="utf-8") as f:
+                section = json.load(f).get(page, {})
+        except (OSError, ValueError):
+            section = {}
+        return section if isinstance(section, dict) else {}
+
     def translate_inner(self, page, word, language, error) -> t.Union[t.Any, None]:
         language_file = self.get_language_file(language)
         try:

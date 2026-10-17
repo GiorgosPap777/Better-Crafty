@@ -1,0 +1,198 @@
+/**************************************************************/
+/* Off-site storage: the places to copy backups to, and a     */
+/* backup's off-site copy                                     */
+/**************************************************************/
+.offsite-head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    margin: 1.25rem 0;
+}
+
+.offsite-head h3 {
+    font-size: 1.1rem;
+    font-weight: 600;
+    margin-bottom: 0.25rem;
+}
+
+.offsite-head > div {
+    flex: 1 1 24rem;
+    min-width: 0;
+}
+
+.offsite-empty {
+    text-align: center;
+    padding: 2rem 1rem;
+    border: 1px dashed var(--outline);
+    border-radius: 0.5rem;
+}
+
+.offsite-empty .ph {
+    font-size: 2rem;
+}
+
+.offsite-place {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1rem;
+    justify-content: space-between;
+    border: 1px solid var(--outline);
+    border-radius: 0.5rem;
+    padding: 1rem 1.25rem;
+    margin-bottom: 1rem;
+}
+
+.offsite-place-main {
+    flex: 1 1 24rem;
+    min-width: 0;
+}
+
+.offsite-place-title {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 0.4rem;
+}
+
+.offsite-place-title .ph-bold {
+    font-size: 1.25rem;
+}
+
+.offsite-place-title h4 {
+    font-size: 1rem;
+    font-weight: 600;
+    margin: 0;
+    overflow-wrap: anywhere;
+}
+
+.offsite-place-title .badge {
+    border: 1px solid;
+    background: transparent;
+}
+
+.offsite-where,
+.offsite-mono {
+    font-family: var(--font-family-monospace, monospace);
+    font-size: 0.85rem;
+    overflow-wrap: anywhere;
+}
+
+.offsite-test-result {
+    margin-top: 0.4rem;
+}
+
+.offsite-place-actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-start;
+    align-content: flex-start;
+    gap: 0.5rem;
+}
+
+.offsite-kinds {
+    flex-wrap: wrap;
+}
+
+.offsite-kinds .btn:focus-within {
+    box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.4);
+}
+
+/* A backup's off-site copy, on its settings page */
+.offsite-section {
+    border-top: 1px solid var(--outline);
+    margin-top: 1.5rem;
+    padding-top: 1.25rem;
+}
+
+.offsite-note {
+    border: 1px dashed var(--outline);
+    border-radius: 0.5rem;
+    padding: 0.75rem;
+}
+
+.offsite-note p {
+    margin-bottom: 0.5rem;
+}
+
+.offsite-saved {
+    min-height: 1.25rem;
+    margin: -0.5rem 0 0.5rem;
+}
+
+.offsite-state {
+    margin-bottom: 1rem;
+}
+
+.offsite-state p {
+    margin-bottom: 0.5rem;
+    overflow-wrap: anywhere;
+}
+
+.offsite-state .progress {
+    height: 0.9rem;
+}
+
+.offsite-copies h5 {
+    font-size: 0.95rem;
+    font-weight: 600;
+}
+
+.offsite-copy-list {
+    list-style: none;
+    padding: 0;
+    margin: 0 0 0.5rem;
+}
+
+.offsite-copy-list li {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.25rem 0.75rem;
+    padding: 0.4rem 0;
+    border-bottom: 1px solid var(--outline);
+}
+
+.offsite-copy-name {
+    font-family: var(--font-family-monospace, monospace);
+    font-size: 0.85rem;
+}
+
+.offsite-copy-size {
+    font-size: 0.85rem;
+    margin-right: auto;
+}
+
+.offsite-copy-list .badge {
+    border: 1px solid;
+    background: transparent;
+}
+
+/* The Backups tab */
+.offsite-fact {
+    overflow-wrap: anywhere;
+}
+
+@media (max-width: 575.98px) {
+    .offsite-place {
+        padding: 0.85rem;
+    }
+
+    .offsite-place-actions {
+        width: 100%;
+    }
+
+    .offsite-place-actions .btn {
+        flex: 1 1 auto;
+    }
+
+    .offsite-kinds {
+        display: flex;
+    }
+
+    .offsite-kinds .btn {
+        flex: 1 1 auto;
+    }
+}

@@ -95,6 +95,22 @@
                     <dd>{% if backup.backup_type == "snapshot" %}{{ translate('serverBackups', 'typeSnapshot',
                       data['lang']) }}{% else %}{{ translate('serverBackups', 'typeZip', data['lang']) }}{% end %}</dd>
                   </div>
+                  {% set off = data['offsite'].get(backup.backup_id) %}
+                  {% if off %}
+                  <div class="backup-facts-wide">
+                    <dt>{{ translate('offsite', 'offsiteCopy', data['lang']) }}</dt>
+                    <dd class="offsite-fact">
+                      <i class="ph-bold ph-cloud-arrow-up" aria-hidden="true"></i> {{ off['place'] }}
+                      {% if off['copying'] %}
+                      <span class="text-muted">&middot; {{ translate('offsite', 'copyingShort', data['lang']) }}</span>
+                      {% elif off['status'] and off['status'].get('state') == 'ok' %}
+                      <span class="text-muted">&middot; {{ translate('offsite', 'copied', data['lang']) }} <span class="offsite-time" data-time="{{ off['status'].get('time', 0) }}"></span></span>
+                      {% elif off['status'] %}
+                      <span class="text-danger" title="{{ off['status'].get('message', '') }}">&middot; {{ translate('offsite', 'lastCopyFailed', data['lang']) }}</span>
+                      {% end %}
+                    </dd>
+                  </div>
+                  {% end %}
                   <div class="backup-facts-wide">
                     <dt>{{ translate('serverBackups', 'storageLocation', data['lang']) }}</dt>
                     <dd class="backup-location">{{ backup.backup_location }}</dd>
@@ -189,6 +205,10 @@
 
   $(function () {
     $(".backup-status").each(function () { showStatus(this); });
+    $(".offsite-time").each(function () {
+      const time = moment.unix(parseFloat(this.dataset.time));
+      $(this).text(time.fromNow()).attr("title", time.format("YYYY-MM-DD HH:mm"));
+    });
     $(".backup-time").each(function () {
       const time = moment.unix(parseFloat(this.dataset.time));
       $(this).text(time.format("YYYY-MM-DD HH:mm"));

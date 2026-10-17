@@ -30,6 +30,7 @@ Please report problems with this fork here, not to them.
 | **Config** | Split into sections. Game settings (`server.properties`) and memory are normal form fields now, so no more editing the file or the Java command by hand. |
 | **Players** | Everyone who has ever joined, with play time and last seen. Each player opens to their inventory, armor, ender chest, statistics and advancements. Whitelist, operators and bans in one place. |
 | **Backups** | Shows the last backup (time and size) and how many copies are kept. Buttons have labels. Restore errors are shown, and restoring a snapshot asks first. |
+| **Off-site backups** | Each zip backup can be copied automatically to another disk, a network share or S3-compatible cloud storage (AWS S3, Backblaze B2, Cloudflare R2, MinIO, ...), keeping as many copies there as you choose. Copies can be brought back and restored with one click. |
 | **World** | A new tab: the world's version, seed and size, a one-click download of the world as a zip (even while the server runs), and a reset of the Nether or the End (the dragon comes back). |
 | **Files** | A clickable folder path, readable file types, a menu button on each row, and a layout that works on phones. |
 | **Metrics** | Separate CPU, memory and player charts that zoom together, with quick time ranges. |
@@ -316,6 +317,11 @@ servers), 19132/udp (Bedrock), 8123 (Dynmap), 5520-5550/udp (Hytale).
 
 The first build takes several minutes; later builds are quick. The image
 works on `amd64` and `arm64`.
+
+For off-site backups to another disk or a network share, mount it into the
+container too, for example `-v /mnt/backupdisk:/crafty/offsite` (or the same
+line under `volumes:` in `docker-compose.yml`), and use `/crafty/offsite` as
+the folder in Panel Config → Off-site storage. Cloud storage needs no mount.
 
 > **Docker on Windows (WSL / WSL2 / Docker Desktop):** the Crafty team warns
 > that stopping or restarting a Minecraft server there can corrupt the

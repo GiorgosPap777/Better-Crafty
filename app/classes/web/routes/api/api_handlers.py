@@ -145,6 +145,14 @@ from app.classes.web.routes.api.crafty.item_icons import (
 from app.classes.web.routes.api.servers.server.stop_all import (
     ApiServersServerStopAllHandler,
 )
+from app.classes.web.routes.api.crafty.offsite import (
+    ApiCraftyOffsiteHandler,
+    ApiCraftyOffsiteTargetHandler,
+    ApiCraftyOffsiteTestHandler,
+)
+from app.classes.web.routes.api.servers.server.backups.backup.offsite import (
+    ApiServersServerBackupsBackupOffsiteHandler,
+)
 
 
 def api_handlers(handler_args):
@@ -213,6 +221,21 @@ def api_handlers(handler_args):
         (
             r"/api/v2/crafty/stats/?",
             ApiCraftyHostStatsHandler,
+            handler_args,
+        ),
+        (
+            r"/api/v2/crafty/offsite/?",
+            ApiCraftyOffsiteHandler,
+            handler_args,
+        ),
+        (
+            r"/api/v2/crafty/offsite/test/?",
+            ApiCraftyOffsiteTestHandler,
+            handler_args,
+        ),
+        (
+            r"/api/v2/crafty/offsite/([0-9a-f-]{36})/?",
+            ApiCraftyOffsiteTargetHandler,
             handler_args,
         ),
         (
@@ -420,6 +443,11 @@ def api_handlers(handler_args):
         (
             r"/api/v2/servers/([a-z0-9-]+)/backups/backup/([a-z0-9-]+)/files/?",
             ApiServersServerBackupsBackupFilesIndexHandler,
+            handler_args,
+        ),
+        (
+            r"/api/v2/servers/([a-z0-9-]+)/backups/backup/([a-z0-9-]+)/offsite/?",
+            ApiServersServerBackupsBackupOffsiteHandler,
             handler_args,
         ),
         (

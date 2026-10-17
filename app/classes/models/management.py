@@ -124,6 +124,11 @@ class Backups(BaseModel):
     status = CharField(default='{"status": "Standby", "message": ""}')
     enabled = BooleanField(default=True)
     backup_type = CharField(default="zip_vault")
+    # Off-site copies (offsite_copies.py): where to, how many to keep there
+    # (0 keeps all) and how the last copy went
+    offsite_id = CharField(default="")
+    offsite_keep = IntegerField(default=0)
+    offsite_status = CharField(default="")
 
     class Meta:
         table_name = "backups"
@@ -452,6 +457,9 @@ class HelpersManagement:
                     "default": backup.default,
                     "enabled": backup.enabled,
                     "backup_type": backup.backup_type,
+                    "offsite_id": backup.offsite_id,
+                    "offsite_keep": backup.offsite_keep,
+                    "offsite_status": backup.offsite_status,
                 }
         else:
             # A list, not a lazy cursor: a cursor that is never read to the end

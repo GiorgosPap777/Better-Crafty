@@ -1393,6 +1393,9 @@ class ServerInstance:
             )
             self.run_threaded_server(HelperUsers.get_user_id_by_name("system"))
         self.set_backup_status()
+        if backup_name and conf["backup_type"] == "zip_vault" and conf["offsite_id"]:
+            # Copied in the background, so the server is back up meanwhile
+            self.backup_mgr.offsite.start_copy(self.server_id, self.name, backup_id)
 
         # Return data for webhooks callback
         base_url = f"{self.helper.get_setting('base_url')}"
