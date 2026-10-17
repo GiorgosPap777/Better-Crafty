@@ -698,8 +698,8 @@
       setTimeout(function () {
         $('.modal').modal('hide');
         bootbox.alert({
-          title: responseData.error,
-          message: responseData.error_data
+          title: escapeHtml(responseData.error),
+          message: escapeHtml(responseData.error_data)
         });
       }, 2000)
     }
@@ -1084,8 +1084,8 @@
                 });
               } else {
                 bootbox.alert({
-                  title: responseData.error,
-                  message: responseData.error_data
+                  title: escapeHtml(responseData.error),
+                  message: escapeHtml(responseData.error_data)
                 });
               }
             }).catch(function (e) {
@@ -1326,7 +1326,7 @@
         return res.json();
       }).then(function(data) {
         if (data.status !== "ok") {
-          bootbox.alert({ title: data.error, message: data.error_data });
+          bootbox.alert({ title: escapeHtml(data.error), message: escapeHtml(data.error_data) });
         }
       });
     });
@@ -1361,8 +1361,8 @@
       } else {
 
         bootbox.alert({
-          title: responseData.error,
-          message: responseData.error_data
+          title: escapeHtml(responseData.error),
+          message: escapeHtml(responseData.error_data)
         });
       }
     }

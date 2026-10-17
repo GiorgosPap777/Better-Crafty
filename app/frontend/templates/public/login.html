@@ -131,6 +131,7 @@
   <!-- plugins:js -->
   <script src="/static/assets/vendors/js/vendor.bundle.base.js"></script>
   <script src="/static/assets/vendors/js/bootbox.min.js"></script>
+  <script src="/static/assets/js/shared/misc.js"></script>
   <script src="/static/assets/js/shared/passkey.js"></script>
   <!-- endinject -->
   <script>
@@ -322,7 +323,7 @@
           if (data.data.warning) {
             setBusy(false);
             bootbox.alert({
-              message: data.data.warning,
+              message: escapeHtml(data.data.warning),
               callback: function () { location.href = destination; },
             });
           } else {
@@ -365,7 +366,7 @@
             try {
               const res = await fetch("/api/v2/crafty/resetPass/", { method: "GET" });
               const data = await readJson(res);
-              bootbox.alert(data.data || data.error_data || msg.msgNetwork);
+              bootbox.alert(escapeHtml(data.data || data.error_data || msg.msgNetwork));
             } catch (err) {
               bootbox.alert(msg.msgNetwork);
             }

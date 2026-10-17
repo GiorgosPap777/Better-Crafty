@@ -178,8 +178,8 @@
                 console.log("Command received successfully")
             } else {
                 bootbox.alert({
-                    title: responseData.error,
-                    message: responseData.error_data
+                    title: escapeHtml(responseData.error),
+                    message: escapeHtml(responseData.error_data)
                 });
             }
         }
@@ -201,8 +201,8 @@
             } else {
 
                 bootbox.alert({
-                    title: responseData.error,
-                    message: responseData.error_data
+                    title: escapeHtml(responseData.error),
+                    message: escapeHtml(responseData.error_data)
                 });
             }
         });
@@ -226,8 +226,8 @@
                     } else {
 
                         bootbox.alert({
-                            title: responseData.error,
-                            message: responseData.error_data
+                            title: escapeHtml(responseData.error),
+                            message: escapeHtml(responseData.error_data)
                         });
                     }
                 }
@@ -247,8 +247,8 @@
                 } else {
 
                     bootbox.alert({
-                        title: responseData1.error,
-                        message: responseData1.error_data
+                        title: escapeHtml(responseData1.error),
+                        message: escapeHtml(responseData1.error_data)
                     });
                 }
             } else {
@@ -268,8 +268,8 @@
                 } else {
 
                     bootbox.alert({
-                        title: responseData.error,
-                        message: responseData.error_data
+                        title: escapeHtml(responseData.error),
+                        message: escapeHtml(responseData.error_data)
                     });
                 }
             }

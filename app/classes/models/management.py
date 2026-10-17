@@ -454,7 +454,11 @@ class HelpersManagement:
                     "backup_type": backup.backup_type,
                 }
         else:
-            data = Backups.select().where(Backups.server_id == server_id).execute()
+            # A list, not a lazy cursor: a cursor that is never read to the end
+            # (the backup edit page keeps one in its template data) holds an
+            # old read snapshot, and every later write from the web thread
+            # then fails with "database is locked"
+            data = list(Backups.select().where(Backups.server_id == server_id))
         return data
 
     @staticmethod

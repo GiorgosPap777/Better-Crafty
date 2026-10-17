@@ -151,7 +151,7 @@
       updateActivity(responseData.data);
       console.log("activity update")
     } else {
-      bootbox.alert(responseData.error_data)
+      bootbox.alert(escapeHtml(responseData.error_data))
     }
   }
 

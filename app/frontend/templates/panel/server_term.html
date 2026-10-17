@@ -152,8 +152,8 @@
         updateJumpButton();
       } else {
         bootbox.alert({
-          title: responseData.error,
-          message: responseData.error_data
+          title: escapeHtml(responseData.error),
+          message: escapeHtml(responseData.error_data)
         });
       }
     } catch (e) {
@@ -340,7 +340,7 @@
           const message = responseData.error === 'SERVER_NOT_RUNNING'
             ? commandForm.dataset.msgNotRunning
             : (responseData.error_data || commandForm.dataset.msgFailed);
-          bootbox.alert(message);
+          bootbox.alert(escapeHtml(message));
           commandInput.value = serverCommand;
         }
       } catch (e) {

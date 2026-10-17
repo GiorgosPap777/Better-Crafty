@@ -427,8 +427,8 @@
       globalThis.location.reload();
     } else {
       bootbox.alert({
-        title: responseData.error || `HTTP ${res.status}`,
-        message: responseData.error_data || ""
+        title: escapeHtml(responseData.error || `HTTP ${res.status}`),
+        message: escapeHtml(responseData.error_data || responseData.error || `HTTP ${res.status}`)
       });
     }
   }

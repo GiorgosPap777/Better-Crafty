@@ -16,7 +16,7 @@ $(document).on("click", "#renewCodes, .renew-codes", async function () {
         bootbox.alert(backupcodes);
         registerCopyFunction();
     } else {
-        bootbox.alert(responseData.error_data);
+        bootbox.alert(escapeHtml(responseData.error_data));
     }
 });
 

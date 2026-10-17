@@ -193,8 +193,8 @@
         let responseData = await res.json();
         if (responseData.status !== "ok") {
             bootbox.alert({
-                title: responseData.error,
-                message: responseData.error_data || responseData.error
+                title: escapeHtml(responseData.error),
+                message: escapeHtml(responseData.error_data || responseData.error)
             });
             return;
         }
@@ -283,8 +283,8 @@
                     });
                 } else {
                     bootbox.alert({
-                        title: verifyData.error,
-                        message: verifyData.error_data || verifyData.error
+                        title: escapeHtml(verifyData.error),
+                        message: escapeHtml(verifyData.error_data || verifyData.error)
                     });
                 }
             }
@@ -342,8 +342,8 @@
             }
         } else {
             bootbox.alert({
-                title: responseData.error,
-                message: responseData.error_data || responseData.error
+                title: escapeHtml(responseData.error),
+                message: escapeHtml(responseData.error_data || responseData.error)
             });
         }
     }
@@ -377,8 +377,8 @@
             // Revert the checkbox on failure
             $(this).prop('checked', !isChecked);
             bootbox.alert({
-                title: responseData.error,
-                message: responseData.error_data || responseData.error
+                title: escapeHtml(responseData.error),
+                message: escapeHtml(responseData.error_data || responseData.error)
             });
         }
     });

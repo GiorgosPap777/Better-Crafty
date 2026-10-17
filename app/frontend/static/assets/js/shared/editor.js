@@ -169,8 +169,8 @@ async function get_file() {
 
     } else {
         bootbox.alert({
-            title: responseData.error,
-            message: responseData.error_data
+            title: escapeHtml(responseData.error),
+            message: escapeHtml(responseData.error_data)
         });
     }
 }

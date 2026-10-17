@@ -151,8 +151,8 @@ async function getTreeView(path) {
         process_tree_response(responseData);
     } else {
         bootbox.alert({
-            title: responseData.error,
-            message: responseData.error_data
+            title: escapeHtml(responseData.error),
+            message: escapeHtml(responseData.error_data)
         });
     }
 }
@@ -398,8 +398,8 @@ async function renameItem(path, name) {
         return true;
     } else {
         bootbox.alert({
-            title: responseData.error,
-            message: responseData.error_data
+            title: escapeHtml(responseData.error),
+            message: escapeHtml(responseData.error_data)
         });
         return false;
     }
@@ -583,8 +583,8 @@ async function create(parent, name, dir = false) {
         getTreeView(cur_dir);
     } else {
         bootbox.alert({
-            title: responseData.error,
-            message: responseData.error_data
+            title: escapeHtml(responseData.error),
+            message: escapeHtml(responseData.error_data)
         });
     }
 }
@@ -639,8 +639,8 @@ async function deleteItem(items) {
         }
     } else {
         bootbox.alert({
-            title: responseData.error,
-            message: responseData.error_data
+            title: escapeHtml(responseData.error),
+            message: escapeHtml(responseData.error_data)
         });
     }
 }
@@ -689,8 +689,8 @@ function add_unzip_listener() {
             $("#upload-progress-bar-parent").append(unzip_progress);
         } else {
             bootbox.alert({
-                title: responseData.error,
-                message: responseData.error_data
+                title: escapeHtml(responseData.error),
+                message: escapeHtml(responseData.error_data)
             });
         }
     });
@@ -912,8 +912,8 @@ function setup_move_listener() {
                 default_nav();
             } else {
                 bootbox.alert({
-                    title: responseData.error,
-                    message: responseData.error_data
+                    title: escapeHtml(responseData.error),
+                    message: escapeHtml(responseData.error_data)
                 });
             }
         });
@@ -942,8 +942,8 @@ function setup_move_listener() {
                 default_nav();
             } else {
                 bootbox.alert({
-                    title: responseData.error,
-                    message: responseData.error_data
+                    title: escapeHtml(responseData.error),
+                    message: escapeHtml(responseData.error_data)
                 });
             }
         });

@@ -472,8 +472,8 @@ data['lang']) }}{% end %}
         edit_id = userData.data["user_id"];
       } else {
         return bootbox.alert({
-          title: userData.error,
-          message: userData.error_data
+          title: escapeHtml(userData.error),
+          message: escapeHtml(userData.error_data)
         });
       }
 
@@ -550,12 +550,11 @@ data['lang']) }}{% end %}
       } else {
         if (responseData.hasOwnProperty("error_data")){
           bootbox.alert({
-          title: responseData.error,
-          message: responseData.error_data
+          title: escapeHtml(responseData.error),
+          message: escapeHtml(responseData.error_data)
         });
         }else{
-          bootbox.alert(responseData.error
-        );
+          bootbox.alert(escapeHtml(responseData.error));
         }
       }
     });
@@ -594,8 +593,8 @@ data['lang']) }}{% end %}
             } else {
 
               bootbox.alert({
-                title: responseData.error,
-                message: responseData.error_data
+                title: escapeHtml(responseData.error),
+                message: escapeHtml(responseData.error_data)
               });
             }
         }

@@ -297,19 +297,16 @@ class BaseHandler(tornado.web.RequestHandler):
                 # and MFA is not in token.
                 # Also check to see if user is trying to add MFA or access backup codes.
                 # Check for token ID because only API keys will have this.
-                warning = self.helper.translation.translate(
-                    "otp", "mfaWarn", user["lang"]
-                )
-                goto = self.helper.translation.translate(
-                    "otp", "goToPage", user["lang"]
-                )
-                url = f"/panel/edit_user_otp?id={user['user_id']}"
+                # Plain text: pages show error_data as text. The MFA page is
+                # linked from the warning in the user menu.
                 return self.finish_json(
                     403,
                     {
                         "status": "error",
                         "error": "ACCESS_DENIED",
-                        "error_data": (f"{warning} <br><a href='{url}'>{goto}</a>"),
+                        "error_data": self.helper.translation.translate(
+                            "otp", "mfaWarn", user["lang"]
+                        ),
                     },
                 )
 

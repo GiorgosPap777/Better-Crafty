@@ -407,7 +407,7 @@
       announce(IMAGE_DELETED);
     } else {
       buttonRestore(button, label);
-      bootbox.alert({ title: responseData.error, message: responseData.error_data });
+      bootbox.alert({ title: escapeHtml(responseData.error), message: escapeHtml(responseData.error_data) });
     }
   }
 
@@ -496,7 +496,7 @@
         announce(CHANGE_APPLIED);
       } else {
         buttonRestore(button, label);
-        bootbox.alert({ title: responseData.error, message: responseData.error_data });
+        bootbox.alert({ title: escapeHtml(responseData.error), message: escapeHtml(responseData.error_data) });
       }
     }
 
@@ -559,7 +559,7 @@
     });
     const responseData = await res.json();
     if (responseData.status !== "ok") {
-      bootbox.alert({ title: responseData.error, message: responseData.error_data });
+      bootbox.alert({ title: escapeHtml(responseData.error), message: escapeHtml(responseData.error_data) });
     }
   }
 
@@ -597,7 +597,7 @@
       announce(CHANGE_APPLIED);
     } else {
       buttonRestore(button, label);
-      bootbox.alert({ title: responseData.error, message: responseData.error_data });
+      bootbox.alert({ title: escapeHtml(responseData.error), message: escapeHtml(responseData.error_data) });
     }
   });
 

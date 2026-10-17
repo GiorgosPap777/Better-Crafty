@@ -388,8 +388,8 @@
     // Close the "be patient..." dialog, then explain what went wrong
     bootbox.hideAll();
     bootbox.alert({
-      title: responseData.error,
-      message: responseData.error_data
+      title: escapeHtml(responseData.error),
+      message: escapeHtml(responseData.error_data)
     });
   }
 
@@ -413,8 +413,8 @@
     } else {
 
       bootbox.alert({
-        title: responseData.error,
-        message: responseData.error
+        title: escapeHtml(responseData.error),
+        message: escapeHtml(responseData.error)
       });
     }
   }

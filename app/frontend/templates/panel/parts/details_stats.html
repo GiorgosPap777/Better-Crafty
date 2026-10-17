@@ -362,7 +362,7 @@
         if (data.status !== "ok") {
           clearPending();
           renderState();
-          bootbox.alert({ title: data.error, message: data.error_data || msg.msgRequestFailed });
+          bootbox.alert({ title: escapeHtml(data.error), message: escapeHtml(data.error_data || msg.msgRequestFailed) });
         }
       } catch (e) {
         clearPending();

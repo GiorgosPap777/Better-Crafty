@@ -227,7 +227,7 @@
     if (responseData.status === "ok") {
       return
     } else {
-      bootbox.alert(responseData.error_data)
+      bootbox.alert(escapeHtml(responseData.error_data))
     }
   }
 

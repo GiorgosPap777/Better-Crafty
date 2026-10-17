@@ -67,7 +67,7 @@ $(".edit_password").on("click", async function () {
                             bootbox.hideAll();
                             bootbox.alert({
                                 title: responseData.status,
-                                message: responseData.error_data
+                                message: escapeHtml(responseData.error_data)
                             });
                         }
                     })();
@@ -104,8 +104,8 @@ $(".edit_user").on("click", function () {
             } else {
 
                 bootbox.alert({
-                    title: responseData.error,
-                    message: responseData.error_data
+                    title: escapeHtml(responseData.error),
+                    message: escapeHtml(responseData.error_data)
                 });
             }
         }

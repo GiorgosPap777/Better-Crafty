@@ -379,8 +379,8 @@
       } else {
 
         bootbox.alert({
-          title: responseData.error,
-          message: responseData.error_data
+          title: escapeHtml(responseData.error),
+          message: escapeHtml(responseData.error_data)
         });
       }
   }
@@ -445,7 +445,7 @@
           errordata = responseData.error_data
         }
         bootbox.alert({
-          title: responseData.error,
+          title: escapeHtml(responseData.error),
           message: errordata
         });
       }

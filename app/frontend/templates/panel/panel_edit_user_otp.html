@@ -240,7 +240,7 @@
                     if (responseData.error === "INVALID_JSON_SCHEMA") {
                         bootbox.hideAll()
                         setTimeout(
-                            () => bootbox.alert(responseData.error_data),
+                            () => bootbox.alert(escapeHtml(responseData.error_data)),
                             2000)
                     }
                     $("#verify-status").html(`<i class="ph-fill ph-warning"></i>`);
@@ -249,8 +249,8 @@
             });
         } else {
             bootbox.alert({
-                title: responseData.error,
-                message: responseData.error_data
+                title: escapeHtml(responseData.error),
+                message: escapeHtml(responseData.error_data)
             });
         }
     });
@@ -294,8 +294,8 @@
             $(`#${keyId}`).remove();
         } else {
             bootbox.alert({
-                title: responseData.error,
-                message: responseData.error_data
+                title: escapeHtml(responseData.error),
+                message: escapeHtml(responseData.error_data)
             });
         }
     };

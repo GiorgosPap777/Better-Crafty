@@ -1,7 +1,7 @@
 // Escape text before inserting it into HTML built from strings (file names,
 // paths and other values users control).
 function escapeHtml(value) {
-	return String(value)
+	return String(value ?? "")
 		.replace(/&/g, "&amp;")
 		.replace(/</g, "&lt;")
 		.replace(/>/g, "&gt;")

@@ -12,7 +12,8 @@ commits table.
 is done and what is next. The owner approved a list of suggestions (update
 check, tests on GitHub, versions, upstream, error pop-ups, then bigger
 features) and is setting up Docker Hub themselves; they will say when to
-check it. Session 11 added the player's skin and the game's HUD layout to
+check it. Items 1 to 5 are done, plus a fix for an upstream bug that made
+saves fail with "database is locked"; the bigger features are next. Session 11 added the player's skin and the game's HUD layout to
 the inventory, and reviewed the whole fork for serious bugs (four found and
 fixed). The owner has not yet said which special items (banners, pots,
 dragon/piglin heads, copper golem statues) they want drawn.
@@ -30,7 +31,7 @@ on any machine.
    repo default, so a fresh clone is already on it. In an existing clone:
    `git fetch origin && git checkout claude/login-server-admin-improvements-ctbqdu && git pull`.
 2. **Set up and check** with "Development setup" below (about 10 minutes).
-   You should see 170 passing pytest tests before changing anything.
+   You should see 171 passing pytest tests before changing anything.
 3. **Ask the owner what to work on next.** If it is the Docker work, follow
    "Session 6" from "Next steps, in order". It needs two answers from them:
    their Docker Hub username, and whether to publish to Docker Hub only or
@@ -168,7 +169,8 @@ on any machine.
 | `423d2a9c` | Player skin in the inventory; hearts, food and XP below the inventory like the game; 2x2 crafting grid (session 11) |
 | `46684a64` | Bug-review fixes: safe `server.properties` writes, trailing backslash, memory flags, config memory boxes (session 11) |
 | `3d3158b2` | End of the review: odd memory sizes in `test_config.js`, README skin and HUD, this handoff (session 11) |
-| (this commit) | Update check reads this fork's GitHub releases; Better Crafty version; tests and Docker publish on GitHub Actions (session 12) |
+| `57ed1545` | Update check reads this fork's GitHub releases; Better Crafty version; tests and Docker publish on GitHub Actions (session 12) |
+| (this commit) | Error pop-ups show the server's text as text; fix for "database is locked" after opening a backup's settings (session 12) |
 
 ### 1. Login (`d3946c3f`)
 
@@ -1038,12 +1040,8 @@ real server on this fork.
 
 ### Left for later
 
-- About 90 error pop-ups (`bootbox.alert({ title: responseData.error,
-  message: responseData.error_data })`), almost all from upstream, put the
-  API's error text into the page without `escapeHtml()`. The text is
-  nearly always a fixed error code or translation, so this is not
-  serious; a quick way to find them:
-  `grep -rnE "title: *(responseData|data)\.error" app/frontend | grep -v escapeHtml`.
+- About 90 error pop-ups put the API's error text into the page without
+  `escapeHtml()`. Done in session 12 ("Error pop-ups").
 - Drawing the special items the owner asked about (waiting for their
   choice; see the answer below).
 
@@ -1180,7 +1178,8 @@ they are doing the Docker Hub part themselves in parallel:
 3. Version numbers and releases. **Done** (the machinery; the first
    release, `v1.0.0`, is not tagged yet, see below).
 4. Keep up with the original Crafty. **Checked, nothing to merge yet.**
-5. Escape the ~90 error pop-ups. Next.
+5. Escape the ~90 error pop-ups. **Done.** Also fixed an upstream bug
+   found while testing it ("Database is locked" below).
 6. Bigger features, in this order unless the owner says otherwise:
    restart with in-game warnings, world tools (download the world as a
    zip, reset the Nether or the End), backups to another disk / network
@@ -1279,6 +1278,48 @@ pull request except ones that change only `**.md` or `docs/**`:
   the fake server and test data); run them by hand as before.
 - The draft `dev/handoff-tools/docker-publish.yml` was removed.
 
+### Error pop-ups (done)
+
+- Every `bootbox` pop-up that showed the API's `error` / `error_data`
+  (titles, messages, and plain `bootbox.alert(...)`) now passes it through
+  `escapeHtml()`: 5 JS files and 26 templates, nearly all upstream code.
+  A check that finds none left:
+  `grep -rnE "(title|message): *[A-Za-z_.]+\.(error|error_data)\b" app/frontend --include=*.html --include=*.js | grep -v "escapeHtml\|/vendors/"`.
+- `escapeHtml()` (`misc.js`) now takes `undefined`/`null` (gives `""`), so
+  a missing error text cannot break a pop-up. The login page did not load
+  `misc.js`; it does now (the password-reset answer is escaped too).
+- The "MFA required" 403 (`base_handler.py`) used to send a link in
+  `error_data`; it is now the plain warning text, because pages show
+  `error_data` as text. The MFA page is linked from the warning in the
+  user menu. The `otp.goToPage` translation is no longer used.
+- Checked in the browser with a scratch script: the login reset answer
+  and a terminal error containing `<img onerror=...>` show as text and run
+  nothing; then `test_files`, `test_audit`, `test_backups`, `test_login`
+  and `crawl.js` all pass.
+
+### "Database is locked" (fixed, upstream bug)
+
+- Seen during the browser tests: after `test_audit`, every save from the
+  web pages (new backup, server settings) failed at once with
+  `sqlite3.OperationalError: database is locked`, until Crafty restarted.
+  The owner's real server would hit it too: the stats task writes every
+  minute.
+- Cause: `get_backups_by_server(model=True)` returned a lazy peewee cursor.
+  The backup settings page (`/panel/edit_backup`) puts it in the page data
+  and never reads it, and Tornado keeps template data alive until Python's
+  garbage collector runs (the template namespace is a reference cycle). A
+  half-read cursor keeps an SQLite read snapshot open on the web thread's
+  connection, so once another thread writes, that connection's writes fail
+  with `SQLITE_BUSY_SNAPSHOT` ("database is locked", no waiting).
+- Fix: it returns a list (`app/classes/models/management.py`); every
+  caller only loops over it or takes `len()`. Regression test
+  `tests/classes/models/test_backups_query.py` fails with the old code.
+- Checked for others: with the garbage collector turned off in the test
+  Crafty (through `gdb`), `crawl.js` (every page) and the browser tests
+  left no half-read cursor behind after the fix. API handlers do not
+  have the problem (nothing keeps their data alive). Rule for new code:
+  put lists or dicts, not query results, into page data.
+
 ### Upstream (checked 2026-10-17)
 
 - Upstream's newest release is still `v4.11.0` (`fe65b372`). Their `dev`
@@ -1299,6 +1340,11 @@ pull request except ones that change only `**.md` or `docs/**`:
 - `.github/workflows/ci.yml` (new), `tests/classes/helpers/test_update_check.py`
   (new), `test_server_properties.py`, `test_command_data.py`,
   `app/classes/shared/backup_mgr.py`, `app/classes/controllers/passkey_controller.py`
+- Pop-ups: `static/assets/js/shared/misc.js`, `files.js`, `editor.js`,
+  `root-dir.js`, `userSettings.js`, `backupCodes.js`, 26 templates,
+  `app/classes/web/base_handler.py`
+- Database lock: `app/classes/models/management.py`,
+  `tests/classes/models/test_backups_query.py` (new)
 
 ## Development setup (any machine)
 
@@ -1320,7 +1366,7 @@ section. Commands are for a terminal in the repo root. On Windows use
 python3 -m venv .venv
 . .venv/bin/activate            # Windows: .venv\Scripts\activate
 pip install -r requirements.txt pytest black pylint
-pytest -q tests                 # 170 pass
+pytest -q tests                 # 171 pass
 black --check app tests
 node dev/command-data/test_complete.js   # command suggestions engine, no browser
 ```

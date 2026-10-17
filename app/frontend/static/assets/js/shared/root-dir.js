@@ -193,8 +193,8 @@ async function getTreeView(path = "") {
             show_file_tree();
         } else {
             bootbox.alert({
-                title: responseData.error,
-                message: responseData.error_data,
+                title: escapeHtml(responseData.error),
+                message: escapeHtml(responseData.error_data),
                 callback: function () {
                     location.reload();
                 }
