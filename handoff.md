@@ -8,17 +8,21 @@ commits table.
 
 ## Start here
 
-**State (2026-10-17, end of session 12):** see "Session 12" for what is
-done and what is next. The owner approved a list of suggestions (update
+**State (2026-10-17, session 12, after the owner said "continue"):** the
+Docker Hub release is done on our side: the image
+`giorgospap777/better-crafty` was run and checked, moving from the original
+Crafty and back was tested (Docker and Linux), the README's Install,
+Updating and Moving sections use the image, and `v1.0.0` is tagged. Waiting
+on the owner: create the GitHub Release for `v1.0.0` and decide about
+`ghcr.io` (see "Docker Hub release (done)"). **Next: the Modrinth
+installer.** Older notes follow; see "Session 12" for the details. The owner approved a list of suggestions (update
 check, tests on GitHub, versions, upstream, error pop-ups, then bigger
 features). Items 1 to 5 are done, plus a fix for an upstream bug that made
 saves fail with "database is locked". Of the bigger features, the restart
 with in-game warnings, world tools and off-site backups are done; the
 Modrinth installer is next.
-**First thing next session: the Docker Hub release.** The owner said they
-finished the Docker Hub setup (secrets added) and that their Docker Hub
-username is `giorgospap777`. Follow "Next session: Docker Hub release" in
-Session 12, then carry on with the Modrinth installer. The owner ran out
+The owner finished the Docker Hub setup (secrets added); their Docker Hub
+username is `giorgospap777`. The owner ran out
 of usage at the end of session 12 and asked for these notes. Session 11 added the player's skin and the game's HUD layout to
 the inventory, and reviewed the whole fork for serious bugs (four found and
 fixed). The owner has not yet said which special items (banners, pots,
@@ -27,9 +31,8 @@ Done before: login, server pages, security fixes, README with screenshots,
 player management (session 7), command suggestions in the Terminal
 (session 8), portable test tools (session 9), and item pictures with a
 game-style inventory (session 10).
-**Also unfinished: session 6** (test the Docker image, publish it, and
-write the install, update and migration docs). The owner said they would
-pick that up later. The owner works in cloud sessions; the steps below work
+Session 6 (test the Docker image, publish it, write the install, update
+and migration docs) was finished in session 12. The owner works in cloud sessions; the steps below work
 on any machine.
 
 1. **Get the code.** `git clone https://github.com/GiorgosPap777/Better-Crafty.git`.
@@ -38,9 +41,9 @@ on any machine.
    `git fetch origin && git checkout claude/login-server-admin-improvements-ctbqdu && git pull`.
 2. **Set up and check** with "Development setup" below (about 10 minutes).
    You should see 252 passing pytest tests before changing anything.
-3. **Do the Docker Hub release** ("Next session: Docker Hub release" in
-   Session 12), then the Modrinth installer, unless the owner asks for
-   something else.
+3. **Build the Modrinth installer** (Session 12, item 6), unless the owner
+   asks for something else. Check first whether the owner made the
+   `v1.0.0` GitHub Release and answered the `ghcr.io` question.
 4. Before you finish, update this file, commit and push (see "The project").
 
 ### How the owner likes to work
@@ -139,17 +142,23 @@ on any machine.
     backups committed and pushed, and these notes.
 21. Session 12: "Then stop to do any more work". Stopped.
 22. Session 12, later: "Okay, you can continue now." Carried on with the
-    Docker Hub release (see "Next session: Docker Hub release"), after a
+    Docker Hub release (see "Docker Hub release (done)"), after a
     fix that keeps going back to the original Crafty working ("Going back
     to the original Crafty" in "Off-site backups").
 
 ### Questions still waiting on the owner
 
 - Should a PR to `main` be opened? (Explained what it means; not opened.)
-- Session 6: publish to Docker Hub only, or also to GitHub's registry
-  (`ghcr.io`)? They only asked for Docker Hub; the workflow publishes to
-  both. (Their Docker Hub username is answered: `giorgospap777`.) Never ask
-  them to paste a password or token into the chat.
+- Publish to Docker Hub only, or also to GitHub's registry (`ghcr.io`)?
+  They only asked for Docker Hub; the workflow publishes to both, and the
+  `ghcr.io` package may be private (GitHub profile → Packages →
+  better-crafty → Package settings → Change visibility → Public). The
+  README mentions Docker Hub only. If they want Docker Hub only, remove the
+  `ghcr.io` login step and image line from `.github/workflows/ci.yml`.
+  Never ask them to paste a password or token into the chat.
+- Asked to create the GitHub Release for the tag `v1.0.0` (no tool here can
+  create one). The panel's update check reads GitHub Releases, so until
+  then it sees no release.
 - Which special items (banners, pots, dragon/piglin heads, copper golem
   statues) to draw (session 11).
 - (Answered in session 5.) The token cookie is now `SameSite=Lax`
@@ -195,7 +204,8 @@ on any machine.
 | `2313ab81` | Players tab reads the new player folders of Minecraft 26.1 and newer (session 12) |
 | `533866c8` | World tab: download the world as a zip, reset the Nether or the End (session 12) |
 | `a08d0bff` | Off-site backups: copy zip backups to another disk, a network share or S3-compatible cloud storage, and bring them back (session 12) |
-| (this commit) | Off-site columns accept empty values, so the original Crafty can still add backups after using this fork (session 12) |
+| `6ab39b36` | Off-site columns accept empty values, so the original Crafty can still add backups after using this fork (session 12) |
+| (this commit, tagged `v1.0.0`) | README: install from Docker Hub, updating, moving from Crafty and back; handoff for the release (session 12) |
 
 ### 1. Login (`d3946c3f`)
 
@@ -406,10 +416,14 @@ have the details; the notes below are what is useful when changing the code.
   5. Shrink: `convert X.png -strip -define png:compression-level=9`, and
      JPEG (`-quality 84`) for the login shots (photo background).
 
-## Session 6: Docker image, install and migration docs (UNFINISHED)
+## Session 6: Docker image, install and migration docs (done in session 12)
 
 The request is item 8 in "What the owner asked for". It was handed off
-part-way through.
+part-way through and finished in session 12 (see "Docker Hub release
+(done)" there); the notes below are kept for the background. The README
+plan was followed, except: "Without Docker" stays the short version (no
+systemd unit, untested), and the claim "no database changes" is gone
+(session 12 added the off-site migrations; going back still works).
 
 ### Status
 
@@ -1146,8 +1160,8 @@ start/stop/kill (`details_stats.html`), dashboard start/stop and stop all,
 Terminal command sending, schedules and webhooks pages, the four new-server
 wizards. Small back-end changes (`roles/index.py`, `passkey.py`,
 `server_stats.py`: upstream already stored raw bytes, so old databases
-read fine). **No database migrations were added**, so moving from upstream
-4.11.0 keeps the database as is.
+read fine). **No database migrations were added** in session 11 (session 12
+added the off-site ones; going back to upstream still works).
 
 ### Answer to the owner's question: why some items have no picture
 
@@ -1200,8 +1214,8 @@ they are doing the Docker Hub part themselves in parallel:
 
 1. Update check pointed at this fork. **Done.**
 2. Tests on GitHub, image published only when they pass. **Done.**
-3. Version numbers and releases. **Done** (the machinery; the first
-   release, `v1.0.0`, is not tagged yet, see below).
+3. Version numbers and releases. **Done**; the first release, `v1.0.0`,
+   is tagged (see "Docker Hub release (done)").
 4. Keep up with the original Crafty. **Checked, nothing to merge yet.**
 5. Escape the ~90 error pop-ups. **Done.** Also fixed an upstream bug
    found while testing it ("Database is locked" below).
@@ -1213,37 +1227,65 @@ they are doing the Docker Hub part themselves in parallel:
    backups"), a Modrinth plugin and mod installer (**next**). Plus the
    special item pictures once the owner picks which.
 
-### Next session: Docker Hub release
+### Docker Hub release (done)
 
-The owner said the Docker Hub setup is finished: they added the GitHub
-repo secrets `DOCKERHUB_USERNAME` and `DOCKERHUB_TOKEN`, and their Docker
-Hub username is **`giorgospap777`**, so the image is
-`giorgospap777/better-crafty`. (Earlier runs, for `57ed1545` and
-`7bbdc549`, had already pushed `edge` and `sha-...` there.) Not yet
-checked by us. To do, in order:
+The owner added the GitHub repo secrets `DOCKERHUB_USERNAME` and
+`DOCKERHUB_TOKEN`; the image is **`giorgospap777/better-crafty`** (public on
+Docker Hub: its API answers without logging in).
 
-1. Check the "Tests and Docker image" run for the off-site backups commit
-   (the last code push of session 12) on GitHub: every job green, and the
-   `docker` job's "Choose image names" step lists
-   `giorgospap777/better-crafty`. The cloud session reads runs with the
-   GitHub MCP tools (`actions_list`, `get_job_logs`). If a job is red, fix
-   it first.
-2. Tag the first release (see "Making a release"): `better_crafty` is
-   already `1.0.0`, so `git tag v1.0.0 && git push origin v1.0.0`. That
-   publishes `latest`, `1.0.0` and `1.0`. Then make the GitHub Release for
-   the tag (Releases → Draft a new release; or `mcp__github` tools if they
-   can) with a short list of what changed (the README's "What changed"
-   table is a good start). If the session cannot create a release, ask the
-   owner to click it.
-3. Ask the owner to check on hub.docker.com that
-   `giorgospap777/better-crafty` is Public, and on GitHub: Packages →
-   better-crafty → Package settings → Change visibility → Public for the
-   `ghcr.io` copy (or ask whether they want `ghcr.io` at all).
-4. Do the rest of "Session 6": run the image (`docker run` with the
-   volumes from "Publishing"), then rewrite the README's Install section
-   with `giorgospap777/better-crafty:latest`, plus update and migration
-   steps (see "README plan"). Mention mounting an extra disk or share for
-   off-site backups (see "Off-site backups").
+1. **CI:** runs 6 (`a08d0bff`) and 7 (`6ab39b36`) were green on every job
+   and pushed `edge` and `sha-...` to Docker Hub and `ghcr.io`. The image
+   has `linux/amd64` and `linux/arm64` (arm64 not run, only built).
+2. **The image was run** (`edge` at `6ab39b36`, label
+   `org.opencontainers.image.revision`): with the five volumes, `/login`
+   200, `config/default-creds.txt` written (mode 600, owner uid 1000, the
+   container's `crafty` user, so the host needs `sudo cat` unless its user
+   is uid 1000), admin login, Dashboard, Panel Config, Off-site storage,
+   no tracebacks. The README's Compose file was run as written (port
+   changed for the test) and `docker compose pull` / `up -d` / `down`.
+3. **Moving from the original Crafty and back, Docker:** the official
+   image `arcadiatechnology/crafty-4:latest` (4.11.0) made the data (user
+   `alice`, an imported server running the fake server, backup plans and
+   zips); then the fork image, the original again, and the fork again, on
+   the same folders. Each time: same admin login and data, a new backup
+   plan added, every plan backed up, the server started and stopped, the
+   dashboard, backups, terminal, panel config and every edit-backup page
+   200. In the fork an off-site folder place was added and used; after the
+   original Crafty ran, the setting (place, keep 2) and the copy were still
+   there, and the plans the original added (NULL off-site columns) worked.
+4. **Moving and back, Linux:** a real clone of
+   `gitlab.com/crafty-controller/crafty-4` (`master`, 4.11.0), run and
+   filled the same way, switched with the README's commands (remote
+   rename, `set-head --auto`, `checkout -b better-crafty --track
+   origin/HEAD`), checked, then `git checkout master` and checked again.
+   All fine; `git pull` worked on the new branch. (systemd parts not run.)
+5. **README:** new top (title, summary, Terminal screenshot; the Crafty
+   logo is gone), contents line, Install (Compose with the image, docker
+   run, image tags, off-site mount, WSL warning, build it yourself, without
+   Docker), Updating, Moving from Crafty Controller (versions, back up
+   first, Docker, the Linux installer, going back). Python 3.10+, not 3.9
+   (upstream code uses `match`).
+6. **Tagged `v1.0.0`** on the commit that has this text, which publishes
+   `latest`, `1.0.0` and `1.0` (check the run for the tag). Upstream's
+   newest release was still 4.11.0 (checked again 2026-10-17).
+
+Found while testing, upstream's own behaviour (not changed): the original
+Crafty refuses to start a server whose `eula.txt` ends with a newline
+(this fork reads it properly; both write `eula=true` without one), and its
+login refuses the whole `default-creds.txt` JSON (it has an extra `info`
+key), so scripts must send only `username` and `password`.
+
+Test scripts for this were scratch files, not committed. To redo the Docker
+round trip: run each image with the same five folders on another port,
+log in with `default-creds.txt`, import a server from a zip of
+`dev/handoff-tools/fake_server/server.jar` (with `eula=true` and no
+newline for the original Crafty), and check the API and pages as above.
+The backups list API answers with the plans keyed by id (both versions),
+and a backup is started with `POST /api/v2/servers/<id>/action/backup_server/<backup_id>`.
+
+**Still for the owner:** create the GitHub Release for `v1.0.0` (Releases →
+Draft a new release → choose the tag; text suggested in the chat), and
+the `ghcr.io` question (see "Questions still waiting on the owner").
 
 ### Update check (done)
 
@@ -1662,7 +1704,7 @@ section. Commands are for a terminal in the repo root. On Windows use
 
 ### Needs
 
-- Python 3.9 or newer (3.13 used so far), Git.
+- Python 3.10 or newer (upstream code uses `match`; 3.13 used so far), Git.
 - Node.js 18 or newer (22 used so far), for the browser tests.
 - Java 8 or newer on the PATH, for the fake Minecraft server in the tests.
 - Docker Desktop, only for the session 6 Docker work.

@@ -1,16 +1,17 @@
-[![Crafty Logo](app/frontend/static/assets/images/logo_long.svg)](https://craftycontrol.com)
-
 # Better Crafty
 
 > A fork of [Crafty Controller](https://craftycontrol.com) 4.11.0 with a reworked
 > login screen, easier server management pages and a long list of bug and
 > security fixes.
 
+![A Minecraft server's Terminal in Better Crafty](docs/screenshots/terminal-after.png)
+
 Crafty Controller is a web control panel for Minecraft servers: it runs your
 servers in the background and gives you a website to start, stop, configure
 and back them up. **Better Crafty is the same program**, with changes to the
-parts people use every day. It reads the same folders and database as Crafty
-4.11.0 (no database changes), so it can take over an existing install.
+parts people use every day. It uses the same folders and database as Crafty
+4.11.0, so it can take over an existing install, and you can go back to the
+original later ([Moving from Crafty Controller](#moving-from-crafty-controller)).
 
 This fork is not made by or affiliated with the Crafty Controller team.
 Please report problems with this fork here, not to them.
@@ -18,7 +19,9 @@ Please report problems with this fork here, not to them.
 **Contents:** [What changed](#what-changed) ·
 [Before and after screenshots](#before-and-after) ·
 [Bug fixes](#bug-fixes) · [Security fixes](#security-fixes) ·
-[Install](#install) · [Credits and license](#credits-and-license)
+[Install](#install) · [Updating](#updating) ·
+[Moving from Crafty Controller](#moving-from-crafty-controller) ·
+[Credits and license](#credits-and-license)
 
 ## What changed
 
@@ -263,74 +266,122 @@ Things that were broken in Crafty 4.11.0 and work in Better Crafty:
 
 ## Install
 
-There are no ready-made images or Windows builds for this fork yet, so you
-build it from this repository. The official images
-(`registry.gitlab.com/crafty-controller/crafty-4` and
-`arcadiatechnology/crafty-4`) are plain Crafty and do **not** include these
-changes.
-
-On first start Crafty creates an `admin` user and writes its password to
-`app/config/default-creds.txt` (in Docker: `docker/config/default-creds.txt`).
-The panel is at `https://<your-server>:8443`.
+Better Crafty runs on Linux, on `amd64` or `arm64` computers (for example a
+Raspberry Pi 4 or 5 with a 64-bit system). The easiest way is the ready-made
+Docker image on Docker Hub,
+[`giorgospap777/better-crafty`](https://hub.docker.com/r/giorgospap777/better-crafty).
+The official Crafty images (`registry.gitlab.com/crafty-controller/crafty-4`
+and `arcadiatechnology/crafty-4`) are plain Crafty and do **not** include
+these changes. There is no Windows build.
 
 ### Docker Compose (recommended)
+
+Make a folder for Better Crafty and save this in it as `docker-compose.yml`:
+
+```yaml
+services:
+  crafty:
+    container_name: crafty_container
+    image: giorgospap777/better-crafty:latest
+    restart: always
+    environment:
+      - TZ=Etc/UTC
+    ports:
+      - "8443:8443" # the panel (HTTPS)
+      - "8000:8000" # HTTP
+      - "25500-25600:25500-25600" # Minecraft Java servers
+      - "19132:19132/udp" # Bedrock
+      - "8123:8123" # Dynmap
+      - "5520-5550:5520-5550/udp" # Hytale
+    volumes:
+      - ./backups:/crafty/backups
+      - ./logs:/crafty/logs
+      - ./servers:/crafty/servers
+      - ./config:/crafty/app/config
+      - ./import:/crafty/import
+```
+
+Set `TZ` to your time zone (for example `Europe/Athens`) so that backups,
+schedules and logs use your local time. Then, in that folder:
+
+```sh
+docker compose up -d
+docker compose logs -f      # wait for "Crafty has fully started", then Ctrl+C
+sudo cat config/default-creds.txt
+```
+
+On the first start Crafty creates an `admin` user and writes its password to
+`config/default-creds.txt`. Open `https://<your-server>:8443`, accept the
+browser's warning about the self-signed certificate, log in as `admin` with
+that password, and change the password.
+
+Your servers, backups, logs and settings live in the folders next to
+`docker-compose.yml`, not inside the container, so updating or recreating the
+container keeps them.
+
+### docker run
+
+The same without Compose, from the folder where the data should live:
+
+```sh
+docker run \
+  --name crafty_container \
+  --detach \
+  --restart always \
+  -p 8443:8443 \
+  -p 8000:8000 \
+  -p 25500-25600:25500-25600 \
+  -p 19132:19132/udp \
+  -p 8123:8123 \
+  -p 5520-5550:5520-5550/udp \
+  -e TZ=Etc/UTC \
+  -v "$(pwd)/backups:/crafty/backups" \
+  -v "$(pwd)/logs:/crafty/logs" \
+  -v "$(pwd)/servers:/crafty/servers" \
+  -v "$(pwd)/config:/crafty/app/config" \
+  -v "$(pwd)/import:/crafty/import" \
+  giorgospap777/better-crafty:latest
+```
+
+The ports are: 8443 (panel, HTTPS), 8000 (HTTP), 25500-25600 (Minecraft Java
+servers), 19132/udp (Bedrock), 8123 (Dynmap), 5520-5550/udp (Hytale). Leave
+out the ones you do not need.
+
+### Image tags
+
+| Tag | What it is |
+|---|---|
+| `latest` | The newest release. Use this one. |
+| `1.0.0`, `1.0`, ... | A fixed release, if you want to choose when to move to a newer one. |
+| `edge` | The newest code, built after every change. Less tested; for trying things out. |
+
+### Off-site backups in Docker
+
+For off-site backups to another disk or a network share, mount it into the
+container too, for example `- /mnt/backupdisk:/crafty/offsite` under
+`volumes:` (or `-v /mnt/backupdisk:/crafty/offsite` with `docker run`), and
+use `/crafty/offsite` as the folder in Panel Config → Off-site storage. Cloud
+storage needs no mount.
+
+> **Docker on Windows (WSL / WSL2 / Docker Desktop):** the Crafty team warns
+> that stopping or restarting a Minecraft server there can corrupt the
+> world. Run Docker on Linux.
+
+### Build the image yourself
 
 ```sh
 git clone https://github.com/GiorgosPap777/Better-Crafty.git
 cd Better-Crafty/docker
 docker compose up -d --build
-docker compose logs -f
 ```
 
 `docker/docker-compose.yml` builds the image from this repository and keeps
-your servers, backups, logs and settings in the `docker/` folder. To update
-later: `git pull`, then run `docker compose up -d --build` again.
-
-### docker run
-
-```sh
-git clone https://github.com/GiorgosPap777/Better-Crafty.git
-cd Better-Crafty
-docker build . -t better-crafty
-
-docker run \
-	--name crafty_container \
-	--detach \
-	--restart always \
-	-p 5520-5550:5520-5550/udp \
-	-p 8000:8000 \
-	-p 8443:8443 \
-	-p 8123:8123 \
-	-p 19132:19132/udp \
-	-p 25500-25600:25500-25600 \
-	-e TZ=Etc/UTC \
-	-v "/$(pwd)/docker/backups:/crafty/backups" \
-	-v "/$(pwd)/docker/logs:/crafty/logs" \
-	-v "/$(pwd)/docker/servers:/crafty/servers" \
-	-v "/$(pwd)/docker/config:/crafty/app/config" \
-	-v "/$(pwd)/docker/import:/crafty/import" \
-	better-crafty
-```
-
-The ports are: 8443 (panel, HTTPS), 8000 (HTTP), 25500-25600 (Minecraft Java
-servers), 19132/udp (Bedrock), 8123 (Dynmap), 5520-5550/udp (Hytale).
-
-The first build takes several minutes; later builds are quick. The image
-works on `amd64` and `arm64`.
-
-For off-site backups to another disk or a network share, mount it into the
-container too, for example `-v /mnt/backupdisk:/crafty/offsite` (or the same
-line under `volumes:` in `docker-compose.yml`), and use `/crafty/offsite` as
-the folder in Panel Config → Off-site storage. Cloud storage needs no mount.
-
-> **Docker on Windows (WSL / WSL2 / Docker Desktop):** the Crafty team warns
-> that stopping or restarting a Minecraft server there can corrupt the
-> world. Run Docker on Linux, or run Crafty directly on Windows.
+your data in the `docker/` folder. The first build takes several minutes.
 
 ### Without Docker (Linux)
 
-Needs Python 3.9 or newer and Java for your Minecraft servers. Crafty will
-not run as `root`, so use a normal user.
+Needs Python 3.10 or newer and the Java version your Minecraft servers need.
+Crafty will not run as `root`, so use a normal user.
 
 ```sh
 git clone https://github.com/GiorgosPap777/Better-Crafty.git
@@ -340,11 +391,98 @@ python3 -m venv .venv
 .venv/bin/python main.py
 ```
 
-### Moving over from Crafty 4.11.0
+The `admin` password is in `app/config/default-creds.txt`.
 
-Better Crafty uses the same database and folders, so you can point it at
-your existing `config`, `servers`, `backups` and `logs` folders (in Docker,
-mount the same volumes). Back them up first, just in case.
+## Updating
+
+The panel tells you when a new Better Crafty release is out. Back up the
+`config` folder first; Crafty updates its database by itself on the first
+start of the new version.
+
+- **Docker Compose:** in the folder with `docker-compose.yml`, run
+  `docker compose pull` and then `docker compose up -d`.
+- **docker run:** `docker pull giorgospap777/better-crafty:latest`, then
+  `docker stop crafty_container` and `docker rm crafty_container` (your data
+  is in the mounted folders), then the same `docker run` command as before.
+- **Built yourself:** `git pull`, then `docker compose up -d --build`.
+- **Without Docker:** stop Crafty, then `git pull`,
+  `.venv/bin/pip install -r requirements.txt`, and start it again.
+
+## Moving from Crafty Controller
+
+Better Crafty uses the same database and folders as Crafty, so everything
+carries over: users and their passwords, roles, servers, schedules, backups
+and settings. It adds one table and three columns for off-site backups,
+which the original Crafty ignores, so you can also go back. Both ways were
+tested with Docker and with a Linux install set up the way Crafty's installer
+does it.
+
+**Which Crafty version:** Better Crafty is based on Crafty 4.11.0, the newest
+release when this was written.
+
+- From 4.11.0: it simply takes over.
+- From an older 4.x version: Crafty's own database upgrade runs on the first
+  start, as it would when updating Crafty. After that, going back needs Crafty
+  4.11.0 or your backup.
+- From a version newer than 4.11.0: wait until Better Crafty catches up.
+
+**Back up first:** at least the `config` folder (Docker) or `app/config`
+(Linux). It holds the database, the users and the settings.
+
+### With Docker
+
+1. In the folder with `docker-compose.yml`: `docker compose down`.
+2. Back up: `sudo cp -a config config-backup`.
+3. In `docker-compose.yml`, change only the `image:` line to
+   `image: giorgospap777/better-crafty:latest`. Keep the volumes as they are.
+4. `docker compose pull`, then `docker compose up -d`.
+
+Log in with your usual account. With `docker run`: `docker stop` and
+`docker rm` the old container, then run the same command with
+`giorgospap777/better-crafty:latest` as the image.
+
+### With Crafty's Linux installer
+
+The installer puts Crafty in `/var/opt/minecraft/crafty/crafty-4` (use your
+folder if you chose another one). Switch the code **in place**: Crafty stores
+each server's full path in its database, so do not install into a new folder
+and copy the data across.
+
+```sh
+sudo systemctl stop crafty
+sudo cp -a /var/opt/minecraft/crafty/crafty-4/app/config ~/crafty-config-backup
+cd /var/opt/minecraft/crafty/crafty-4
+sudo -u crafty git remote rename origin crafty-original
+sudo -u crafty git remote add origin https://github.com/GiorgosPap777/Better-Crafty.git
+sudo -u crafty git fetch origin
+sudo -u crafty git remote set-head origin --auto
+sudo -u crafty git checkout -b better-crafty --track origin/HEAD
+sudo -u crafty ../.venv/bin/pip install -r requirements.txt
+sudo systemctl start crafty
+```
+
+- The installer's `run_crafty.sh` and `crafty.service` keep working.
+- **Do not use the installer's `update_crafty.sh` afterwards.** It is written
+  for the original Crafty's `master` branch. To update Better Crafty:
+  stop Crafty, then `sudo -u crafty git pull` and
+  `sudo -u crafty ../.venv/bin/pip install -r requirements.txt` in the
+  `crafty-4` folder, and start it again.
+- If `git checkout` complains about local changes, files were edited by
+  hand; run `sudo -u crafty git stash` first.
+
+### Going back to the original Crafty
+
+- **Docker:** put the old `image:` line back
+  (`arcadiatechnology/crafty-4:latest` or
+  `registry.gitlab.com/crafty-controller/crafty-4:latest`), then
+  `docker compose pull` and `docker compose up -d`.
+- **Linux installer:** stop Crafty, then in the `crafty-4` folder
+  `sudo -u crafty git checkout master` (or `dev`, whichever you used before)
+  and `sudo -u crafty ../.venv/bin/pip install -r requirements.txt`, and start
+  it again.
+
+Off-site copies stop while the original Crafty runs; their settings are kept
+for when you come back.
 
 ## Credits and license
 
