@@ -179,3 +179,26 @@ def test_last_status() -> None:
     assert last_status({"offsite_status": "[1]"}) is None
     status = {"state": "ok", "file": "a.zip"}
     assert last_status({"offsite_status": json.dumps(status)}) == status
+
+
+@pytest.mark.usefixtures("database")
+def test_backups_added_by_the_original_crafty(tmp_path) -> None:
+    """The original Crafty leaves the off-site columns out (None)"""
+    _, place = _place(tmp_path)
+    Backups.insert(
+        backup_id="b1",
+        server_id="server-1",
+        offsite_id=None,
+        offsite_keep=None,
+        offsite_status=None,
+    ).execute()
+    copies = OffsiteCopies(None, FakeBackupManager(tmp_path))
+    assert copies.start_copy("server-1", "My Server", "b1")
+    _wait("b1")
+    conf = Backups.get_by_id("b1").__data__
+    assert last_status(conf) is None
+    with pytest.raises(offsite.OffsiteError) as caught:
+        copies.start_fetch(conf, "My-Server_2026-10-01_12-00-00.zip")
+    assert caught.value.code == "NO_OFFSITE"
+    assert HelperOffsite.used_by(place) == 0
+    assert not offsite.keep_newest(None, "b1", None)

@@ -70,7 +70,7 @@ class ApiServersServerBackupsBackupOffsiteHandler(BaseApiHandler):
                 for t in HelperOffsite.get_all()
             ],
             "offsite_id": backup_conf["offsite_id"] if place else "",
-            "offsite_keep": backup_conf["offsite_keep"],
+            "offsite_keep": backup_conf["offsite_keep"] or 0,
             "where": (
                 offsite.describe(place["kind"], place["settings"]) if place else ""
             ),
@@ -125,8 +125,8 @@ class ApiServersServerBackupsBackupOffsiteHandler(BaseApiHandler):
             raise Refused(400, "INVALID_JSON", str(ex)) from ex
         if not isinstance(data, dict):
             raise Refused(400, "INVALID_JSON", "Send an object")
-        target_id = data.get("offsite_id", backup_conf["offsite_id"])
-        keep = data.get("offsite_keep", backup_conf["offsite_keep"])
+        target_id = data.get("offsite_id", backup_conf["offsite_id"] or "")
+        keep = data.get("offsite_keep", backup_conf["offsite_keep"] or 0)
         if not isinstance(target_id, str) or (
             target_id and HelperOffsite.get(target_id) is None
         ):
@@ -142,7 +142,7 @@ class ApiServersServerBackupsBackupOffsiteHandler(BaseApiHandler):
         ):
             raise Refused(400, "INVALID_KEEP", "Keep a number of copies from 0 to 1000")
         changes = {"offsite_id": target_id, "offsite_keep": keep}
-        if target_id != backup_conf["offsite_id"]:
+        if target_id != (backup_conf["offsite_id"] or ""):
             # How the last copy went is about the old place
             changes["offsite_status"] = ""
         return changes

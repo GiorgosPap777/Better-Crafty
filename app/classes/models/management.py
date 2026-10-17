@@ -125,10 +125,11 @@ class Backups(BaseModel):
     enabled = BooleanField(default=True)
     backup_type = CharField(default="zip_vault")
     # Off-site copies (offsite_copies.py): where to, how many to keep there
-    # (0 keeps all) and how the last copy went
-    offsite_id = CharField(default="")
-    offsite_keep = IntegerField(default=0)
-    offsite_status = CharField(default="")
+    # (0 keeps all) and how the last copy went. Empty (None) in backups
+    # added by the original Crafty, which does not know them.
+    offsite_id = CharField(default="", null=True)
+    offsite_keep = IntegerField(default=0, null=True)
+    offsite_status = CharField(default="", null=True)
 
     class Meta:
         table_name = "backups"

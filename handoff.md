@@ -37,7 +37,7 @@ on any machine.
    repo default, so a fresh clone is already on it. In an existing clone:
    `git fetch origin && git checkout claude/login-server-admin-improvements-ctbqdu && git pull`.
 2. **Set up and check** with "Development setup" below (about 10 minutes).
-   You should see 251 passing pytest tests before changing anything.
+   You should see 252 passing pytest tests before changing anything.
 3. **Do the Docker Hub release** ("Next session: Docker Hub release" in
    Session 12), then the Modrinth installer, unless the owner asks for
    something else.
@@ -137,6 +137,11 @@ on any machine.
     session limit again. Could you write the handoff.md so that you know
     what you will need to do later to continue on later?" Done: off-site
     backups committed and pushed, and these notes.
+21. Session 12: "Then stop to do any more work". Stopped.
+22. Session 12, later: "Okay, you can continue now." Carried on with the
+    Docker Hub release (see "Next session: Docker Hub release"), after a
+    fix that keeps going back to the original Crafty working ("Going back
+    to the original Crafty" in "Off-site backups").
 
 ### Questions still waiting on the owner
 
@@ -189,7 +194,8 @@ on any machine.
 | `5a900db6` | Restart with in-game warnings: panel menu, countdown with Cancel, schedules (session 12) |
 | `2313ab81` | Players tab reads the new player folders of Minecraft 26.1 and newer (session 12) |
 | `533866c8` | World tab: download the world as a zip, reset the Nether or the End (session 12) |
-| (this commit) | Off-site backups: copy zip backups to another disk, a network share or S3-compatible cloud storage, and bring them back (session 12) |
+| `a08d0bff` | Off-site backups: copy zip backups to another disk, a network share or S3-compatible cloud storage, and bring them back (session 12) |
+| (this commit) | Off-site columns accept empty values, so the original Crafty can still add backups after using this fork (session 12) |
 
 ### 1. Login (`d3946c3f`)
 
@@ -1544,7 +1550,21 @@ storage. A backup on the same disk doesn't help if that disk dies."
 - Removing a place stops the backups that used it (they keep their local
   backups; the copies already there are kept).
 - Database: migration `20261017_offsite_copies` (table `offsite_targets`;
-  columns `offsite_id`, `offsite_keep`, `offsite_status` on `backups`).
+  columns `offsite_id`, `offsite_keep`, `offsite_status` on `backups`),
+  then `20261018_offsite_nullable` (those three columns accept NULL).
+- **Going back to the original Crafty:** the original does not know the
+  three columns and leaves them out when it adds a backup. With the
+  columns NOT NULL (peewee's `add_columns` gives them no database default)
+  it failed with `NOT NULL constraint failed: backups.offsite_id`. Fixed
+  by `20261018_offsite_nullable` (peewee's `drop_not_null`, a table
+  rewrite that keeps the rows) and by reading NULL as "no off-site copy"
+  (`offsite_id or ""`, `offsite_keep or 0`, `keep_newest` with None).
+  Tested by hand on a copy of a real install: upgrade (rows kept), the
+  original Crafty 4.11.0 (`fe65b372`) on that database adds a backup and
+  shows the Backups page, then this fork reads that backup (no off-site
+  copy, settings page and PATCH fine), and a brand-new install ends with
+  the new migration. Unit test:
+  `test_backups_added_by_the_original_crafty`.
 - API: `/api/v2/crafty/offsite` (GET list, POST add),
   `/api/v2/crafty/offsite/test` (POST, also with `target_id` to reuse the
   saved secret), `/api/v2/crafty/offsite/<id>` (PATCH, DELETE);
@@ -1558,9 +1578,10 @@ storage. A backup on the same disk doesn't help if that disk dies."
   as the folder). Put that in the README's Install section.
 - **Checked:** 23 unit tests (`tests/classes/helpers/test_offsite.py`: the
   signer against AWS's published examples, names, settings, folder place,
-  S3 against a fake server with multipart, retries and errors) and 5
+  S3 against a fake server with multipart, retries and errors) and 6
   (`tests/classes/shared/test_offsite_copies.py`: copying after backups,
-  keep, a missing disk, bring back, removing a place);
+  keep, a missing disk, bring back, removing a place, backups added by the
+  original Crafty);
   `dev/handoff-tools/test_offsite.js` passed every check against a folder
   and a local S3 server (versitygw in Docker: `docker run -d -p 7070:7070
   -e ROOT_ACCESS_KEY=testkey -e ROOT_SECRET_KEY=testsecret123
@@ -1652,7 +1673,7 @@ section. Commands are for a terminal in the repo root. On Windows use
 python3 -m venv .venv
 . .venv/bin/activate            # Windows: .venv\Scripts\activate
 pip install -r requirements.txt pytest black pylint
-pytest -q tests                 # 251 pass
+pytest -q tests                 # 252 pass
 black --check app tests
 node dev/command-data/test_complete.js   # command suggestions engine, no browser
 ```

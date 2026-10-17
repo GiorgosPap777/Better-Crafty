@@ -579,7 +579,7 @@ class S3Target:
 def keep_newest(target_place, folder: str, keep: int) -> list:
     """Delete the oldest copies so that keep are left (0 keeps them all).
     Returns the names deleted."""
-    if keep <= 0:
+    if not keep or keep <= 0:
         return []
     copies = target_place.list(folder)
     removed = []
