@@ -12,9 +12,11 @@ commits table.
 Docker Hub release is done on our side: the image
 `giorgospap777/better-crafty` was run and checked, moving from the original
 Crafty and back was tested (Docker and Linux), the README's Install,
-Updating and Moving sections use the image, and `v1.0.0` is tagged. Waiting
-on the owner: create the GitHub Release for `v1.0.0` and decide about
-`ghcr.io` (see "Docker Hub release (done)"). **Next: the Modrinth
+Updating and Moving sections use the image. **Waiting on the owner:** make
+the GitHub Release `v1.0.0`, which also creates the tag (this session may
+push only its branch), and decide about `ghcr.io` (see "Docker Hub release
+(done)"). Until the tag exists Docker Hub has no `latest`, so the README's
+commands fail; check that first. **Next: the Modrinth
 installer.** Older notes follow; see "Session 12" for the details. The owner approved a list of suggestions (update
 check, tests on GitHub, versions, upstream, error pop-ups, then bigger
 features). Items 1 to 5 are done, plus a fix for an upstream bug that made
@@ -156,9 +158,10 @@ on any machine.
   README mentions Docker Hub only. If they want Docker Hub only, remove the
   `ghcr.io` login step and image line from `.github/workflows/ci.yml`.
   Never ask them to paste a password or token into the chat.
-- Asked to create the GitHub Release for the tag `v1.0.0` (no tool here can
-  create one). The panel's update check reads GitHub Releases, so until
-  then it sees no release.
+- Asked to create the GitHub Release `v1.0.0` together with its tag (no
+  tool here can create either; see "Docker Hub release (done)", step 6).
+  The panel's update check reads GitHub Releases, so until then it sees no
+  release, and Docker Hub has no `latest`.
 - Which special items (banners, pots, dragon/piglin heads, copper golem
   statues) to draw (session 11).
 - (Answered in session 5.) The token cookie is now `SameSite=Lax`
@@ -205,7 +208,8 @@ on any machine.
 | `533866c8` | World tab: download the world as a zip, reset the Nether or the End (session 12) |
 | `a08d0bff` | Off-site backups: copy zip backups to another disk, a network share or S3-compatible cloud storage, and bring them back (session 12) |
 | `6ab39b36` | Off-site columns accept empty values, so the original Crafty can still add backups after using this fork (session 12) |
-| (this commit, tagged `v1.0.0`) | README: install from Docker Hub, updating, moving from Crafty and back; handoff for the release (session 12) |
+| `15f7b4df` | README: install from Docker Hub, updating, moving from Crafty and back; handoff for the release (session 12) |
+| (this commit) | Handoff: the tag push was refused, the owner makes the tag with the Release (session 12) |
 
 ### 1. Login (`d3946c3f`)
 
@@ -1215,7 +1219,8 @@ they are doing the Docker Hub part themselves in parallel:
 1. Update check pointed at this fork. **Done.**
 2. Tests on GitHub, image published only when they pass. **Done.**
 3. Version numbers and releases. **Done**; the first release, `v1.0.0`,
-   is tagged (see "Docker Hub release (done)").
+   is ready; the owner creates its tag with the Release (see "Docker Hub
+   release (done)").
 4. Keep up with the original Crafty. **Checked, nothing to merge yet.**
 5. Escape the ~90 error pop-ups. **Done.** Also fixed an upstream bug
    found while testing it ("Database is locked" below).
@@ -1265,9 +1270,18 @@ Docker Hub: its API answers without logging in).
    Docker), Updating, Moving from Crafty Controller (versions, back up
    first, Docker, the Linux installer, going back). Python 3.10+, not 3.9
    (upstream code uses `match`).
-6. **Tagged `v1.0.0`** on the commit that has this text, which publishes
-   `latest`, `1.0.0` and `1.0` (check the run for the tag). Upstream's
-   newest release was still 4.11.0 (checked again 2026-10-17).
+6. **The tag `v1.0.0` is not on GitHub yet.** Pushing it was refused (HTTP
+   403): this session's git access may push only its own branch. So the
+   owner creates it with the Release: Releases → Draft a new release →
+   Choose a tag → type `v1.0.0` → "Create new tag on publish", Target:
+   `claude/login-server-admin-improvements-ctbqdu`, title
+   `Better Crafty 1.0.0`, the notes from the chat, Publish. The new tag
+   starts the workflow, which publishes `latest`, `1.0.0` and `1.0`. Until
+   then Docker Hub has only `edge` and `sha-...`, and the README's
+   `:latest` commands fail. Afterwards check the run for the tag and that
+   `latest` is on Docker Hub
+   (`https://hub.docker.com/v2/repositories/giorgospap777/better-crafty/tags/`).
+   Upstream's newest release was still 4.11.0 (checked again 2026-10-17).
 
 Found while testing, upstream's own behaviour (not changed): the original
 Crafty refuses to start a server whose `eula.txt` ends with a newline
@@ -1283,8 +1297,7 @@ newline for the original Crafty), and check the API and pages as above.
 The backups list API answers with the plans keyed by id (both versions),
 and a backup is started with `POST /api/v2/servers/<id>/action/backup_server/<backup_id>`.
 
-**Still for the owner:** create the GitHub Release for `v1.0.0` (Releases →
-Draft a new release → choose the tag; text suggested in the chat), and
+**Still for the owner:** the Release with the new tag `v1.0.0` (step 6), and
 the `ghcr.io` question (see "Questions still waiting on the owner").
 
 ### Update check (done)
