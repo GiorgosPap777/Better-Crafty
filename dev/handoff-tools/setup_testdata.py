@@ -204,11 +204,10 @@ def fill_server_one(path, xss):
     env.pop("XSS", None)
     if xss:
         env["XSS"] = "1"
-    subprocess.run(
-        [sys.executable, str(HERE / "player_fixtures.py"), str(path)],
-        env=env,
-        check=True,
-    )
+    for script in ("player_fixtures.py", "world_fixtures.py"):
+        subprocess.run(
+            [sys.executable, str(HERE / script), str(path)], env=env, check=True
+        )
 
 
 def make_backup(api, server_id):
@@ -274,7 +273,7 @@ def main():
     )
     args = parser.parse_args()
     if not importlib.util.find_spec("pytest"):
-        # player_fixtures.py borrows the NBT writer from the pytest tests
+        # The fixture scripts borrow the NBT writer from the pytest tests
         sys.exit("pytest is missing: pip install pytest black pylint")
     urllib3.disable_warnings()
     crafty_dir = args.crafty_dir.resolve()

@@ -17,6 +17,7 @@ Several Minecraft versions are understood: item ``tag`` (up to 1.20.4) and
 in ``equipment`` (1.21.5 and newer), and the flat statistics of 1.12.
 """
 
+import gzip
 import json
 import logging
 import os
@@ -183,6 +184,33 @@ def parse_nbt(raw: bytes) -> dict:
         raise NbtError("NBT root is not a compound")
     reader.string()
     return reader.payload(10, 0)
+
+
+def remove_tag(raw: bytes, path: t.Sequence[str]) -> t.Optional[bytes]:
+    """The NBT file without the tag at ``path`` (names, from the root
+    compound down), gzipped like the game writes it; None if it has no such
+    tag. A compound has no length field, so cutting a child out is enough."""
+    data = _decompress(raw)
+    reader = _NbtReader(data)
+    if reader.number(">B") != 10:
+        raise NbtError("NBT root is not a compound")
+    reader.string()
+    for depth, wanted in enumerate(path, start=1):
+        while True:
+            start = reader.pos
+            tag = reader.number(">B")
+            if tag == 0:
+                return None
+            name = reader.string()
+            if name == wanted:
+                break
+            reader.payload(tag, depth)
+        if depth == len(path):
+            reader.payload(tag, depth)
+            return gzip.compress(data[:start] + data[reader.pos :])
+        if tag != 10:
+            return None
+    return None
 
 
 def _read_limited(path: Path, limit: int) -> bytes:
@@ -549,6 +577,35 @@ def list_players(server_path) -> t.List[dict]:
     ]
     players.sort(key=lambda player: player["last_played"], reverse=True)
     return players
+
+
+def players_by_dimension(server_path) -> t.Dict[str, t.List[str]]:
+    """Who logged off in each dimension, e.g. {"minecraft:the_nether": [names]}.
+
+    Players without a name in usercache.json are listed by UUID."""
+    world = world_folder(server_path)
+    if world is None:
+        return {}
+    folder = player_folder(world, "data")
+    try:
+        files = sorted(os.listdir(folder))
+    except OSError:
+        return {}
+    names = _usercache_names(server_path)
+    found: t.Dict[str, t.List[str]] = {}
+    for file_name in files[: PLAY_TIME_PLAYER_LIMIT * 2]:
+        uuid = file_name[:-4].lower()
+        if not file_name.endswith(".dat") or not UUID_RE.match(uuid):
+            continue
+        try:
+            dimension = _dimension(read_nbt(folder / file_name).get("Dimension"))
+        except (OSError, NbtError, struct.error):
+            continue
+        if dimension:
+            found.setdefault(dimension, []).append(names.get(uuid, uuid))
+    for players in found.values():
+        players.sort(key=str.lower)
+    return found
 
 
 def _max_health(nbt: dict) -> float:

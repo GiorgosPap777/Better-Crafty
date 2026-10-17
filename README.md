@@ -25,11 +25,12 @@ Please report problems with this fork here, not to them.
 | Area | In short |
 |---|---|
 | **Login** | Rebuilt page: a separate two-factor step, show password, a countdown after too many failed tries, several login bugs fixed. |
-| **Server page header** | The same header on every server tab: status, Start / Restart / Stop, live uptime, CPU, memory, players and version. |
+| **Server page header** | The same header on every server tab: status, Start / Restart / Stop, live uptime, CPU, memory, players and version. A restart can warn the players in the game first, also from a schedule. |
 | **Terminal** | Command suggestions like the game's chat box (press Tab), auto-scroll switch, command history with the ↑ and ↓ keys, a cap of 2,000 lines so the page stays fast, a link to older logs. |
 | **Config** | Split into sections. Game settings (`server.properties`) and memory are normal form fields now, so no more editing the file or the Java command by hand. |
 | **Players** | Everyone who has ever joined, with play time and last seen. Each player opens to their inventory, armor, ender chest, statistics and advancements. Whitelist, operators and bans in one place. |
 | **Backups** | Shows the last backup (time and size) and how many copies are kept. Buttons have labels. Restore errors are shown, and restoring a snapshot asks first. |
+| **World** | A new tab: the world's version, seed and size, a one-click download of the world as a zip (even while the server runs), and a reset of the Nether or the End (the dragon comes back). |
 | **Files** | A clickable folder path, readable file types, a menu button on each row, and a layout that works on phones. |
 | **Metrics** | Separate CPU, memory and player charts that zoom together, with quick time ranges. |
 | **Logs** | A "hide lines containing" filter, a clear message when there is no log, and links between Logs and Terminal. |

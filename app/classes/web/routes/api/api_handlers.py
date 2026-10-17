@@ -44,6 +44,11 @@ from app.classes.web.routes.api.servers.server.players import (
     ApiServersServerPlayerSkinHandler,
     ApiServersServerPlayersHandler,
 )
+from app.classes.web.routes.api.servers.server.world import (
+    ApiServersServerWorldDownloadHandler,
+    ApiServersServerWorldHandler,
+    ApiServersServerWorldResetHandler,
+)
 from app.classes.web.routes.api.servers.server.history import (
     ApiServersServerHistoryHandler,
 )
@@ -520,6 +525,26 @@ def api_handlers(handler_args):
         (
             r"/api/v2/servers/([a-z0-9-]+)/players/([0-9a-fA-F-]+)/skin/?",
             ApiServersServerPlayerSkinHandler,
+            handler_args,
+        ),
+        (
+            r"/api/v2/servers/([a-z0-9-]+)/world/?",
+            ApiServersServerWorldHandler,
+            handler_args,
+        ),
+        (
+            r"/api/v2/servers/([a-z0-9-]+)/world/download/?",
+            ApiServersServerWorldDownloadHandler,
+            handler_args,
+        ),
+        (
+            r"/api/v2/servers/([a-z0-9-]+)/world/download/([0-9a-f]{32})/?",
+            ApiServersServerWorldDownloadHandler,
+            handler_args,
+        ),
+        (
+            r"/api/v2/servers/([a-z0-9-]+)/world/reset/?",
+            ApiServersServerWorldResetHandler,
             handler_args,
         ),
         (

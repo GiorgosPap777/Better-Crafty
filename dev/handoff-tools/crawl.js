@@ -8,7 +8,7 @@ const pages = [
   '/panel/dashboard', '/panel/panel_config', '/panel/config_json', '/panel/custom_login', '/panel/activity_logs',
   '/panel/credits', '/panel/contribute', '/panel/wiki', '/panel/add_user', '/panel/edit_user?id=3', '/panel/edit_user?id=1',
   '/panel/add_role', '/panel/edit_role?id=1', '/panel/edit_user_apikeys?id=1', '/panel/edit_user_otp?id=1', '/panel/edit_user_passkey?id=1',
-  `/panel/server_detail?id=${S1}&subpage=logs`, `/panel/server_detail?id=${S1}&subpage=files`, `/panel/server_detail?id=${S1}&subpage=backup`,
+  `/panel/server_detail?id=${S1}&subpage=logs`, `/panel/server_detail?id=${S1}&subpage=files`, `/panel/server_detail?id=${S1}&subpage=backup`, `/panel/server_detail?id=${S1}&subpage=world`,
   `/panel/server_detail?id=${S1}&subpage=schedules`, `/panel/server_detail?id=${S1}&subpage=config`, `/panel/server_detail?id=${S1}&subpage=admin_controls`,
   `/panel/server_detail?id=${S1}&subpage=metrics`, `/panel/server_detail?id=${S1}&subpage=webhooks`, `/panel/server_detail?id=${S1}&subpage=update_center`,
   `/panel/edit_backup?id=${S1}&backup_id=${B1}`, `/panel/add_backup?id=${S1}`, `/panel/add_schedule?id=${S1}`, `/panel/add_webhook?id=${S1}`,

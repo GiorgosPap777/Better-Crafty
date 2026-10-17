@@ -38,6 +38,7 @@ SUBPAGE_PERMS = {
     "logs": EnumPermissionsServer.LOGS,
     "schedules": EnumPermissionsServer.SCHEDULE,
     "backup": EnumPermissionsServer.BACKUP,
+    "world": EnumPermissionsServer.BACKUP,
     "files": EnumPermissionsServer.FILES,
     "config": EnumPermissionsServer.CONFIG,
     "admin_controls": EnumPermissionsServer.PLAYERS,
@@ -45,6 +46,55 @@ SUBPAGE_PERMS = {
     "webhooks": EnumPermissionsServer.CONFIG,
     "update_center": EnumPermissionsServer.CONFIG,
 }
+
+# The World page's text, for its script
+WORLD_TEXT = (
+    "title",
+    "loadFailed",
+    "noWorld",
+    "name",
+    "version",
+    "seed",
+    "lastSaved",
+    "size",
+    "unknown",
+    "copySeed",
+    "copied",
+    "download",
+    "downloadDesc",
+    "downloadDescBedrock",
+    "stopFirstBedrock",
+    "making",
+    "makingNote",
+    "ready",
+    "downloadZip",
+    "downloadStarted",
+    "notSaved",
+    "zipFailed",
+    "busyDownload",
+    "busyReset",
+    "dimensions",
+    "overworld",
+    "nether",
+    "end",
+    "notMade",
+    "playersHere",
+    "noPlayersHere",
+    "reset",
+    "stopToReset",
+    "overworldNote",
+    "bedrockNote",
+    "resetTitle",
+    "resetNether",
+    "resetEnd",
+    "resetKeeps",
+    "resetPlayers",
+    "resetConfirm",
+    "resetButton",
+    "resetDone",
+    "resetFailed",
+    "cancel",
+)
 
 SCHEDULE_AUTH_ERROR_URL = "/panel/error?error=Unauthorized access To Schedules"
 
@@ -778,6 +828,22 @@ class PanelHandler(BaseHandler):
                 }
 
                 self.controller.servers.refresh_server_settings(server_id)
+
+            if subpage == "world":
+                if page_data["server_data"]["type"] not in (
+                    "minecraft-java",
+                    "minecraft-bedrock",
+                ):
+                    # Only Minecraft worlds are known
+                    return self.redirect(
+                        f"/panel/server_detail?id={server_id}&subpage=backup"
+                    )
+                page_data["world_text"] = {
+                    key: self.translator.translate(
+                        "serverWorld", key, page_data["lang"], False
+                    )
+                    for key in WORLD_TEXT
+                }
 
             if subpage == "metrics":
                 # Check for custom date range parameters

@@ -31,6 +31,12 @@
     </li>
     {% end %}
     {% end %}
+    {% if data['permissions']['Backup'] in data['user_permissions'] and data['server_data']['type'] in ('minecraft-java', 'minecraft-bedrock') %}
+    <li class="nav-item term-nav-item">
+        <a class="nav-link {% if data['active_link'] == 'world' %}active{% end %}" href="/panel/server_detail?id={{ data['server_stats']['server_id']['server_id'] }}&subpage=world" role="tab" aria-selected="false">
+            <i class="ph-fill ph-globe-hemisphere-west"></i>{{ translate('serverDetails', 'world', data['lang']) }}</a>
+    </li>
+    {% end %}
     {% if data['permissions']['Files'] in data['user_permissions'] %}
     <li class="nav-item term-nav-item">
         <a class="nav-link {% if data['active_link'] == 'files' %}active{% end %}" href="/panel/server_detail?id={{ data['server_stats']['server_id']['server_id'] }}&subpage=files" role="tab" aria-selected="false">

@@ -34,7 +34,7 @@ on any machine.
    repo default, so a fresh clone is already on it. In an existing clone:
    `git fetch origin && git checkout claude/login-server-admin-improvements-ctbqdu && git pull`.
 2. **Set up and check** with "Development setup" below (about 10 minutes).
-   You should see 193 passing pytest tests before changing anything.
+   You should see 223 passing pytest tests before changing anything.
 3. **Ask the owner what to work on next.** If it is the Docker work, follow
    "Session 6" from "Next steps, in order". It needs two answers from them:
    their Docker Hub username, and whether to publish to Docker Hub only or
@@ -175,7 +175,8 @@ on any machine.
 | `57ed1545` | Update check reads this fork's GitHub releases; Better Crafty version; tests and Docker publish on GitHub Actions (session 12) |
 | `7bbdc549` | Error pop-ups show the server's text as text; fix for "database is locked" after opening a backup's settings (session 12) |
 | `5a900db6` | Restart with in-game warnings: panel menu, countdown with Cancel, schedules (session 12) |
-| (this commit) | Players tab reads the new player folders of Minecraft 26.1 and newer (session 12) |
+| `2313ab81` | Players tab reads the new player folders of Minecraft 26.1 and newer (session 12) |
+| (this commit) | World tab: download the world as a zip, reset the Nether or the End (session 12) |
 
 ### 1. Login (`d3946c3f`)
 
@@ -1187,7 +1188,8 @@ they are doing the Docker Hub part themselves in parallel:
    found while testing it ("Database is locked" below).
 6. Bigger features, in this order unless the owner says otherwise:
    restart with in-game warnings (**done**, see below), world tools
-   (download the world as a zip, reset the Nether or the End), backups to
+   (download the world as a zip, reset the Nether or the End; **done**,
+   see below), backups to
    another disk / network share / cloud, a Modrinth plugin and mod
    installer. Plus the special item pictures once the owner picks which.
 
@@ -1402,7 +1404,86 @@ converts older worlds the first time it loads them.
   `dimensions/minecraft/overworld`. World-level data moved out of
   `level.dat` into `data/minecraft/*.dat`, and the dragon fight is in
   `dimensions/minecraft/the_end/data/minecraft/ender_dragon_fight.dat`.
-  The world tools (next) handle both layouts.
+  The world tools handle both layouts.
+
+### World tools (done)
+
+What the owner approved: "World tools (download the world as a zip, reset
+the Nether or the End)".
+
+- **Panel:** a World tab after Backup, for Java and Bedrock servers. It
+  needs the Backup permission (a backup can replace the world anyway). It
+  shows the world's name, the version that last saved it, the seed (with a
+  copy button), when it was last saved and its size; a "Download world"
+  button; and a card for each dimension (Overworld, Nether, End) with its
+  size, its folders and the players who logged off there.
+- **Download:** a zip of the world folders (Bukkit's `world_nether` and
+  `world_the_end` too), named `<server>-<world>-<date>-<time>.zip`, with
+  paths as in the server folder, so it unpacks straight into another
+  server. Region files and other compressed files are stored, not
+  compressed again (fast). `session.lock` and links are left out.
+  - While a Java server runs, Crafty sends `save-off` and
+    `save-all flush`, waits for "Saved the game" (up to 30 seconds; the
+    zip is made anyway and the page says so), zips, then sends `save-on`.
+    A Bedrock server must be stopped: its console cannot hold off saving.
+  - The zip is made in the background in `temp/world-downloads/` (free
+    disk space is checked first). The page asks every 2 seconds and starts
+    the download when it is ready; after a reload it shows a "Download
+    zip" button instead. A zip downloads once, only for the user who made
+    it, within an hour; then it is deleted.
+- **Reset:** Java only, with the server stopped and no backup running. A
+  dialog explains what happens, names the players who logged off in that
+  dimension (they come back at the same spot), and needs a tick ("cannot
+  be undone"). It deletes the dimension's folders in every layout
+  (`DIM-1`/`DIM1`; Bukkit's `world_nether/DIM-1` and `world_the_end/DIM1`;
+  26.1's `dimensions/minecraft/the_nether` and `.../the_end`).
+  - For the End up to 1.21 it first removes the dragon fight record from
+    `level.dat` (`Data.DragonFight`; `Data.DimensionData."1".DragonFight`
+    before 1.16; also Bukkit's `world_the_end/level.dat`). With the old
+    record a new End gets no dragon, exit portal or gateways; without it
+    the game looks at the End again, spawns a dragon and makes them. If
+    `level.dat` cannot be read, nothing is deleted. From 26.1 the record is
+    in the End's own folder and goes with it.
+  - The overworld cannot be reset here.
+- One world tool at a time per server: a download and a reset never
+  overlap.
+- **API** (Backup permission; the audit log records each reset and each
+  downloaded zip):
+  - `GET /api/v2/servers/<id>/world`: what the page shows (`edition`,
+    `name`, `folder`, `exists`, `size`, `version`, `seed` as a string,
+    `last_played` in seconds, `dimensions`, `running`, `busy`, and this
+    user's `download`).
+  - `POST .../world/download` starts a zip (404 `WORLD_NOT_FOUND`; 409
+    `WORLD_BUSY`, or `STOP_SERVER_FIRST` for a running Bedrock server; 507
+    `OUT_OF_SPACE`). `GET .../world/download` gives its state: `zipping`;
+    `ready` with `token`, `filename`, `size`, `files` and `saved`; or
+    `failed` with `error` and `message`. `GET .../world/download/<token>`
+    sends the zip once (404 `DOWNLOAD_NOT_FOUND`).
+  - `POST .../world/reset` with `{"dimension": "the_nether"}` or
+    `"the_end"` answers `{"removed": [folders], "dragon_reset": bool}`.
+    Errors: 400 `INVALID_JSON`, `INVALID_DIMENSION`, `NOT_SUPPORTED`; 409
+    `SERVER_RUNNING`, `BACKUP_RUNNING`, `WORLD_BUSY`, `NOTHING_TO_RESET`;
+    500 `LEVEL_DAT_ERROR`, `RESET_FAILED`.
+- **How:** `app/classes/helpers/world_tools.py` (the world and its
+  dimensions in each layout, the zip, the download jobs, the reset);
+  `player_data.remove_tag` (cuts a tag out of an NBT file: a compound has
+  no length field, so that is safe) and `players_by_dimension`;
+  `ServerInstance.flush_and_hold_saves` in `server.py`
+  (`ServerOutBuf.total` counts console lines, to find the new ones after
+  the buffer is trimmed); `app/classes/web/routes/api/servers/server/world.py`;
+  `templates/panel/server_world.html`; `css/partial/crafty-world.css`.
+- **Not done (ideas):** uploading a world from a zip, resetting the
+  overworld or choosing a new seed, reading Bedrock's `level.dat` (the page
+  shows only the name and size for Bedrock), a progress bar for the zip.
+- **Checked:** 30 unit tests (`tests/classes/helpers/test_world_tools.py`:
+  the three layouts, links, the dragon record in both places and in
+  Bukkit's End, a broken `level.dat`, folders outside the server, the zip's
+  contents, one-time tokens) and `dev/handoff-tools/test_world.js` (35
+  checks: API errors, the page, a download while stopped and while
+  running, reset refused while running, the End and Nether resets, Cancel,
+  phone width). `crawl.js` (now with the World tab), `test_server.js` and
+  `test_players.js` still pass. The tests' NBT writer moved to
+  `tests/classes/helpers/nbt_writer.py`.
 
 ### Upstream (checked 2026-10-17)
 
@@ -1439,6 +1520,17 @@ converts older worlds the first time it loads them.
   `css/partial/crafty-server-overview.css`, `en_EN.json`,
   `tests/classes/shared/test_restart_countdown.py` (new),
   `dev/handoff-tools/test_restart_warned.js` (new)
+- World tools: `app/classes/helpers/world_tools.py` (new),
+  `player_data.py`, `server.py`,
+  `app/classes/web/routes/api/servers/server/world.py` (new),
+  `api_handlers.py`, `panel_handler.py`,
+  `templates/panel/server_world.html` (new), `server_controls_list.html`,
+  `m_server_controls_list.html`, `css/partial/crafty-world.css` (new),
+  `en_EN.json`, `tests/classes/helpers/test_world_tools.py` (new),
+  `tests/classes/helpers/nbt_writer.py` (new, moved out of
+  `test_player_data.py`), `dev/handoff-tools/test_world.js`,
+  `world_fixtures.py` (new), `setup_testdata.py`, `player_fixtures.py`,
+  `crawl.js`, `fake_server/FakeServer.java` and `server.jar`
 
 ## Development setup (any machine)
 
@@ -1460,7 +1552,7 @@ section. Commands are for a terminal in the repo root. On Windows use
 python3 -m venv .venv
 . .venv/bin/activate            # Windows: .venv\Scripts\activate
 pip install -r requirements.txt pytest black pylint
-pytest -q tests                 # 193 pass
+pytest -q tests                 # 223 pass
 black --check app tests
 node dev/command-data/test_complete.js   # command suggestions engine, no browser
 ```
@@ -1499,12 +1591,18 @@ it), and makes:
 
 - two servers, "Survival World" and "Creative Build", imported from a zip
   of the fake server. It logs "Starting minecraft server version 1.21.1"
-  and "Done", answers `list`, `say` and `stop`, and prints an error for
-  anything else. Server 2 has no `logs/` folder on purpose.
+  and "Done", answers `list`, `say`, `stop`, `save-off`, `save-on` and
+  `save-all`, and prints an error for anything else. Server 2 has no
+  `logs/` folder on purpose. Test data made before session 12 has the old
+  fake server without the save commands: copy
+  `dev/handoff-tools/fake_server/server.jar` into `servers/<server 1 id>/`
+  (with the server stopped) or `test_world.js` fails its running checks.
 - in server 1: `server.properties`, ban, op and whitelist files, a
-  `logs/latest.log`, odd file names, 520 files in `many/`, and save files for
+  `logs/latest.log`, odd file names, 520 files in `many/`, save files for
   five players (`player_fixtures.py`: modern and 1.12-era formats, and one
-  with no known name).
+  with no known name), and a small world with a Nether and an End
+  (`world_fixtures.py`; run `python dev/handoff-tools/world_fixtures.py
+  servers/<server 1 id>` to add it to older test data).
 - one backup of server 1.
 - a role "Moderators" (id 1 on a fresh Crafty; `crawl.js` opens it).
 - user `tester` / `TesterPass123` with 2FA.
@@ -1551,6 +1649,7 @@ Settings come from `local.json`; the environment variables `CRAFTY_URL`,
 | `test_logs.js` | Logs tab |
 | `test_audit.js` | Schedule and webhook switches, restore errors, editor saves |
 | `test_restart_warned.js` | Restart with in-game warnings: dialog, countdown, Cancel, schedules, phone (about 2 minutes; leaves server 1 running) |
+| `test_world.js` | World tab: download (stopped and running), reset of the End and the Nether, phone; writes the test world again at the end |
 | `crawl.js` | Opens every panel page (desktop and phone), reports page errors; `node crawl.js [substring]` |
 | `chk_metrics.js` | Metrics chart zoom |
 | `shot.js`, `panel.js`, `shot_files.js`, `shot_metrics.js`, `shot_header.js` | Screenshots only |

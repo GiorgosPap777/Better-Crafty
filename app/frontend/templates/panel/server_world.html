@@ -1,0 +1,341 @@
+{% extends ../base.html %}
+
+{% block meta %}
+<link rel="stylesheet" href="/static/assets/css/partial/crafty-world.css">
+{% end %}
+
+{% block title %}Crafty Controller - {{ translate('serverDetails', 'serverDetails', data['lang']) }}{% end %}
+
+{% block content %}
+
+<div class="content-wrapper">
+
+  <!-- Page Title Header Starts-->
+  {% include "parts/server_title.html" %}
+  <!-- Page Title Header Ends-->
+
+  {% include "parts/details_stats.html" %}
+
+  <div class="row">
+
+    <div class="col-sm-12 grid-margin">
+      <div class="card">
+        <div class="card-body pt-0">
+
+          <span class="d-none d-sm-block">
+            {% include "parts/server_controls_list.html" %}
+          </span>
+          <span class="d-block d-sm-none">
+            {% include "parts/m_server_controls_list.html" %}
+          </span>
+
+          <div class="row">
+            <div class="col-12">
+              <div class="card">
+                <div class="card-header header-sm d-flex justify-content-between align-items-center">
+                  <h4 class="card-title"><i class="ph-fill ph-globe-hemisphere-west"></i> {{ translate('serverWorld', 'title', data['lang']) }}</h4>
+                </div>
+                <div class="card-body">
+                  <div id="world_status" class="alert d-none" role="status"></div>
+                  <div id="world_loading" class="text-center py-4">
+                    <span class="spinner-border" aria-hidden="true"></span>
+                  </div>
+                  <div id="world_content" class="d-none">
+                    <div id="world_facts" class="world-facts"></div>
+                    <div id="world_download" class="world-download"></div>
+                    <h5 class="world-section-title">{{ translate('serverWorld', 'dimensions', data['lang']) }}</h5>
+                    <div id="world_dimensions" class="world-dimensions"></div>
+                    <p id="world_dimensions_note" class="world-note d-none"></p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+<!-- content-wrapper ends -->
+
+{% end %}
+
+{% block js %}
+<script>
+  const worldServerId = {% raw json_encode(data['server_stats']['server_id']['server_id']) %};
+  const worldText = {% raw json_encode(data['world_text']) %};
+  const worldDimensions = {
+    overworld: { name: worldText.overworld, icon: "ph-tree" },
+    the_nether: { name: worldText.nether, icon: "ph-fire" },
+    the_end: { name: worldText.end, icon: "ph-planet" },
+  };
+  let world = null;
+  let zipTimer = null;
+  // Set when this page asked for a zip: it is fetched as soon as it is ready
+  let fetchWhenReady = false;
+
+  function fill(text, values) {
+    return String(text).replace(/\{(\w+)\}/g, (match, key) => (key in values ? values[key] : match));
+  }
+
+  function formatSize(bytes) {
+    const units = ["B", "KB", "MB", "GB", "TB"];
+    let value = Number(bytes) || 0;
+    let unit = 0;
+    while (value >= 1024 && unit < units.length - 1) {
+      value /= 1024;
+      unit++;
+    }
+    return `${unit ? value.toFixed(value < 10 ? 1 : 0) : value} ${units[unit]}`;
+  }
+
+  function showStatus(kind, text) {
+    $("#world_status").removeClass("d-none alert-success alert-danger alert-warning").addClass("alert-" + kind).text(text);
+  }
+
+  async function worldApi(path, options) {
+    const res = await fetch(`/api/v2/servers/${worldServerId}/world${path}`, {
+      headers: { "X-XSRFToken": getCookie("_xsrf") },
+      ...options,
+    });
+    let data = {};
+    try { data = await res.json(); } catch (e) { /* not JSON */ }
+    if (!res.ok || data.status !== "ok") {
+      throw new Error(data.error_data || data.error || res.statusText || res.status);
+    }
+    return data.data;
+  }
+
+  async function loadWorld() {
+    try {
+      world = await worldApi("");
+    } catch (e) {
+      $("#world_loading").addClass("d-none");
+      showStatus("danger", `${worldText.loadFailed}: ${e.message}`);
+      return;
+    }
+    renderWorld();
+    watchZip();
+  }
+
+  function fact(label, value) {
+    return $('<div class="world-fact"></div>')
+      .append($('<span class="world-fact-label"></span>').text(label))
+      .append($('<div class="world-fact-value"></div>').append(value));
+  }
+
+  function seedFact() {
+    if (!world.seed) return fact(worldText.seed, document.createTextNode(worldText.unknown));
+    const copy = $('<button type="button" class="btn btn-link btn-sm"><i class="ph-bold ph-copy"></i></button>')
+      .attr({ title: worldText.copySeed, "aria-label": worldText.copySeed })
+      .on("click", async function () {
+        try {
+          await navigator.clipboard.writeText(world.seed);
+          $(this).attr("title", worldText.copied).tooltip({ trigger: "manual" }).tooltip("show");
+          setTimeout(() => $(this).tooltip("dispose").attr("title", worldText.copySeed), 1200);
+        } catch (e) { /* the seed stays on screen to copy by hand */ }
+      });
+    return fact(worldText.seed, [$('<span class="world-seed"></span>').text(world.seed), copy]);
+  }
+
+  function renderFacts() {
+    const box = $("#world_facts").empty();
+    if (!world.exists) {
+      box.append($('<p class="mb-0"></p>').text(worldText.noWorld));
+      return;
+    }
+    box.append(fact(worldText.name, document.createTextNode(world.name)));
+    if (world.edition === "java") {
+      box.append(fact(worldText.version, document.createTextNode(world.version || worldText.unknown)));
+      box.append(seedFact());
+      const saved = world.last_played ? new Date(world.last_played * 1000).toLocaleString() : worldText.unknown;
+      box.append(fact(worldText.lastSaved, document.createTextNode(saved)));
+    }
+    box.append(fact(worldText.size, document.createTextNode(formatSize(world.size))));
+  }
+
+  function downloadZip(job) {
+    // An <a download> keeps this page open whatever the answer is
+    const link = document.createElement("a");
+    link.href = `/api/v2/servers/${worldServerId}/world/download/${job.token}`;
+    link.download = job.filename;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    world.download = null;
+    showStatus(job.saved === false ? "warning" : "success",
+      job.saved === false ? `${worldText.downloadStarted} ${worldText.notSaved}` : worldText.downloadStarted);
+    renderDownload();
+  }
+
+  function renderDownload() {
+    const job = world.download;
+    const zipping = (job && job.state === "zipping") || world.busy === "download";
+    const box = $("#world_download").empty();
+    const bedrock = world.edition === "bedrock";
+    box.append($("<p></p>").text(bedrock ? worldText.downloadDescBedrock : worldText.downloadDesc));
+
+    const button = $('<button type="button" class="btn btn-primary" id="world_download_button"></button>');
+    if (zipping) {
+      button.append('<span class="spinner-border spinner-border-sm" aria-hidden="true"></span> ').append(document.createTextNode(worldText.making));
+    } else {
+      button.append('<i class="ph-bold ph-download-simple"></i> ').append(document.createTextNode(worldText.download));
+    }
+    const blocked = !world.exists || zipping || world.busy === "reset" || (bedrock && world.running);
+    button.prop("disabled", blocked).on("click", startZip);
+    const row = $('<div class="world-download-row"></div>').append(button);
+    box.append(row);
+
+    let state = null;
+    if (zipping) {
+      state = $('<p class="world-note"></p>').text(job && job.state === "zipping" ? worldText.makingNote : worldText.busyDownload);
+    } else if (world.busy === "reset") {
+      state = $('<p class="world-note"></p>').text(worldText.busyReset);
+    } else if (bedrock && world.running && world.exists) {
+      state = $('<p class="world-note"></p>').text(worldText.stopFirstBedrock);
+    } else if (job && job.state === "ready") {
+      row.append($('<button type="button" class="btn btn-success" id="world_zip_button"></button>')
+        .append('<i class="ph-bold ph-file-zip"></i> ').append(document.createTextNode(worldText.downloadZip))
+        .on("click", () => downloadZip(job)));
+      state = $('<p class="world-note"></p>').text(fill(worldText.ready, { size: formatSize(job.size), files: job.files }));
+    } else if (job && job.state === "failed") {
+      state = $('<p class="world-note text-danger"></p>').text(`${worldText.zipFailed}: ${job.message}`);
+    }
+    if (state) box.append(state.addClass("world-download-state"));
+  }
+
+  async function startZip() {
+    $("#world_download_button").prop("disabled", true);
+    $("#world_status").addClass("d-none");
+    try {
+      world.download = await worldApi("/download", { method: "POST" });
+      fetchWhenReady = true;
+    } catch (e) {
+      showStatus("danger", `${worldText.zipFailed}: ${e.message}`);
+    }
+    renderDownload();
+    watchZip();
+  }
+
+  // While a zip is being made, ask how it is going every two seconds
+  function watchZip() {
+    clearTimeout(zipTimer);
+    const job = world && world.download;
+    if (!job || job.state !== "zipping") return;
+    zipTimer = setTimeout(async () => {
+      try {
+        world.download = await worldApi("/download");
+      } catch (e) {
+        console.warn("Could not check the zip", e);
+      }
+      const done = world.download && world.download.state;
+      if (done === "zipping") return watchZip();
+      world.busy = null;
+      if (done === "ready" && fetchWhenReady) {
+        fetchWhenReady = false;
+        downloadZip(world.download);
+      } else {
+        renderDownload();
+      }
+    }, 2000);
+  }
+
+  function dimensionCard(dimension) {
+    const info = worldDimensions[dimension.id] || { name: dimension.id, icon: "ph-cube" };
+    const card = $('<div class="world-dimension"></div>').addClass("world-" + dimension.id.replace(/^the_/, ""));
+    card.append($('<div class="world-dimension-head"></div>')
+      .append($("<i></i>").addClass("ph-fill " + info.icon))
+      .append($("<span></span>").text(info.name))
+      .append($('<span class="world-dimension-size"></span>').text(dimension.exists ? formatSize(dimension.size) : "")));
+    card.append($('<p class="world-dimension-text"></p>').text(
+      dimension.exists ? dimension.folders.join(", ") : worldText.notMade));
+    if (dimension.id === "overworld") {
+      card.append($('<p class="world-dimension-text"></p>').text(worldText.overworldNote));
+    }
+    const players = dimension.players || [];
+    card.append($('<p class="world-dimension-players"></p>').text(
+      players.length ? `${worldText.playersHere}: ${players.join(", ")}` : worldText.noPlayersHere));
+    if (dimension.resettable) {
+      const button = $('<button type="button" class="btn btn-outline-danger btn-sm"></button>')
+        .attr("data-dimension", dimension.id)
+        .append('<i class="ph-bold ph-arrow-counter-clockwise"></i> ')
+        .append(document.createTextNode(worldText.reset))
+        .prop("disabled", world.running || !!world.busy || !dimension.exists)
+        .on("click", () => confirmReset(dimension, info.name));
+      if (world.running) button.attr("title", worldText.stopToReset);
+      card.append(button);
+    }
+    return card;
+  }
+
+  function renderDimensions() {
+    const box = $("#world_dimensions").empty();
+    const note = $("#world_dimensions_note").addClass("d-none");
+    if (world.edition === "bedrock") {
+      note.text(worldText.bedrockNote).removeClass("d-none");
+      return;
+    }
+    (world.dimensions || []).forEach((dimension) => box.append(dimensionCard(dimension)));
+    if (world.running && world.exists) note.text(worldText.stopToReset).removeClass("d-none");
+  }
+
+  function confirmReset(dimension, name) {
+    let message = `<p>${escapeHtml(dimension.id === "the_end" ? worldText.resetEnd : worldText.resetNether)}</p>`
+      + `<p>${escapeHtml(worldText.resetKeeps)}</p>`;
+    if ((dimension.players || []).length) {
+      message += `<div class="alert alert-warning">${escapeHtml(fill(worldText.resetPlayers,
+        { dimension: name, names: dimension.players.join(", ") }))}</div>`;
+    }
+    message += '<div class="form-check"><input type="checkbox" class="form-check-input" id="world_reset_sure">'
+      + `<label class="form-check-label" for="world_reset_sure">${escapeHtml(worldText.resetConfirm)}</label></div>`;
+    const dialog = bootbox.dialog({
+      title: escapeHtml(fill(worldText.resetTitle, { dimension: name })),
+      message: message,
+      buttons: {
+        cancel: { label: escapeHtml(worldText.cancel), className: "btn-secondary" },
+        reset: {
+          label: escapeHtml(fill(worldText.resetButton, { dimension: name })),
+          className: "btn-danger world-reset-confirm",
+          callback: function () {
+            if (!$("#world_reset_sure").is(":checked")) return false;
+            resetDimension(dimension.id, name);
+          },
+        },
+      },
+    });
+    dialog.find(".world-reset-confirm").prop("disabled", true);
+    dialog.on("change", "#world_reset_sure", function () {
+      dialog.find(".world-reset-confirm").prop("disabled", !this.checked);
+    });
+  }
+
+  async function resetDimension(id, name) {
+    $("#world_dimensions .btn").prop("disabled", true);
+    try {
+      await worldApi("/reset", { method: "POST", body: JSON.stringify({ dimension: id }) });
+      showStatus("success", fill(worldText.resetDone, { dimension: name }));
+    } catch (e) {
+      showStatus("danger", `${worldText.resetFailed}: ${e.message}`);
+    }
+    loadWorld();
+  }
+
+  function renderWorld() {
+    $("#world_loading").addClass("d-none");
+    $("#world_content").removeClass("d-none");
+    renderFacts();
+    renderDownload();
+    renderDimensions();
+  }
+
+  // The stats bar above checks the server every few seconds
+  document.addEventListener("crafty:server-state", (event) => {
+    const running = !!(event.detail && event.detail.running);
+    if (world && running !== world.running) loadWorld();
+  });
+
+  $(loadWorld);
+</script>
+{% end %}

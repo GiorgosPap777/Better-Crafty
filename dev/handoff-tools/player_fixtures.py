@@ -1,7 +1,7 @@
 """Sample player files for the test server (screenshots and browser checks)."""
 import json, os, sys, time, random
 sys.path.insert(0, os.environ.get("REPO", os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..")))
-from tests.classes.helpers.test_player_data import byte, short, flt, int_array, nbt_file
+from tests.classes.helpers.nbt_writer import byte, short, flt, int_array, nbt_file
 
 server = sys.argv[1]
 world = os.path.join(server, "world")

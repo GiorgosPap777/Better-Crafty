@@ -21,6 +21,9 @@
             <a class="dropdown-item {% if data['active_link'] == 'backup' %}active{% end %}" href="/panel/server_detail?id={{ data['server_stats']['server_id']['server_id'] }}&subpage=backup" role="tab" aria-selected="false"><i class="ph-fill ph-floppy-disk"></i> {{ translate('serverDetails', 'backup', data['lang']) }}</a>
             {% end %}
             {% end %}
+            {% if data['permissions']['Backup'] in data['user_permissions'] and data['server_data']['type'] in ('minecraft-java', 'minecraft-bedrock') %}
+            <a class="dropdown-item {% if data['active_link'] == 'world' %}active{% end %}" href="/panel/server_detail?id={{ data['server_stats']['server_id']['server_id'] }}&subpage=world" role="tab" aria-selected="false"><i class="ph-fill ph-globe-hemisphere-west"></i> {{ translate('serverDetails', 'world', data['lang']) }}</a>
+            {% end %}
             {% if data['permissions']['Files'] in data['user_permissions'] %}
             <a class="dropdown-item {% if data['active_link'] == 'files' %}active{% end %}" href="/panel/server_detail?id={{ data['server_stats']['server_id']['server_id'] }}&subpage=files" role="tab" aria-selected="false"><i class="ph-fill ph-tree-view"></i> {{ translate('serverDetails', 'files', data['lang']) }}</a>
             {% end %}

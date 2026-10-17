@@ -1,0 +1,139 @@
+/**************************************************************/
+/* World page: summary, download and the dimensions           */
+/**************************************************************/
+.world-facts {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(11rem, 1fr));
+    gap: 0.6rem;
+    margin-bottom: 1.25rem;
+}
+
+.world-fact {
+    border: 1px solid var(--outline);
+    border-radius: 0.5rem;
+    padding: 0.6rem 0.75rem;
+    min-width: 0;
+}
+
+.world-fact-label {
+    display: block;
+    font-size: 0.75rem;
+    color: var(--gray-light);
+}
+
+.world-fact-value {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    font-size: 1.05rem;
+    font-weight: 600;
+    overflow-wrap: anywhere;
+}
+
+.world-fact-value .btn {
+    padding: 0 0.3rem;
+    line-height: 1.4;
+}
+
+.world-seed {
+    font-family: var(--font-family-monospace);
+    font-size: 0.95rem;
+    min-width: 0;
+}
+
+.world-download {
+    border: 1px solid var(--outline);
+    border-radius: 0.5rem;
+    padding: 0.75rem;
+    margin-bottom: 1.25rem;
+}
+
+.world-download p {
+    margin-bottom: 0.6rem;
+}
+
+.world-download-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.world-download-state {
+    margin-top: 0.6rem;
+    margin-bottom: 0;
+}
+
+.world-section-title {
+    margin-bottom: 0.6rem;
+}
+
+.world-dimensions {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(15rem, 1fr));
+    gap: 0.6rem;
+}
+
+.world-dimension {
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+    border: 1px solid var(--outline);
+    border-radius: 0.5rem;
+    padding: 0.75rem;
+    min-width: 0;
+}
+
+.world-dimension-head {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    font-weight: 600;
+}
+
+.world-dimension-head i {
+    font-size: 1.2rem;
+}
+
+.world-dimension-size {
+    margin-left: auto;
+    font-weight: 400;
+    color: var(--gray-light);
+    white-space: nowrap;
+}
+
+.world-dimension-text {
+    font-size: 0.85rem;
+    color: var(--gray-light);
+    overflow-wrap: anywhere;
+    margin: 0;
+}
+
+.world-dimension-players {
+    font-size: 0.85rem;
+    overflow-wrap: anywhere;
+    margin: 0;
+}
+
+.world-dimension .btn {
+    align-self: flex-start;
+    margin-top: auto;
+}
+
+.world-dimension.world-nether .world-dimension-head i {
+    color: var(--danger);
+}
+
+.world-dimension.world-end .world-dimension-head i {
+    color: var(--purple);
+}
+
+.world-dimension.world-overworld .world-dimension-head i {
+    color: var(--success);
+}
+
+.world-note {
+    font-size: 0.85rem;
+    color: var(--gray-light);
+    margin: 0.6rem 0 0;
+}

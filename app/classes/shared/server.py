@@ -49,6 +49,9 @@ with redirect_stderr(NullWriter()):
     from psutil import NoSuchProcess
 
 logger = logging.getLogger(__name__)
+# What save-all prints when it is done: "Saved the game" (1.13 and newer,
+# Bukkit too), "Saved the world" (older)
+SAVED_RE = re.compile(r"Saved the (game|world)")
 SUCCESSMSG = "SUCCESS! Forge install completed"
 SERVER_DETAIL_URL = "/panel/server_detail"
 EULA_FILE = "eula.txt"
@@ -151,6 +154,8 @@ def callback(called_func):
 
 class ServerOutBuf:
     lines = {}
+    # Lines ever added per server, to find new ones after the buffer is trimmed
+    total = {}
 
     def __init__(self, helper, proc, server_id):
         self.helper = helper
@@ -188,6 +193,9 @@ class ServerOutBuf:
 
         for tmp in new_lines:
             ServerOutBuf.lines[self.server_id].append(tmp)
+        ServerOutBuf.total[self.server_id] = ServerOutBuf.total.get(
+            self.server_id, 0
+        ) + len(new_lines)
 
         self.new_line_handler(linetemp)
 
@@ -1073,6 +1081,28 @@ class ServerInstance:
         """Seconds until a warned restart, or None"""
         countdown = self.restart_countdown
         return countdown.seconds_left() if countdown else None
+
+    # **********************************************************************************
+    #                         Copying the world of a running server
+    # **********************************************************************************
+
+    def flush_and_hold_saves(self, timeout: float = 30) -> bool:
+        """Turns autosave off and writes everything to disk (save-off, then
+        save-all flush), so the world can be copied while the server runs.
+        True once the console says it saved. Undo with send_command("save-on")."""
+        server_id = str(self.server_id)
+        before = ServerOutBuf.total.get(server_id, 0)
+        self.send_command("save-off")
+        self.send_command("save-all flush")
+        deadline = time.monotonic() + timeout
+        while time.monotonic() < deadline and self.check_running():
+            time.sleep(0.25)
+            new = ServerOutBuf.total.get(server_id, 0) - before
+            lines = ServerOutBuf.lines.get(server_id, [])
+            if new > 0 and any(SAVED_RE.search(line) for line in lines[-new:]):
+                return True
+        logger.warning(f"{self.name} did not say it saved within {timeout} seconds")
+        return False
 
     def cleanup_server_object(self):
         self.start_time = None

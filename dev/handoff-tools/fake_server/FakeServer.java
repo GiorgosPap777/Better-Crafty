@@ -40,6 +40,9 @@ public class FakeServer {
             if (cmd.equals("stop")) { log("INFO", "Stopping the server"); log("INFO", "Saving worlds"); Thread.sleep(500); System.exit(0); }
             else if (cmd.equals("list")) log("INFO", "There are 0 of a max of 20 players online: ");
             else if (cmd.startsWith("say ")) log("INFO", "[Server] " + cmd.substring(4));
+            else if (cmd.equals("save-off")) log("INFO", "Automatic saving is now disabled");
+            else if (cmd.equals("save-on")) log("INFO", "Automatic saving is now enabled");
+            else if (cmd.startsWith("save-all")) { log("INFO", "Saving the game (this may take a moment!)"); Thread.sleep(300); log("INFO", "Saved the game"); }
             else log("ERROR", "Unknown or incomplete command, see below for error: " + cmd + "<--[HERE]");
         }
     }
