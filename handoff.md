@@ -147,6 +147,11 @@ on any machine.
     Docker Hub release (see "Docker Hub release (done)"), after a
     fix that keeps going back to the original Crafty working ("Going back
     to the original Crafty" in "Off-site backups").
+23. Session 12, after making the release: "Okay, I did what you said with
+    the new release. Could we also add a description to the Docker Hub,
+    because right now it has nothing?" The release's tag was `1.0.0`
+    (no `v`), so no build ran and Docker Hub had no `latest`. See "Docker
+    Hub page" in Session 12.
 
 ### Questions still waiting on the owner
 
@@ -209,7 +214,8 @@ on any machine.
 | `a08d0bff` | Off-site backups: copy zip backups to another disk, a network share or S3-compatible cloud storage, and bring them back (session 12) |
 | `6ab39b36` | Off-site columns accept empty values, so the original Crafty can still add backups after using this fork (session 12) |
 | `15f7b4df` | README: install from Docker Hub, updating, moving from Crafty and back; handoff for the release (session 12) |
-| (this commit) | Handoff: the tag push was refused, the owner makes the tag with the Release (session 12) |
+| `3e8e605f` | Handoff: the tag push was refused, the owner makes the tag with the Release (session 12) |
+| (this commit) | Docker Hub page text and a workflow that copies it; release tags with or without `v` (session 12) |
 
 ### 1. Login (`d3946c3f`)
 
@@ -1300,6 +1306,29 @@ and a backup is started with `POST /api/v2/servers/<id>/action/backup_server/<ba
 **Still for the owner:** the Release with the new tag `v1.0.0` (step 6), and
 the `ghcr.io` question (see "Questions still waiting on the owner").
 
+### Docker Hub page
+
+- The owner made the Release `Better Crafty 1.0.0` with the tag `1.0.0`
+  (no `v`) on `3e8e605f`. The build only started for `v*` tags, so nothing
+  was published. Now `ci.yml` accepts `v1.2.3` and `1.2.3` (tags `v*` and
+  `[0-9]*`; the version check strips a leading `v`). The tag `1.0.0` still
+  points at a commit with the old workflow, so the owner edits the Release
+  to the new tag `v1.0.0` (Target: the working branch), which starts the
+  build; the leftover tag `1.0.0` can be deleted under Tags.
+- The Docker Hub page text is `docker/DOCKERHUB.md` (absolute links, the
+  screenshot from `raw.githubusercontent.com/.../HEAD/...`; Docker Hub's
+  limit is 25,000 bytes, the short summary 100). The workflow
+  `.github/workflows/dockerhub-description.yml` copies it, with the short
+  summary, using `peter-evans/dockerhub-description@v5`, whenever the file
+  or the workflow changes on the default branch, or by hand
+  (workflow_dispatch). Its docs say the token needs "Read, Write, Delete"
+  access; the owner's token was made with "Read & Write". If the run
+  fails for that reason: a new token with Read, Write, Delete in the
+  `DOCKERHUB_TOKEN` secret, then run the workflow again (Actions → Docker
+  Hub description → Run workflow); or paste the text on hub.docker.com by
+  hand.
+- Keep `docker/DOCKERHUB.md` in step with the README's Install section.
+
 ### Update check (done)
 
 - Upstream asked GitLab for Crafty's tags, so the fork would have shown
@@ -1334,13 +1363,16 @@ the `ghcr.io` question (see "Questions still waiting on the owner").
 
 1. Set `better_crafty` in `app/config/version.json` (for example `1.1.0`),
    add a section to `CHANGELOG.md` if wanted, commit and push.
-2. `git tag v1.1.0 && git push origin v1.1.0` (the tag must be `v` + the
-   version, or the `docker` job stops with an error).
+2. Make the tag `v1.1.0` (or `1.1.0`; since session 12 both start the
+   build; it must match the version, or the `docker` job stops with an
+   error). Cloud sessions cannot push tags (403), so the owner makes it on
+   GitHub: Releases → Draft a new release → Choose a tag → type it →
+   "Create new tag on publish", Target: the working branch.
 3. GitHub Actions runs the checks and publishes the image as `1.1.0`,
    `1.1` and `latest`.
-4. On GitHub, Releases → Draft a new release → pick the tag, write what
-   changed, Publish. Publishing it is what makes running panels show
-   "Update Available!" (the check reads releases, not bare tags).
+4. The Release (same page as step 2: what changed, Publish) is what makes
+   running panels show "Update Available!" (the check reads releases, not
+   bare tags; `1.1.0` and `v1.1.0` both parse).
 
 ### Tests on GitHub (done)
 

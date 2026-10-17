@@ -38,6 +38,7 @@ default.json
 app/config/
 docker/*
 !docker/docker-compose.yml
+!docker/DOCKERHUB.md
 lang_sort_log.txt
 lang_sort.txt
 app/migrations/status

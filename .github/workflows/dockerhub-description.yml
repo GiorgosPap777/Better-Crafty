@@ -1,0 +1,40 @@
+# Copies docker/DOCKERHUB.md to the image's Docker Hub page, with a one-line
+# summary, whenever that file changes on the default branch (or when run by
+# hand).
+#
+# Uses the same secrets as the image (DOCKERHUB_USERNAME, DOCKERHUB_TOKEN),
+# but Docker Hub only lets an access token change the page when it has
+# "Read, Write, Delete" access; "Read & Write" is enough for the image alone.
+name: Docker Hub description
+
+on:
+  push:
+    paths:
+      - docker/DOCKERHUB.md
+      - .github/workflows/dockerhub-description.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  description:
+    name: Docker Hub description
+    if: github.ref_name == github.event.repository.default_branch
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
+      DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Update the Docker Hub page
+        if: env.DOCKERHUB_USERNAME != '' && env.DOCKERHUB_TOKEN != ''
+        uses: peter-evans/dockerhub-description@v5
+        with:
+          username: ${{ env.DOCKERHUB_USERNAME }}
+          password: ${{ env.DOCKERHUB_TOKEN }}
+          repository: ${{ env.DOCKERHUB_USERNAME }}/better-crafty
+          short-description: "Minecraft server web panel: a Crafty Controller fork with easier pages, player tools and many fixes"
+          readme-filepath: docker/DOCKERHUB.md
