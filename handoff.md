@@ -209,7 +209,8 @@ on any machine.
 | `90f0ef49` | Docker Hub page text and a workflow that copies it; release tags with or without `v` (session 12) |
 | `39f3b3b1` | Handoff: the first Docker Hub page run was refused (token scope) (session 12); tagged `v1.0.0` |
 | `ab260582` | Handoff: release 1.0.0 and the Docker Hub page checked (session 12) |
-| (this commit) | Image published to Docker Hub only, no more `ghcr.io` (session 12) |
+| `a379ce22` | Image published to Docker Hub only, no more `ghcr.io` (session 12) |
+| (this commit) | Handoff: the Docker Hub only build passed (session 12) |
 
 ### 1. Login (`d3946c3f`)
 
@@ -1336,7 +1337,9 @@ else's fork) the job prints a notice and skips the build. The `ghcr.io`
 package made by earlier builds is still on GitHub; only the owner can delete
 it (GitHub profile → Packages → better-crafty → Package settings → Delete
 this package). Checked here: the workflow parses and the step that picks
-the image name was run in bash with and without the secrets.
+the image name was run in bash with and without the secrets. On GitHub
+the run for `a379ce22` passed and pushed `edge` and `sha-a379ce2` to
+Docker Hub.
 
 ### Update check (done)
 
