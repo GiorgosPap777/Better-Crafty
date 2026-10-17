@@ -215,7 +215,8 @@ on any machine.
 | `6ab39b36` | Off-site columns accept empty values, so the original Crafty can still add backups after using this fork (session 12) |
 | `15f7b4df` | README: install from Docker Hub, updating, moving from Crafty and back; handoff for the release (session 12) |
 | `3e8e605f` | Handoff: the tag push was refused, the owner makes the tag with the Release (session 12) |
-| (this commit) | Docker Hub page text and a workflow that copies it; release tags with or without `v` (session 12) |
+| `90f0ef49` | Docker Hub page text and a workflow that copies it; release tags with or without `v` (session 12) |
+| (this commit) | Handoff: the first Docker Hub page run was refused (token scope) (session 12) |
 
 ### 1. Login (`d3946c3f`)
 
@@ -1327,6 +1328,11 @@ the `ghcr.io` question (see "Questions still waiting on the owner").
   `DOCKERHUB_TOKEN` secret, then run the workflow again (Actions → Docker
   Hub description → Run workflow); or paste the text on hub.docker.com by
   hand.
+- First run (on `90f0ef49`): the PATCH to Docker Hub got `Forbidden`, as
+  expected with the "Read & Write" token. Tests and the `edge` build on that
+  commit passed. Waiting on the owner for the new token and for the
+  `v1.0.0` tag; after that, check `latest`, `1.0.0` and `1.0` on Docker Hub
+  and that the page shows the text.
 - Keep `docker/DOCKERHUB.md` in step with the README's Install section.
 
 ### Update check (done)
