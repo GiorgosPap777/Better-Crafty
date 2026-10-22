@@ -230,7 +230,8 @@ on any machine.
 | `3dfb42ba` | Mods tab: "Update all"; downloads always go to a new file, icons only over https (session 12) |
 | `c525af64` | Mods tab: choose which version to install; Versions and Turn off readable on the dark theme (session 12) |
 | `bf3e4766` | Mods tab: a Versions button on installed jars too; the bin button stays small at phone width (session 12) |
-| (this commit) | Handoff: the Mods code tried on a real Velocity proxy (session 12) |
+| `e9ca3c2f` | Handoff: the Mods code tried on a real Velocity proxy (session 12) |
+| (this commit) | Handoff: the Mods code tried on a real NeoForge server (session 12) |
 
 ### 1. Login (`d3946c3f`)
 
@@ -1475,6 +1476,15 @@ lists) finds plugins and mods on Modrinth and installs them.
   `LuckPerms-Velocity-5.5.71.jar` in `plugins/`, `versions()` lists the
   `-velocity` versions, and Velocity printed "Loaded plugin luckperms
   5.5.71" and "Successfully enabled".
+- **Real NeoForge 21.1.264 (Minecraft 1.21.1, outside Crafty):** with the
+  start command Crafty makes for NeoForge (`@libraries/net/neoforged/
+  neoforge/21.1.264/unix_args.txt`) it is found as NeoForge 1.21.1;
+  `install()` put `Chunky-NeoForge-1.4.23.jar` in `mods/`; the server
+  listed "Chunky 1.4.23 (chunky)" among its mods and reached `Done`. With
+  a plain `java -jar server.jar` command the type is still NeoForge (its
+  library folder) but the Minecraft version is not found, so the page asks
+  for it; looking at the `libraries/net/neoforged/neoforge/<version>`
+  folder name would fill it in.
 - In the cloud sandbox Crafty (the `crafty` user) cannot read the sandbox's
   CA bundle, so Modrinth calls fail there unless Crafty is started with
   `REQUESTS_CA_BUNDLE` pointing at a readable copy. On a normal machine
@@ -1486,8 +1496,8 @@ lists) finds plugins and mods on Modrinth and installs them.
 1. ~~Choose a version other than the newest.~~ Done (search results and
    Installed rows).
 2. Modpacks (`.mrpack`) and data packs are not handled.
-3. Not tried with Forge, NeoForge or a server run by Crafty itself (the
-   real Paper, Fabric and Velocity runs above were outside Crafty).
+3. Not tried with Forge or a server run by Crafty itself (the real Paper,
+   Fabric, Velocity and NeoForge runs above were outside Crafty).
 4. Add the Mods tab to the README (screenshot) once the owner has seen it.
 5. ~~"Update all" for when several jars have updates.~~ Done.
 
