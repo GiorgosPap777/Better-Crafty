@@ -312,7 +312,8 @@
     }
     await loadMods();
     const done = { remove: modsText.removed, disable: modsText.turnedOff, enable: modsText.turnedOn }[action];
-    const parts = [fill(done, { file: file })];
+    // A turned-off jar is named x.jar.disabled; name it as x.jar
+    const parts = [fill(done, { file: file.replace(/\.disabled$/, "") })];
     if (result.restart_needed) parts.push(modsText.restartNeeded);
     showStatus("success", parts.join(" "));
     if (modsQuery || $("#mods_results .mods-row").length) {

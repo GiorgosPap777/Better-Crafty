@@ -85,6 +85,7 @@ const SHOTS = process.env.SHOTS || path.join(__dirname, 'shots');
   await p.waitForSelector('#mods_status:has-text("Turned on")', { timeout: 30000 });
   files = fs.readdirSync(path.join(SERVER, 'plugins'));
   check(files.length === 1 && files[0] === jars[0], 'Turn on gives it its name back');
+  check(await p.textContent('#mods_status') === `Turned on ${jars[0]}.`, 'the message names the jar without .disabled');
   await p.locator('#mods_installed .mods-row').first().locator('.btn-outline-danger').click();
   await p.waitForSelector('.mods-remove-confirm', { timeout: 10000 });
   check(/Remove LuckPerms-Bukkit-/.test(await p.textContent('.modal-title')), 'asks before removing');

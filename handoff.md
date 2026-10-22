@@ -164,6 +164,9 @@ on any machine.
     tools) on the session with kinds `["rate_limit_event"]` gives
     `unifiedWindows.seven_day.utilization` (0.91 at the start, 0.92 after
     the version list). Used for choosing a plugin version.
+28. Session 12, near 8 o'clock: "Burn until 98%". Kept working past the
+    time, until the weekly limit reaches 98%. Used for the run on a server
+    started by Crafty itself (below).
 
 ### Questions still waiting on the owner
 
@@ -233,7 +236,8 @@ on any machine.
 | `e9ca3c2f` | Handoff: the Mods code tried on a real Velocity proxy (session 12) |
 | `de97f674` | Handoff: the Mods code tried on a real NeoForge server (session 12) |
 | `905b0c2f` | Mods tab: NeoForge's Minecraft version also from its library folder (session 12) |
-| (this commit) | Mods tab: fix the pylint failure on GitHub (`pick_version`'s argument clashed with the new `versions()`; GitHub's newer pylint flags it, the local one did not) (session 12) |
+| `c6190f06` | Mods tab: fix the pylint failure on GitHub (`pick_version`'s argument clashed with the new `versions()`; GitHub's newer pylint flags it, the local one did not) (session 12) |
+| (this commit) | Mods tab: tried on a Paper server run by Crafty itself; the Turn on message names the jar without `.disabled` (session 12) |
 
 ### 1. Login (`d3946c3f`)
 
@@ -1487,6 +1491,18 @@ lists) finds plugins and mods on Modrinth and installs them.
   a plain `java -jar server.jar` command the type is still NeoForge (its
   library folder), and the Minecraft version now comes from the name of
   `libraries/net/neoforged/neoforge/<version>` (it was missing before).
+- **A real Paper server run by Crafty itself:** Paper 1.21.4 build 232
+  imported into Crafty from a zip (Create server, import), jar name
+  `paper-1.21.4-232.jar`, start command `java -Xms1024M -Xmx2048M -jar
+  paper-1.21.4-232.jar nogui`. The Mods API found it as Paper 1.21.4,
+  installed LuckPerms and Chunky, and after Start (from Crafty) both
+  plugins were enabled and the server reached `Done`. With the server
+  running: search does not offer spark (it has no Bukkit files on
+  Modrinth, and installing it by ID answers `NO_COMPATIBLE_VERSION`);
+  turning Chunky off and on says "Restart the server to load the new
+  files."; after Restart (from Crafty) Chunky was enabled again. The
+  message after Turn on named `x.jar.disabled`; it now names `x.jar`
+  (`test_mods.js` checks it).
 - In the cloud sandbox Crafty (the `crafty` user) cannot read the sandbox's
   CA bundle, so Modrinth calls fail there unless Crafty is started with
   `REQUESTS_CA_BUNDLE` pointing at a readable copy. On a normal machine
@@ -1498,7 +1514,7 @@ lists) finds plugins and mods on Modrinth and installs them.
 1. ~~Choose a version other than the newest.~~ Done (search results and
    Installed rows).
 2. Modpacks (`.mrpack`) and data packs are not handled.
-3. Not tried with Forge or a server run by Crafty itself (the real Paper,
+3. Not tried with Forge. Run by Crafty itself: only Paper so far (the
    Fabric, Velocity and NeoForge runs above were outside Crafty).
 4. Add the Mods tab to the README (screenshot) once the owner has seen it.
 5. ~~"Update all" for when several jars have updates.~~ Done.
