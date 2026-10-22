@@ -228,7 +228,8 @@ on any machine.
 | `1116acab` | Mods tab: turn jars off and on, remove them; list the jars when Modrinth cannot be reached (session 12) |
 | `8d818089` | Mods tab: a Paper server was taken for NeoForge (its libraries folder); tried on real Paper and Fabric servers (session 12) |
 | `3dfb42ba` | Mods tab: "Update all"; downloads always go to a new file, icons only over https (session 12) |
-| (this commit) | Mods tab: choose which version to install; Versions and Turn off readable on the dark theme (session 12) |
+| `c525af64` | Mods tab: choose which version to install; Versions and Turn off readable on the dark theme (session 12) |
+| (this commit) | Mods tab: a Versions button on installed jars too; the bin button stays small at phone width (session 12) |
 
 ### 1. Login (`d3946c3f`)
 
@@ -1413,8 +1414,10 @@ lists) finds plugins and mods on Modrinth and installs them.
   one (`install(..., version_id)`). The version must be in that list
   (`chosen_version()`), so a version for another loader or Minecraft
   version is refused (`NO_COMPATIBLE_VERSION`). An older version replaces
-  the newer jar, and the Installed list then offers the update. Not on the
-  Installed rows yet.
+  the newer jar, and the Installed list then offers the update. Installed
+  jars from Modrinth have the same "Versions" button (a turned-off jar
+  that gets another version comes back turned on, as with "Update to").
+  At phone width the bin button stays small at the right.
 - **Turn off, turn on, remove** (`change_jar()`): each installed jar has
   "Turn off" (renames `a.jar` to `a.jar.disabled`, which the server does
   not load), "Turn on", and a bin button that asks first. Only names that
@@ -1452,7 +1455,8 @@ lists) finds plugins and mods on Modrinth and installs them.
   install it (the jar lands in `plugins/`), turn it off and on, remove it
   (and `../server.properties` is refused), install it again, install again
   (no change), refused requests, installs the oldest LuckPerms from the
-  Versions window (and the list then offers the update), then puts the oldest 1.21.4 LuckPerms and
+  Versions window (and the list then offers the update), goes back to the
+  newest from the Installed row's Versions, then puts the oldest 1.21.4 LuckPerms and
   Chunky jars in `plugins/` and checks that "Update all (2)" replaces both,
   phone width; it deletes the `plugins` folder it made.
   Also run by hand against Modrinth: LuckPerms on a Paper folder, Chunky
@@ -1472,8 +1476,8 @@ lists) finds plugins and mods on Modrinth and installs them.
 
 **Follow-ups (not done yet):**
 
-1. ~~Choose a version other than the newest.~~ Done for search results;
-   the Installed rows could get the same "Versions" button.
+1. ~~Choose a version other than the newest.~~ Done (search results and
+   Installed rows).
 2. Modpacks (`.mrpack`) and data packs are not handled.
 3. Not tried with Forge, NeoForge, Velocity or a server run by Crafty
    itself (the real Paper and Fabric runs above were outside Crafty).

@@ -178,4 +178,8 @@
         width: auto;
         flex: 1 1 auto;
     }
+
+    .mods-buttons .btn-outline-danger {
+        flex: 0 0 auto;
+    }
 }

@@ -221,6 +221,12 @@
           .on("click", () => installProject(jar.project_id, jar.title || jar.file, button));
         buttons.append(button);
       }
+      if (jar.project_id) {
+        const choose = $('<button type="button" class="btn btn-outline-secondary btn-sm mods-action mods-versions"></button>')
+          .text(modsText.versions);
+        choose.on("click", () => chooseVersion(jar.project_id, jar.title || jar.file, choose));
+        buttons.append(choose);
+      }
       buttons.append(
         $('<button type="button" class="btn btn-outline-secondary btn-sm mods-action"></button>')
           .text(jar.enabled ? modsText.turnOff : modsText.turnOn)

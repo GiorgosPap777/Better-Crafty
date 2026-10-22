@@ -133,6 +133,15 @@ const SHOTS = process.env.SHOTS || path.join(__dirname, 'shots');
   check(afterOlder.length === 1 && afterOlder[0].includes(olderNumber), `installs the chosen version (${afterOlder[0]})`);
   await p.waitForSelector('#mods_installed button:has-text("Update to")', { timeout: 30000 });
   check(true, 'the installed list offers the update');
+  // The Installed row has its own Versions button: back to the newest
+  await p.locator('#mods_installed .mods-row').first().locator('.mods-versions').click();
+  await p.waitForSelector('.mods-version-select', { timeout: 30000 });
+  const newest = await p.$eval('.mods-version-select option', o => o.textContent);
+  await p.click('.mods-version-install');
+  const newestNumber = newest.split(' · ')[0].match(/\d+(\.\d+)+/)[0];
+  await p.waitForFunction((n) => document.querySelector('#mods_status.alert-success')?.textContent.includes(n), newestNumber, { timeout: 120000 });
+  const afterNewest = fs.readdirSync(path.join(SERVER, 'plugins')).filter(f => f.endsWith('.jar'));
+  check(afterNewest.length === 1 && afterNewest[0].includes(newestNumber), `the Installed row's Versions installs the newest again (${afterNewest[0]})`);
   const back = await api('POST', '/modrinth/install', { project_id: 'luckperms', version_id: 'notreal', platform: 'paper', game_version: '1.21.4' });
   check(back.code === 404 && back.body.error === 'NO_COMPATIBLE_VERSION', 'refused: a version that is not in the list');
   const badId = await api('POST', '/modrinth/install', { project_id: 'luckperms', version_id: '../x', platform: 'paper', game_version: '1.21.4' });
