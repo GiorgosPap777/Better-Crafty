@@ -271,12 +271,12 @@ def search(platform: str, game_version, query: str = "", offset: int = 0):
     }
 
 
-def pick_version(versions, loaders):
+def pick_version(candidates, loaders):
     """The newest release (else the newest beta, else alpha) for the best
     loader the server has, from Modrinth's newest-first list."""
     for wanted in ("release", "beta", "alpha"):
         for loader in loaders:
-            for version in versions:
+            for version in candidates:
                 if version.get("version_type") == wanted and loader in version.get(
                     "loaders", []
                 ):

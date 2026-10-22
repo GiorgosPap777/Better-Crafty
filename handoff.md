@@ -232,7 +232,8 @@ on any machine.
 | `bf3e4766` | Mods tab: a Versions button on installed jars too; the bin button stays small at phone width (session 12) |
 | `e9ca3c2f` | Handoff: the Mods code tried on a real Velocity proxy (session 12) |
 | `de97f674` | Handoff: the Mods code tried on a real NeoForge server (session 12) |
-| (this commit) | Mods tab: NeoForge's Minecraft version also from its library folder (session 12) |
+| `905b0c2f` | Mods tab: NeoForge's Minecraft version also from its library folder (session 12) |
+| (this commit) | Mods tab: fix the pylint failure on GitHub (`pick_version`'s argument clashed with the new `versions()`; GitHub's newer pylint flags it, the local one did not) (session 12) |
 
 ### 1. Login (`d3946c3f`)
 
