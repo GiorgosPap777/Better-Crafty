@@ -42,6 +42,7 @@ SUBPAGE_PERMS = {
     "backup": EnumPermissionsServer.BACKUP,
     "world": EnumPermissionsServer.BACKUP,
     "files": EnumPermissionsServer.FILES,
+    "mods": EnumPermissionsServer.FILES,
     "config": EnumPermissionsServer.CONFIG,
     "admin_controls": EnumPermissionsServer.PLAYERS,
     "metrics": EnumPermissionsServer.LOGS,
@@ -96,6 +97,46 @@ WORLD_TEXT = (
     "resetDone",
     "resetFailed",
     "cancel",
+)
+
+# The Mods page's text, for its script
+MODS_TEXT = (
+    "title",
+    "loadFailed",
+    "platform",
+    "gameVersion",
+    "folder",
+    "unknown",
+    "change",
+    "apply",
+    "choosePlatform",
+    "notDetected",
+    "noVersion",
+    "installedTitle",
+    "noneInstalled",
+    "notFromModrinth",
+    "disabled",
+    "updateTo",
+    "searchTitle",
+    "searchPlaceholder",
+    "search",
+    "popular",
+    "noResults",
+    "by",
+    "downloads",
+    "install",
+    "installed",
+    "installing",
+    "more",
+    "installDone",
+    "upToDate",
+    "alsoNeeded",
+    "missing",
+    "restartNeeded",
+    "loadsOnStart",
+    "installFailed",
+    "searchFailed",
+    "modrinthNote",
 )
 
 SCHEDULE_AUTH_ERROR_URL = "/panel/error?error=Unauthorized access To Schedules"
@@ -865,6 +906,19 @@ class PanelHandler(BaseHandler):
                         "serverWorld", key, page_data["lang"], False
                     )
                     for key in WORLD_TEXT
+                }
+
+            if subpage == "mods":
+                if page_data["server_data"]["type"] != "minecraft-java":
+                    # Modrinth has mods and plugins for Java servers only
+                    return self.redirect(
+                        f"/panel/server_detail?id={server_id}&subpage=files"
+                    )
+                page_data["mods_text"] = {
+                    key: self.translator.translate(
+                        "serverMods", key, page_data["lang"], False
+                    )
+                    for key in MODS_TEXT
                 }
 
             if subpage == "metrics":

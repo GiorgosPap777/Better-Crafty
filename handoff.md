@@ -15,13 +15,14 @@ Crafty and back was tested (Docker and Linux), the README's Install,
 Updating and Moving sections use the image. The Release `v1.0.0` is out:
 Docker Hub has `latest`, `1.0.0` and `1.0` (amd64 and arm64) and the page
 text (see "Docker Hub page (done)"). Images go to Docker Hub only (the
-owner's choice; see "Docker Hub only (done)"). **Next: the Modrinth
-installer.** Older notes follow; see "Session 12" for the details. The owner approved a list of suggestions (update
+owner's choice; see "Docker Hub only (done)"). The Modrinth installer's
+first version is in (a Mods tab; see "Modrinth installer (first version)").
+**Next: its follow-ups** (listed in that section). Older notes follow; see "Session 12" for the details. The owner approved a list of suggestions (update
 check, tests on GitHub, versions, upstream, error pop-ups, then bigger
 features). Items 1 to 5 are done, plus a fix for an upstream bug that made
 saves fail with "database is locked". Of the bigger features, the restart
 with in-game warnings, world tools and off-site backups are done; the
-Modrinth installer is next.
+Modrinth installer's first version is in.
 The owner finished the Docker Hub setup (secrets added); their Docker Hub
 username is `giorgospap777`. The owner ran out
 of usage at the end of session 12 and asked for these notes. Session 11 added the player's skin and the game's HUD layout to
@@ -41,9 +42,9 @@ on any machine.
    repo default, so a fresh clone is already on it. In an existing clone:
    `git fetch origin && git checkout claude/login-server-admin-improvements-ctbqdu && git pull`.
 2. **Set up and check** with "Development setup" below (about 10 minutes).
-   You should see 252 passing pytest tests before changing anything.
-3. **Build the Modrinth installer** (Session 12, item 6), unless the owner
-   asks for something else.
+   You should see 283 passing pytest tests before changing anything.
+3. **Finish the Modrinth installer's follow-ups** ("Modrinth installer
+   (first version)" in Session 12), unless the owner asks for something else.
 4. Before you finish, update this file, commit and push (see "The project").
 
 ### How the owner likes to work
@@ -154,6 +155,9 @@ on any machine.
     release `v1.0.0`: "Okay, I did both steps, check Docker Hub now".
 25. Session 12, asked whether to keep `ghcr.io`: "No, only published to
     Docker Hub." See "Docker Hub only (done)" in Session 12.
+26. Session 12, after the Docker Hub work: "You have until 8 o'clock to
+    continue your work, if the clock reaches 8 and you are still working
+    stop". Used for the Modrinth installer's first version.
 
 ### Questions still waiting on the owner
 
@@ -210,7 +214,8 @@ on any machine.
 | `39f3b3b1` | Handoff: the first Docker Hub page run was refused (token scope) (session 12); tagged `v1.0.0` |
 | `ab260582` | Handoff: release 1.0.0 and the Docker Hub page checked (session 12) |
 | `a379ce22` | Image published to Docker Hub only, no more `ghcr.io` (session 12) |
-| (this commit) | Handoff: the Docker Hub only build passed (session 12) |
+| `62f6769d` | Handoff: the Docker Hub only build passed (session 12) |
+| (this commit) | Modrinth installer: a Mods tab that finds plugins and mods for the server and installs them with what they need (session 12) |
 
 ### 1. Login (`d3946c3f`)
 
@@ -1224,7 +1229,8 @@ they are doing the Docker Hub part themselves in parallel:
    (download the world as a zip, reset the Nether or the End; **done**,
    see below), backups to
    another disk / network share / cloud (**done**, see "Off-site
-   backups"), a Modrinth plugin and mod installer (**next**). Plus the
+   backups"), a Modrinth plugin and mod installer (**first version done**,
+   see "Modrinth installer (first version)"). Plus the
    special item pictures once the owner picks which.
 
 ### Docker Hub release (done)
@@ -1340,6 +1346,87 @@ this package). Checked here: the workflow parses and the step that picks
 the image name was run in bash with and without the secrets. On GitHub
 the run for `a379ce22` passed and pushed `edge` and `sha-a379ce2` to
 Docker Hub.
+
+### Modrinth installer (first version)
+
+A **Mods** tab (Files permission, Java servers only; desktop and phone tab
+lists) finds plugins and mods on Modrinth and installs them.
+
+- **What the server loads** (`app/classes/helpers/modrinth.py`):
+  `detect_platform()` looks for a name (neoforge, forge, quilt, fabric,
+  purpur, folia, paper, waterfall, velocity, bungeecord, spigot, bukkit) in
+  the jar name and the start command, then for files the server leaves
+  (`libraries/net/neoforged`, `.fabric`, `config/paper-global.yml`,
+  `bukkit.yml`, ...). `PLATFORMS` maps each to its folder (`plugins` or
+  `mods`) and the Modrinth loaders it can use, best first (Paper takes
+  paper, spigot and bukkit plugins; Purpur also purpur ones).
+- **Minecraft version:** Paper's `version_history.json` ("MC: x"), else the
+  version from the server's last ping, else a Minecraft-looking version in
+  the jar name or the start command (1.7 to 1.21.x, and 26.x), else
+  NeoForge's own version (21.1.x is 1.21.1). Proxies (Velocity,
+  BungeeCord, Waterfall) ignore the version.
+- When either is not found (the fake test server, a plain `server.jar`),
+  the page asks for the type and version; the choice is kept in the
+  browser (`localStorage`, per server) and sent with every call. "Change"
+  shows the same form when the guess was wrong.
+- **Search:** Modrinth's search with facets for the loaders, the project
+  type (plugin or mod), the version, and for mods
+  `server_side!=unsupported` (client-only mods are hidden). No search text
+  lists the most downloaded. 20 per page, "Show more".
+- **Install** (`install()`): picks the newest release (else beta, else
+  alpha) for the best loader, checks the file (https on
+  `cdn.modrinth.com`, a plain `.jar` name, a sha512, at most 256 MB),
+  downloads it to a hidden `.part` file, checks the sha512, then moves it
+  into place. Required dependencies are installed too unless already there
+  (Chunky for Fabric brings Fabric API); at most 12 files per install;
+  dependencies Modrinth has no file for are reported as "missing". A
+  project already in the folder gets the new file and its old jar is
+  deleted, so installing again updates; the same version is left alone
+  ("already the newest"). One install per server at a time. Audit log:
+  "installed <files> from Modrinth on server <name>".
+- **Installed list** (`installed()`): the jars in the folder (also
+  `.jar.disabled`), named through Modrinth's `version_files` (sha1 of each
+  jar), with an "Update to x" button when `version_files/update` has a
+  newer file for these loaders and version. Jars from elsewhere show as
+  "Not from Modrinth".
+- **API** (`routes/api/servers/server/modrinth.py`):
+  `GET /api/v2/servers/<id>/modrinth` (platform, version, folder,
+  installed), `GET .../modrinth/search?query=&offset=`, `POST
+  .../modrinth/install {"project_id"}`; all take `platform` and
+  `game_version` to override the guess. Errors: `INVALID_PROJECT`,
+  `INVALID_PLATFORM`, `INVALID_VERSION`, `NO_COMPATIBLE_VERSION` (404),
+  `BUSY` (409), `MODRINTH_UNREACHABLE` / `MODRINTH_ERROR` (502),
+  `BAD_FILE`, `BAD_CHECKSUM`.
+- Text: `serverMods` and `serverDetails.mods` in `en_EN.json`; the page's
+  script gets them through `MODS_TEXT` in `panel_handler.py`. Page:
+  `templates/panel/server_mods.html`, `css/partial/crafty-mods.css`.
+- **Tested:** `tests/classes/helpers/test_modrinth.py` (31: detection,
+  versions, facets, file checks, install with dependencies, replacing,
+  a damaged download, one at a time; Modrinth is faked).
+  `dev/handoff-tools/test_mods.js` (needs the internet) on server 1:
+  choose Paper 1.21.4, most downloaded, Show more, search "luckperms",
+  install it (the jar lands in `plugins/`), install again (no change),
+  refused requests, phone width; it deletes the `plugins` folder it made.
+  Also run by hand against Modrinth: LuckPerms on a Paper folder, Chunky
+  plus Fabric API on a Fabric folder.
+- In the cloud sandbox Crafty (the `crafty` user) cannot read the sandbox's
+  CA bundle, so Modrinth calls fail there unless Crafty is started with
+  `REQUESTS_CA_BUNDLE` pointing at a readable copy. On a normal machine
+  nothing is needed. Errors like that now come back as
+  `MODRINTH_UNREACHABLE` instead of a traceback.
+
+**Follow-ups (not done yet):**
+
+1. Remove and turn off/on (`.jar` ↔ `.jar.disabled`) from the Installed
+   list (the Files tab can do it today).
+2. If Modrinth cannot be reached, the whole page shows "Could not load";
+   it could still list the jars without names.
+3. Choose a version other than the newest (a version list per project).
+4. Modpacks (`.mrpack`) and data packs are not handled.
+5. Not yet tried with a real Paper or Fabric server running (only the fake
+   server and folders); try one, and check the server loads what was
+   installed.
+6. Add the Mods tab to the README (screenshot) once the owner has seen it.
 
 ### Update check (done)
 
@@ -1773,7 +1860,7 @@ section. Commands are for a terminal in the repo root. On Windows use
 python3 -m venv .venv
 . .venv/bin/activate            # Windows: .venv\Scripts\activate
 pip install -r requirements.txt pytest black pylint
-pytest -q tests                 # 252 pass
+pytest -q tests                 # 283 pass
 black --check app tests
 node dev/command-data/test_complete.js   # command suggestions engine, no browser
 ```
@@ -1871,6 +1958,7 @@ Settings come from `local.json`; the environment variables `CRAFTY_URL`,
 | `test_audit.js` | Schedule and webhook switches, restore errors, editor saves |
 | `test_restart_warned.js` | Restart with in-game warnings: dialog, countdown, Cancel, schedules, phone (about 2 minutes; leaves server 1 running) |
 | `test_world.js` | World tab: download (stopped and running), reset of the End and the Nether, phone; writes the test world again at the end |
+| `test_mods.js` | Mods tab: choose the server type, most downloaded, search, install LuckPerms from Modrinth, refused requests, phone; needs the internet, deletes the `plugins` folder it made |
 | `test_offsite.js` | Off-site storage page and a backup's off-site copy: folder place always; S3 too when `S3_ENDPOINT`, `S3_BUCKET`, `S3_KEY`, `S3_SECRET` are set (see Session 12) |
 | `crawl.js` | Opens every panel page (desktop and phone), reports page errors; `node crawl.js [substring]` |
 | `chk_metrics.js` | Metrics chart zoom |

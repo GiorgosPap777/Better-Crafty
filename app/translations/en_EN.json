@@ -645,7 +645,8 @@
         "schedule": "Schedule",
         "serverDetails": "Server Details",
         "terminal": "Terminal",
-        "world": "World"
+        "world": "World",
+        "mods": "Mods"
     },
     "serverOverview": {
         "controls": "Server controls",
@@ -1343,5 +1344,43 @@
         "url": "Webhook URL",
         "webhook_body": "Webhook Body",
         "webhooks": "Webhooks"
+    },
+    "serverMods": {
+        "title": "Mods and plugins",
+        "loadFailed": "Could not load the mods and plugins",
+        "platform": "Server type",
+        "gameVersion": "Minecraft version",
+        "folder": "Folder",
+        "unknown": "Unknown",
+        "change": "Change",
+        "apply": "Apply",
+        "choosePlatform": "Choose...",
+        "notDetected": "Better Crafty could not tell which mods or plugins this server can load. Choose its type and Minecraft version.",
+        "noVersion": "The Minecraft version is unknown, so the search shows every version. Start the server once, or enter its version.",
+        "installedTitle": "Installed",
+        "noneInstalled": "Nothing in the {folder} folder yet.",
+        "notFromModrinth": "Not from Modrinth",
+        "disabled": "Turned off",
+        "updateTo": "Update to {version}",
+        "searchTitle": "Find on Modrinth",
+        "searchPlaceholder": "Search mods and plugins",
+        "search": "Search",
+        "popular": "Most downloaded for this server",
+        "noResults": "Nothing found for this server.",
+        "by": "by {author}",
+        "downloads": "{count} downloads",
+        "install": "Install",
+        "installed": "Installed",
+        "installing": "Installing...",
+        "more": "Show more",
+        "installDone": "Installed {files}.",
+        "upToDate": "{file} is already the newest version.",
+        "alsoNeeded": "Also installed what it needs: {files}.",
+        "missing": "Modrinth has no file for this server for: {projects}.",
+        "restartNeeded": "Restart the server to load the new files.",
+        "loadsOnStart": "The server loads the new files when it starts.",
+        "installFailed": "Could not install",
+        "searchFailed": "Could not search Modrinth",
+        "modrinthNote": "Files come from modrinth.com. Only install mods and plugins you trust: they run with the server's access."
     }
 }

@@ -1,0 +1,346 @@
+{% extends ../base.html %}
+
+{% block meta %}
+<link rel="stylesheet" href="/static/assets/css/partial/crafty-mods.css">
+{% end %}
+
+{% block title %}Crafty Controller - {{ translate('serverDetails', 'serverDetails', data['lang']) }}{% end %}
+
+{% block content %}
+
+<div class="content-wrapper">
+
+  <!-- Page Title Header Starts-->
+  {% include "parts/server_title.html" %}
+  <!-- Page Title Header Ends-->
+
+  {% include "parts/details_stats.html" %}
+
+  <div class="row">
+
+    <div class="col-sm-12 grid-margin">
+      <div class="card">
+        <div class="card-body pt-0">
+
+          <span class="d-none d-sm-block">
+            {% include "parts/server_controls_list.html" %}
+          </span>
+          <span class="d-block d-sm-none">
+            {% include "parts/m_server_controls_list.html" %}
+          </span>
+
+          <div class="row">
+            <div class="col-12">
+              <div class="card">
+                <div class="card-header header-sm d-flex justify-content-between align-items-center">
+                  <h4 class="card-title"><i class="ph-fill ph-puzzle-piece"></i> {{ translate('serverMods', 'title', data['lang']) }}</h4>
+                </div>
+                <div class="card-body">
+                  <div id="mods_status" class="alert d-none" role="status"></div>
+                  <div id="mods_loading" class="text-center py-4">
+                    <span class="spinner-border" aria-hidden="true"></span>
+                  </div>
+                  <div id="mods_content" class="d-none">
+                    <div id="mods_target" class="mods-target"></div>
+                    <form id="mods_choose" class="mods-choose d-none">
+                      <label>{{ translate('serverMods', 'platform', data['lang']) }}
+                        <select id="mods_platform" class="form-control form-control-sm"></select>
+                      </label>
+                      <label>{{ translate('serverMods', 'gameVersion', data['lang']) }}
+                        <input id="mods_game_version" class="form-control form-control-sm" maxlength="32" placeholder="1.21.4">
+                      </label>
+                      <button type="submit" class="btn btn-primary btn-sm">{{ translate('serverMods', 'apply', data['lang']) }}</button>
+                    </form>
+                    <p id="mods_note" class="mods-note d-none"></p>
+                    <div id="mods_body" class="d-none">
+                      <h5 class="mods-section-title">{{ translate('serverMods', 'installedTitle', data['lang']) }}</h5>
+                      <div id="mods_installed" class="mods-list"></div>
+                      <h5 class="mods-section-title">{{ translate('serverMods', 'searchTitle', data['lang']) }}</h5>
+                      <form id="mods_search_form" class="mods-search">
+                        <input id="mods_query" type="search" class="form-control" maxlength="100" placeholder="{{ translate('serverMods', 'searchPlaceholder', data['lang']) }}">
+                        <button type="submit" class="btn btn-primary"><i class="ph-bold ph-magnifying-glass"></i> {{ translate('serverMods', 'search', data['lang']) }}</button>
+                      </form>
+                      <p id="mods_results_title" class="mods-results-title"></p>
+                      <div id="mods_results" class="mods-list"></div>
+                      <div class="text-center">
+                        <button type="button" id="mods_more" class="btn btn-outline-primary btn-sm d-none">{{ translate('serverMods', 'more', data['lang']) }}</button>
+                      </div>
+                      <p class="mods-note">{{ translate('serverMods', 'modrinthNote', data['lang']) }}</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+<!-- content-wrapper ends -->
+
+{% end %}
+
+{% block js %}
+<script>
+  const modsServerId = {% raw json_encode(data['server_stats']['server_id']['server_id']) %};
+  const modsText = {% raw json_encode(data['mods_text']) %};
+  // What the user chose when the server's type or version was not found
+  const modsChosen = { platform: "", game_version: "" };
+  const modsChoiceKey = `better-crafty-mods-${modsServerId}`;
+  try {
+    Object.assign(modsChosen, JSON.parse(localStorage.getItem(modsChoiceKey) || "{}"));
+  } catch (e) { /* no saved choice */ }
+  let mods = null;
+  let modsQuery = "";
+  let modsOffset = 0;
+  let modsInstalling = false;
+
+  function fill(text, values) {
+    return String(text).replace(/\{(\w+)\}/g, (match, key) => (key in values ? values[key] : match));
+  }
+
+  function showStatus(kind, text) {
+    $("#mods_status").removeClass("d-none alert-success alert-danger alert-warning alert-info").addClass("alert-" + kind).text(text);
+  }
+
+  function chosenParams() {
+    const params = new URLSearchParams();
+    if (modsChosen.platform) params.set("platform", modsChosen.platform);
+    if (modsChosen.game_version) params.set("game_version", modsChosen.game_version);
+    return params;
+  }
+
+  async function modsApi(path, options) {
+    const res = await fetch(`/api/v2/servers/${modsServerId}/modrinth${path}`, {
+      headers: { "X-XSRFToken": getCookie("_xsrf") },
+      ...options,
+    });
+    let data = {};
+    try { data = await res.json(); } catch (e) { /* not JSON */ }
+    if (!res.ok || data.status !== "ok") {
+      throw new Error(data.error_data || data.error || res.statusText || res.status);
+    }
+    return data.data;
+  }
+
+  async function loadMods() {
+    $("#mods_loading").removeClass("d-none");
+    try {
+      mods = await modsApi(`?${chosenParams()}`);
+    } catch (e) {
+      $("#mods_loading").addClass("d-none");
+      showStatus("danger", `${modsText.loadFailed}: ${e.message}`);
+      return false;
+    }
+    $("#mods_loading").addClass("d-none");
+    $("#mods_content").removeClass("d-none");
+    renderTarget();
+    if (mods.supported) {
+      $("#mods_body").removeClass("d-none");
+      renderInstalled();
+    } else {
+      $("#mods_body").addClass("d-none");
+    }
+    return true;
+  }
+
+  function targetFact(label, value) {
+    return $('<div class="mods-fact"></div>')
+      .append($('<span class="mods-fact-label"></span>').text(label))
+      .append($('<span class="mods-fact-value"></span>').text(value));
+  }
+
+  function renderTarget() {
+    const box = $("#mods_target").empty();
+    const select = $("#mods_platform").empty().append($('<option value=""></option>').text(modsText.choosePlatform));
+    Object.entries(mods.platforms).forEach(([key, name]) => select.append($("<option></option>").val(key).text(name)));
+    select.val(mods.platform || "");
+    $("#mods_game_version").val(mods.game_version || modsChosen.game_version || "");
+    const note = $("#mods_note").addClass("d-none");
+    if (!mods.supported) {
+      $("#mods_choose").removeClass("d-none");
+      note.removeClass("d-none").text(modsText.notDetected);
+      return;
+    }
+    box.append(targetFact(modsText.platform, mods.platform_name));
+    if (mods.needs_game_version) {
+      box.append(targetFact(modsText.gameVersion, mods.game_version || modsText.unknown));
+    }
+    box.append(targetFact(modsText.folder, mods.folder + "/"));
+    const change = $('<button type="button" class="btn btn-link btn-sm"></button>')
+      .text(modsText.change)
+      .on("click", () => $("#mods_choose").toggleClass("d-none"));
+    box.append($('<div class="mods-fact mods-fact-button"></div>').append(change));
+    if (mods.needs_game_version && !mods.game_version) {
+      note.removeClass("d-none").text(modsText.noVersion);
+    }
+  }
+
+  function projectIcon(url) {
+    const icon = $('<div class="mods-icon"></div>');
+    if (url) {
+      icon.append($('<img alt="" loading="lazy" referrerpolicy="no-referrer">').attr("src", url));
+    } else {
+      icon.append('<i class="ph-fill ph-puzzle-piece"></i>');
+    }
+    return icon;
+  }
+
+  function renderInstalled() {
+    const box = $("#mods_installed").empty();
+    if (!mods.installed.length) {
+      box.append($('<p class="mods-empty"></p>').text(fill(modsText.noneInstalled, { folder: mods.folder })));
+      return;
+    }
+    mods.installed.forEach((jar) => {
+      const row = $('<div class="mods-row"></div>').append(projectIcon(jar.icon_url));
+      const text = $('<div class="mods-text"></div>');
+      text.append($('<div class="mods-name"></div>').text(jar.title || jar.file));
+      const details = [jar.version || modsText.notFromModrinth];
+      if (jar.title) details.push(jar.file);
+      text.append($('<div class="mods-details"></div>').text(details.join(" · ")));
+      if (!jar.enabled) {
+        text.find(".mods-name").append(" ", $('<span class="badge badge-secondary"></span>').text(modsText.disabled));
+      }
+      row.append(text);
+      if (jar.update && jar.project_id) {
+        const button = $('<button type="button" class="btn btn-outline-primary btn-sm mods-action"></button>')
+          .text(fill(modsText.updateTo, { version: jar.update }))
+          .on("click", () => installProject(jar.project_id, jar.title || jar.file, button));
+        row.append(button);
+      }
+      box.append(row);
+    });
+  }
+
+  function markInstalled(button) {
+    button.prop("disabled", true).removeClass("btn-primary").addClass("btn-outline-success mods-done")
+      .empty().append('<i class="ph-bold ph-check"></i> ', $("<span></span>").text(modsText.installed));
+  }
+
+  function installedIds() {
+    return new Set(mods.installed.map((jar) => jar.project_id).filter(Boolean));
+  }
+
+  async function searchMods(more) {
+    if (!more) {
+      modsOffset = 0;
+      $("#mods_results").empty();
+    }
+    $("#mods_more").addClass("d-none");
+    $("#mods_results_title").text(modsQuery ? "" : modsText.popular);
+    let page;
+    try {
+      const params = chosenParams();
+      params.set("query", modsQuery);
+      params.set("offset", modsOffset);
+      page = await modsApi(`/search?${params}`);
+    } catch (e) {
+      showStatus("danger", `${modsText.searchFailed}: ${e.message}`);
+      return;
+    }
+    const box = $("#mods_results");
+    const have = installedIds();
+    if (!page.hits.length && !more) {
+      box.append($('<p class="mods-empty"></p>').text(modsText.noResults));
+    }
+    page.hits.forEach((hit) => {
+      const row = $('<div class="mods-row"></div>').append(projectIcon(hit.icon_url));
+      const text = $('<div class="mods-text"></div>');
+      const link = $('<a target="_blank" rel="noopener noreferrer"></a>')
+        .attr("href", `https://modrinth.com/project/${encodeURIComponent(hit.slug || hit.project_id)}`)
+        .text(hit.title);
+      text.append($('<div class="mods-name"></div>').append(link, " ", $('<span class="mods-author"></span>').text(fill(modsText.by, { author: hit.author }))));
+      text.append($('<div class="mods-description"></div>').text(hit.description || ""));
+      text.append($('<div class="mods-details"></div>').text(fill(modsText.downloads, { count: Number(hit.downloads || 0).toLocaleString() })));
+      row.append(text);
+      const button = $('<button type="button" class="btn btn-primary btn-sm mods-action"></button>');
+      if (have.has(hit.project_id)) {
+        markInstalled(button);
+      } else {
+        button.text(modsText.install).on("click", () => installProject(hit.project_id, hit.title, button));
+      }
+      row.append(button);
+      box.append(row);
+    });
+    modsOffset = page.offset + page.hits.length;
+    $("#mods_more").toggleClass("d-none", modsOffset >= page.total || !page.hits.length);
+  }
+
+  async function installProject(projectId, title, button) {
+    if (modsInstalling) return;
+    modsInstalling = true;
+    const label = button.text();
+    $(".mods-action").prop("disabled", true);
+    button.text(modsText.installing);
+    let result = null;
+    try {
+      result = await modsApi("/install", {
+        method: "POST",
+        headers: { "X-XSRFToken": getCookie("_xsrf"), "Content-Type": "application/json" },
+        body: JSON.stringify({ project_id: projectId, ...modsChosen }),
+      });
+    } catch (e) {
+      showStatus("danger", `${modsText.installFailed} ${title}: ${e.message}`);
+    }
+    modsInstalling = false;
+    if (!result) {
+      button.text(label);
+      $(".mods-action").prop("disabled", false);
+      return;
+    }
+    const [main, ...needed] = result.installed;
+    const parts = [];
+    if (main && main.up_to_date) {
+      parts.push(fill(modsText.upToDate, { file: main.file }));
+    } else if (main) {
+      parts.push(fill(modsText.installDone, { files: main.file }));
+    }
+    const added = needed.filter((item) => !item.up_to_date).map((item) => item.file);
+    if (added.length) parts.push(fill(modsText.alsoNeeded, { files: added.join(", ") }));
+    if (result.missing.length) parts.push(fill(modsText.missing, { projects: result.missing.join(", ") }));
+    if (!(main && main.up_to_date)) {
+      parts.push(result.restart_needed ? modsText.restartNeeded : modsText.loadsOnStart);
+    }
+    await loadMods();
+    showStatus(result.missing.length ? "warning" : "success", parts.join(" "));
+    // Mark what is installed now in the results that are on the page
+    const have = installedIds();
+    $(".mods-action").prop("disabled", false);
+    if (have.has(projectId)) {
+      markInstalled(button);
+    }
+  }
+
+  $("#mods_search_form").on("submit", (event) => {
+    event.preventDefault();
+    modsQuery = $("#mods_query").val().trim();
+    searchMods(false);
+  });
+
+  $("#mods_more").on("click", () => searchMods(true));
+
+  $("#mods_choose").on("submit", async (event) => {
+    event.preventDefault();
+    modsChosen.platform = $("#mods_platform").val();
+    modsChosen.game_version = $("#mods_game_version").val().trim();
+    try {
+      localStorage.setItem(modsChoiceKey, JSON.stringify(modsChosen));
+    } catch (e) { /* not saved, only used now */ }
+    $("#mods_status").addClass("d-none");
+    if (await loadMods() && mods.supported) {
+      $("#mods_choose").addClass("d-none");
+      searchMods(false);
+    }
+  });
+
+  $(async function () {
+    if (await loadMods() && mods.supported) {
+      searchMods(false);
+    }
+  });
+</script>
+{% end %}
