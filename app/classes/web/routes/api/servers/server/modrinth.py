@@ -20,6 +20,7 @@ MODRINTH_ERROR_STATUS = {
     "FILE_NOT_FOUND": 404,
     "FILE_EXISTS": 409,
     "BAD_FOLDER": 409,
+    "INVALID_VERSION_ID": 400,
 }
 
 
@@ -164,9 +165,39 @@ class ApiServersServerModrinthSearchHandler(BaseApiHandler):
         self.finish_json(200, {"status": "ok", "data": data})
 
 
+class ApiServersServerModrinthVersionsHandler(BaseApiHandler):
+    """The versions of a project this server can load, newest first."""
+
+    async def get(self, server_id: str):
+        if not _authorize_mods(self, server_id):
+            return
+        chosen = {
+            "platform": self.get_query_argument("platform", None),
+            "game_version": self.get_query_argument("game_version", None),
+        }
+        try:
+            _, platform, game_version = _target(self, server_id, chosen)
+            if platform is None:
+                raise Refused(400, "NOT_SUPPORTED", "Choose the server's platform")
+            data = await _run(
+                modrinth.versions,
+                self.get_query_argument("project_id", ""),
+                platform,
+                game_version,
+            )
+        except modrinth.ModrinthError as ex:
+            _refused(ex).send(self)
+            return
+        except Refused as ex:
+            ex.send(self)
+            return
+        self.finish_json(200, {"status": "ok", "data": data})
+
+
 class ApiServersServerModrinthInstallHandler(BaseApiHandler):
     """Install (or update) a project and what it needs into the plugins or
-    mods folder. The server loads it on its next start."""
+    mods folder: {"project_id", "version_id" (optional, else the newest)}.
+    The server loads it on its next start."""
 
     async def post(self, server_id: str):
         auth_data = _authorize_mods(self, server_id)
@@ -187,6 +218,7 @@ class ApiServersServerModrinthInstallHandler(BaseApiHandler):
             if platform is None:
                 raise Refused(400, "NOT_SUPPORTED", "Choose the server's platform")
             project_id = str(body.get("project_id") or "")
+            version_id = body.get("version_id")
             result = await _run(
                 modrinth.install,
                 server_data["path"],
@@ -194,6 +226,7 @@ class ApiServersServerModrinthInstallHandler(BaseApiHandler):
                 game_version,
                 project_id,
                 server_id,
+                str(version_id) if version_id else None,
             )
         except json.decoder.JSONDecodeError as ex:
             Refused(400, "INVALID_JSON", str(ex)).send(self)

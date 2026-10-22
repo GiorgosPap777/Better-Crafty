@@ -1,6 +1,7 @@
 // Mods page: choosing the server type when it is not found, the most
 // downloaded list, a search, installing a plugin from Modrinth, turning it
-// off and on, removing it, refused requests, updating two old jars with
+// off and on, removing it, refused requests, installing an older version
+// from the Versions list, updating two old jars with
 // Update all, and phone width. Needs the internet (api.modrinth.com and
 // cdn.modrinth.com). Removes the plugins folder it made at the end.
 const L = require('./local');
@@ -61,7 +62,7 @@ const SHOTS = process.env.SHOTS || path.join(__dirname, 'shots');
   await p.click('#mods_search_form button[type=submit]');
   await p.waitForFunction(() => /LuckPerms/.test(document.querySelector('#mods_results .mods-row .mods-name')?.textContent || ''), null, { timeout: 30000 });
   check(true, 'search finds LuckPerms first');
-  const button = p.locator('#mods_results .mods-row').first().locator('.mods-action');
+  const button = p.locator('#mods_results .mods-row').first().locator('.mods-action:not(.mods-versions)');
   await button.click();
   await p.waitForSelector('#mods_status.alert-success', { timeout: 120000 });
   const status = await p.textContent('#mods_status');
@@ -91,12 +92,12 @@ const SHOTS = process.env.SHOTS || path.join(__dirname, 'shots');
   await p.waitForSelector('#mods_status:has-text("Removed")', { timeout: 30000 });
   check(fs.readdirSync(path.join(SERVER, 'plugins')).length === 0, 'Remove deletes the jar');
   check(/Nothing in the plugins folder/.test(await p.textContent('#mods_installed')), 'the list is empty again');
-  await p.waitForFunction(() => /Install/.test(document.querySelector('#mods_results .mods-row .mods-action')?.textContent || ''), null, { timeout: 30000 });
-  check((await p.locator('#mods_results .mods-row').first().locator('.mods-action').textContent()).trim() === 'Install', 'the search result can be installed again');
+  await p.waitForFunction(() => /Install/.test(document.querySelector('#mods_results .mods-row .mods-action:not(.mods-versions)')?.textContent || ''), null, { timeout: 30000 });
+  check((await p.locator('#mods_results .mods-row').first().locator('.mods-action:not(.mods-versions)').textContent()).trim() === 'Install', 'the search result can be installed again');
   const outside = await api('POST', '/modrinth/jar', { file: '../server.properties', action: 'remove', platform: 'paper' });
   check(outside.code === 404 && outside.body.error === 'FILE_NOT_FOUND', 'refused: a file outside the folder');
   check(fs.existsSync(path.join(SERVER, 'server.properties')), 'server.properties is still there');
-  await p.locator('#mods_results .mods-row').first().locator('.mods-action').click();
+  await p.locator('#mods_results .mods-row').first().locator('.mods-action:not(.mods-versions)').click();
   await p.waitForSelector('#mods_status:has-text("Installed")', { timeout: 120000 });
 
   const again = await api('POST', '/modrinth/install', { project_id: 'luckperms', platform: 'paper', game_version: '1.21.4' });
@@ -111,6 +112,31 @@ const SHOTS = process.env.SHOTS || path.join(__dirname, 'shots');
     [await api('GET', '/modrinth/search?offset=x&platform=paper'), 400, 'INVALID_OFFSET'],
   ];
   bad.forEach(([res, code, error]) => check(res.code === code && res.body.error === error, `refused: ${error}`));
+  errors.splice(0, errors.length, ...errors.filter(e => !/^(400|404) \/api\/v2\/servers\/[^/]+\/modrinth/.test(e)));
+
+  // Versions: install an older LuckPerms from the list, then the newest again
+  await p.fill('#mods_query', 'luckperms');
+  await p.click('#mods_search_form button[type=submit]');
+  await p.waitForFunction(() => /LuckPerms/.test(document.querySelector('#mods_results .mods-row .mods-name')?.textContent || ''), null, { timeout: 30000 });
+  await p.locator('#mods_results .mods-row').first().locator('.mods-versions').click();
+  await p.waitForSelector('.mods-version-select', { timeout: 30000 });
+  check(/Versions of LuckPerms/.test(await p.textContent('.modal-title')), 'the Versions window names the project');
+  const choices = await p.$$eval('.mods-version-select option', o => o.map(x => ({ value: x.value, text: x.textContent })));
+  check(choices.length > 1, `lists ${choices.length} versions`);
+  const older = choices[choices.length - 1];
+  await p.selectOption('.mods-version-select', older.value);
+  // "v5.4.145-bukkit" in the list, LuckPerms-Bukkit-5.4.145.jar on disk
+  const olderNumber = older.text.split(' · ')[0].match(/\d+(\.\d+)+/)[0];
+  await p.click('.mods-version-install');
+  await p.waitForFunction((n) => document.querySelector('#mods_status.alert-success')?.textContent.includes(n), olderNumber, { timeout: 120000 });
+  const afterOlder = fs.readdirSync(path.join(SERVER, 'plugins')).filter(f => f.endsWith('.jar'));
+  check(afterOlder.length === 1 && afterOlder[0].includes(olderNumber), `installs the chosen version (${afterOlder[0]})`);
+  await p.waitForSelector('#mods_installed button:has-text("Update to")', { timeout: 30000 });
+  check(true, 'the installed list offers the update');
+  const back = await api('POST', '/modrinth/install', { project_id: 'luckperms', version_id: 'notreal', platform: 'paper', game_version: '1.21.4' });
+  check(back.code === 404 && back.body.error === 'NO_COMPATIBLE_VERSION', 'refused: a version that is not in the list');
+  const badId = await api('POST', '/modrinth/install', { project_id: 'luckperms', version_id: '../x', platform: 'paper', game_version: '1.21.4' });
+  check(badId.code === 400 && badId.body.error === 'INVALID_VERSION_ID', 'refused: INVALID_VERSION_ID');
   errors.splice(0, errors.length, ...errors.filter(e => !/^(400|404) \/api\/v2\/servers\/[^/]+\/modrinth/.test(e)));
 
   // Update all: older LuckPerms and Chunky jars in plugins/ get both updated

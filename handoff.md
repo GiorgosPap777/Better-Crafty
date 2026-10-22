@@ -42,7 +42,7 @@ on any machine.
    repo default, so a fresh clone is already on it. In an existing clone:
    `git fetch origin && git checkout claude/login-server-admin-improvements-ctbqdu && git pull`.
 2. **Set up and check** with "Development setup" below (about 10 minutes).
-   You should see 290 passing pytest tests before changing anything.
+   You should see 294 passing pytest tests before changing anything.
 3. **Finish the Modrinth installer's follow-ups** ("Modrinth installer
    (first version)" in Session 12), unless the owner asks for something else.
 4. Before you finish, update this file, commit and push (see "The project").
@@ -158,6 +158,12 @@ on any machine.
 26. Session 12, after the Docker Hub work: "You have until 8 o'clock to
     continue your work, if the clock reaches 8 and you are still working
     stop". Used for the Modrinth installer's first version.
+27. Session 12, right after: "If you can monitor the weekly limit
+    periodically and if it reaches 98% wight the handoff.md and stop".
+    The cloud session can read it: `list_events` (claude-code-remote MCP
+    tools) on the session with kinds `["rate_limit_event"]` gives
+    `unifiedWindows.seven_day.utilization` (0.91 at the start, 0.92 after
+    the version list). Used for choosing a plugin version.
 
 ### Questions still waiting on the owner
 
@@ -171,6 +177,9 @@ on any machine.
   one thing this breaks.
 - `show_errors` defaults to true, so tracebacks reach the browser. Upstream
   choice.
+- `docker/unraid.xml` (the Unraid template) still names the original image
+  (`arcadiatechnology/crafty-4`), its Discord and its Ko-fi. Point it at
+  `giorgospap777/better-crafty` and the fork's GitHub? (session 12)
 
 ## Commits so far
 
@@ -218,7 +227,8 @@ on any machine.
 | `2fd74dea` | Modrinth installer: a Mods tab that finds plugins and mods for the server and installs them with what they need (session 12) |
 | `1116acab` | Mods tab: turn jars off and on, remove them; list the jars when Modrinth cannot be reached (session 12) |
 | `8d818089` | Mods tab: a Paper server was taken for NeoForge (its libraries folder); tried on real Paper and Fabric servers (session 12) |
-| (this commit) | Mods tab: "Update all"; downloads always go to a new file, icons only over https (session 12) |
+| `3dfb42ba` | Mods tab: "Update all"; downloads always go to a new file, icons only over https (session 12) |
+| (this commit) | Mods tab: choose which version to install; Versions and Turn off readable on the dark theme (session 12) |
 
 ### 1. Login (`d3946c3f`)
 
@@ -1396,6 +1406,15 @@ lists) finds plugins and mods on Modrinth and installs them.
   "Not from Modrinth". With two or more updates, an **"Update all (n)"**
   button installs them one after another and reports the new files (and
   any that failed).
+- **Choosing a version:** each search result has a "Versions" button next
+  to Install. It opens a window with the project's versions for this
+  server's loaders and Minecraft version (`versions()`, newest first, at
+  most 50: number, release/beta/alpha, date); "Install" there installs that
+  one (`install(..., version_id)`). The version must be in that list
+  (`chosen_version()`), so a version for another loader or Minecraft
+  version is refused (`NO_COMPATIBLE_VERSION`). An older version replaces
+  the newer jar, and the Installed list then offers the update. Not on the
+  Installed rows yet.
 - **Turn off, turn on, remove** (`change_jar()`): each installed jar has
   "Turn off" (renames `a.jar` to `a.jar.disabled`, which the server does
   not load), "Turn on", and a bin button that asks first. Only names that
@@ -1407,27 +1426,33 @@ lists) finds plugins and mods on Modrinth and installs them.
 - **API** (`routes/api/servers/server/modrinth.py`):
   `GET /api/v2/servers/<id>/modrinth` (platform, version, folder,
   installed, `modrinth_error`), `GET .../modrinth/search?query=&offset=`,
-  `POST .../modrinth/install {"project_id"}`, `POST .../modrinth/jar
+  `GET .../modrinth/versions?project_id=`,
+  `POST .../modrinth/install {"project_id", "version_id" (optional)}`, `POST .../modrinth/jar
   {"file", "action": "disable" | "enable" | "remove"}`; all take
   `platform` and `game_version` to override the guess. Errors:
   `INVALID_ACTION`, `FILE_NOT_FOUND`, `FILE_EXISTS`, `INVALID_PROJECT`,
   `INVALID_PLATFORM`, `INVALID_VERSION`, `NO_COMPATIBLE_VERSION` (404),
-  `BUSY` (409), `BAD_FOLDER` (409: the plugins or mods folder leads
+  `INVALID_VERSION_ID`, `BUSY` (409), `BAD_FOLDER` (409: the plugins or mods folder leads
   outside the server), `MODRINTH_UNREACHABLE` / `MODRINTH_ERROR` (502),
   `BAD_FILE`, `BAD_CHECKSUM`.
-- Project icons are only shown from `https://` addresses.
+- Project icons are only shown from `https://` addresses. The theme makes
+  `btn-outline-secondary` text a dark grey (`.btn.btn-outline-secondary`
+  in `shared/style.css`), unreadable on the dark theme; the Mods page sets
+  it back to the text colour for its buttons.
 - Text: `serverMods` and `serverDetails.mods` in `en_EN.json`; the page's
   script gets them through `MODS_TEXT` in `panel_handler.py`. Page:
   `templates/panel/server_mods.html`, `css/partial/crafty-mods.css`.
-- **Tested:** `tests/classes/helpers/test_modrinth.py` (38: detection,
+- **Tested:** `tests/classes/helpers/test_modrinth.py` (42: detection,
   versions, facets, file checks, install with dependencies, replacing,
   a damaged download, one at a time, turn off/on/remove and what they
-  refuse; Modrinth is faked).
+  refuse, the version list, a chosen version and the ones refused;
+  Modrinth is faked).
   `dev/handoff-tools/test_mods.js` (needs the internet) on server 1:
   choose Paper 1.21.4, most downloaded, Show more, search "luckperms",
   install it (the jar lands in `plugins/`), turn it off and on, remove it
   (and `../server.properties` is refused), install it again, install again
-  (no change), refused requests, then puts the oldest 1.21.4 LuckPerms and
+  (no change), refused requests, installs the oldest LuckPerms from the
+  Versions window (and the list then offers the update), then puts the oldest 1.21.4 LuckPerms and
   Chunky jars in `plugins/` and checks that "Update all (2)" replaces both,
   phone width; it deletes the `plugins` folder it made.
   Also run by hand against Modrinth: LuckPerms on a Paper folder, Chunky
@@ -1447,7 +1472,8 @@ lists) finds plugins and mods on Modrinth and installs them.
 
 **Follow-ups (not done yet):**
 
-1. Choose a version other than the newest (a version list per project).
+1. ~~Choose a version other than the newest.~~ Done for search results;
+   the Installed rows could get the same "Versions" button.
 2. Modpacks (`.mrpack`) and data packs are not handled.
 3. Not tried with Forge, NeoForge, Velocity or a server run by Crafty
    itself (the real Paper and Fabric runs above were outside Crafty).
@@ -1886,7 +1912,7 @@ section. Commands are for a terminal in the repo root. On Windows use
 python3 -m venv .venv
 . .venv/bin/activate            # Windows: .venv\Scripts\activate
 pip install -r requirements.txt pytest black pylint
-pytest -q tests                 # 290 pass
+pytest -q tests                 # 294 pass
 black --check app tests
 node dev/command-data/test_complete.js   # command suggestions engine, no browser
 ```

@@ -1393,6 +1393,11 @@
         "turnedOn": "Turned on {file}.",
         "changeFailed": "Could not change",
         "offline": "Modrinth could not be reached, so names and updates are missing ({error}).",
-        "updateAll": "Update all ({count})"
+        "updateAll": "Update all ({count})",
+        "versions": "Versions",
+        "versionsTitle": "Versions of {title}",
+        "versionsNote": "Newest first. Installing another version replaces the one in the folder.",
+        "versionsFailed": "Could not list the versions",
+        "noVersions": "No version of {title} is for this server."
     }
 }

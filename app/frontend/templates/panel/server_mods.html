@@ -361,14 +361,54 @@
       } else {
         button.text(modsText.install).on("click", () => installProject(hit.project_id, hit.title, button));
       }
-      row.append(button);
+      const choose = $('<button type="button" class="btn btn-outline-secondary btn-sm mods-action mods-versions"></button>')
+        .text(modsText.versions)
+        .on("click", () => chooseVersion(hit.project_id, hit.title, button));
+      row.append($('<div class="mods-buttons"></div>').append(choose, button));
       box.append(row);
     });
     modsOffset = page.offset + page.hits.length;
     $("#mods_more").toggleClass("d-none", modsOffset >= page.total || !page.hits.length);
   }
 
-  async function installProject(projectId, title, button) {
+  async function chooseVersion(projectId, title, button) {
+    if (modsInstalling) return;
+    let list;
+    try {
+      const params = chosenParams();
+      params.set("project_id", projectId);
+      list = await modsApi(`/versions?${params}`);
+    } catch (e) {
+      showStatus("danger", `${modsText.versionsFailed}: ${e.message}`);
+      return;
+    }
+    if (!list.length) {
+      showStatus("warning", fill(modsText.noVersions, { title: title }));
+      return;
+    }
+    const options = list.map((version) => {
+      const date = version.date_published ? new Date(version.date_published).toLocaleDateString() : "";
+      const label = [version.version_number, version.version_type, date].filter(Boolean).join(" · ");
+      return `<option value="${escapeHtml(version.id)}">${escapeHtml(label)}</option>`;
+    });
+    bootbox.dialog({
+      title: escapeHtml(fill(modsText.versionsTitle, { title: title })),
+      message: `<p class="mods-note">${escapeHtml(modsText.versionsNote)}</p>`
+        + `<select class="form-control mods-version-select">${options.join("")}</select>`,
+      buttons: {
+        cancel: { label: escapeHtml(modsText.cancel), className: "btn-secondary" },
+        install: {
+          label: escapeHtml(modsText.install),
+          className: "btn-primary mods-version-install",
+          callback: () => {
+            installProject(projectId, title, button, $(".mods-version-select").val());
+          },
+        },
+      },
+    });
+  }
+
+  async function installProject(projectId, title, button, versionId) {
     if (modsInstalling) return;
     modsInstalling = true;
     const label = button.text();
@@ -379,7 +419,7 @@
       result = await modsApi("/install", {
         method: "POST",
         headers: { "X-XSRFToken": getCookie("_xsrf"), "Content-Type": "application/json" },
-        body: JSON.stringify({ project_id: projectId, ...modsChosen }),
+        body: JSON.stringify({ project_id: projectId, version_id: versionId || null, ...modsChosen }),
       });
     } catch (e) {
       showStatus("danger", `${modsText.installFailed} ${title}: ${e.message}`);

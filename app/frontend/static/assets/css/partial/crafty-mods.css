@@ -143,6 +143,11 @@
     gap: 0.35rem;
 }
 
+/* The theme greys out outline-secondary text; keep Versions and Turn off readable */
+.mods-buttons .btn.btn-outline-secondary:not(:hover) {
+    color: var(--base-text);
+}
+
 .mods-update-row {
     display: flex;
     justify-content: flex-end;

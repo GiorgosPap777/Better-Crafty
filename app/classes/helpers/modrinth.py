@@ -28,6 +28,8 @@ MAX_FILE_SIZE = 256 * 1024 * 1024
 # A project, its dependencies and theirs: enough for real mods, and a limit
 # for a broken dependency list
 MAX_INSTALLS = 12
+# How many versions of a project the version list shows
+MAX_VERSIONS = 50
 
 # What each kind of server loads, as Modrinth loader names, best first
 PLATFORMS = {
@@ -296,6 +298,35 @@ def best_version(project_id: str, platform: str, game_version):
     return version
 
 
+def chosen_version(project_id: str, platform: str, game_version, version_id: str):
+    """The version the user picked, if it is one this server can load."""
+    for version in project_versions(project_id, platform, game_version):
+        if version.get("id") == version_id:
+            return version
+    raise ModrinthError(
+        "NO_COMPATIBLE_VERSION",
+        "This version is not for this server's loader and version",
+    )
+
+
+def versions(project_id: str, platform: str, game_version):
+    """The versions of a project this server can load, newest first."""
+    return [
+        {
+            "id": version.get("id"),
+            "version_number": version.get("version_number"),
+            "name": version.get("name"),
+            "version_type": version.get("version_type"),
+            "date_published": version.get("date_published"),
+            "game_versions": version.get("game_versions") or [],
+            "loaders": version.get("loaders") or [],
+        }
+        for version in project_versions(project_id, platform, game_version)[
+            :MAX_VERSIONS
+        ]
+    ]
+
+
 def primary_file(version: dict) -> dict:
     """The version's main jar, after checking where it comes from and its
     name."""
@@ -472,13 +503,23 @@ def _download(url: str, target: Path, sha512: str) -> None:
         part.unlink(missing_ok=True)
 
 
-def install(server_path, platform: str, game_version, project_id: str, busy_key: str):
+def install(
+    server_path,
+    platform: str,
+    game_version,
+    project_id: str,
+    busy_key: str,
+    version_id=None,
+):
     """Install a project and the projects it needs that are not there yet.
     A project already in the folder gets the new file and loses the old one.
+    version_id picks a version of the project instead of the newest.
 
     Returns {"installed": [...], "missing": [...]}; missing lists required
     projects Modrinth has no file for on this server.
     """
+    if version_id is not None and not PROJECT_ID.match(version_id):
+        raise ModrinthError("INVALID_VERSION_ID", "Not a Modrinth version")
     with _busy_lock:
         if busy_key in _busy:
             raise ModrinthError("BUSY", "Another install for this server is running")
@@ -491,7 +532,7 @@ def install(server_path, platform: str, game_version, project_id: str, busy_key:
             if jar["project_id"]
         }
         done, missing = [], []
-        queue = [(project_id, None, True)]
+        queue = [(project_id, version_id, True)]
         seen = set()
         while queue and len(done) < MAX_INSTALLS:
             wanted, version_id, main = queue.pop(0)
@@ -499,11 +540,12 @@ def install(server_path, platform: str, game_version, project_id: str, busy_key:
                 continue
             seen.add(wanted)
             try:
-                version = (
-                    _get(f"{API}/version/{quote(version_id, safe='')}")
-                    if version_id and PROJECT_ID.match(version_id)
-                    else best_version(wanted, platform, game_version)
-                )
+                if not version_id or not PROJECT_ID.match(version_id):
+                    version = best_version(wanted, platform, game_version)
+                elif main:
+                    version = chosen_version(wanted, platform, game_version, version_id)
+                else:
+                    version = _get(f"{API}/version/{quote(version_id, safe='')}")
             except ModrinthError:
                 if main:
                     raise

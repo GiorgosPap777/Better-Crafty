@@ -261,6 +261,69 @@ def test_install_replaces_the_old_file_and_skips_present_dependencies(
     ]
 
 
+def _fake_version_list(monkeypatch, listed, files, calls=None):
+    """Modrinth lists these versions of every project, newest first."""
+
+    def fake_get(url, **params):
+        if calls is not None:
+            calls.append((url, params))
+        return listed
+
+    monkeypatch.setattr(modrinth, "_get", fake_get)
+    monkeypatch.setattr(modrinth, "installed", lambda *args: [])
+    monkeypatch.setattr(
+        modrinth.requests,
+        "get",
+        lambda url, **kwargs: _Response(files[url.rsplit("/", 1)[1]]),
+    )
+
+
+def test_versions_lists_what_the_server_can_load(monkeypatch):
+    calls = []
+    listed = [
+        _version("chunky", "1.4", b"new"),
+        _version("chunky", "1.3", b"old"),
+    ]
+    _fake_version_list(monkeypatch, listed, {}, calls)
+    result = modrinth.versions("chunky", "quilt", "1.21.4")
+    assert [item["id"] for item in result] == ["1.4", "1.3"]
+    assert result[0]["version_type"] == "release"
+    assert result[0]["loaders"] == ["fabric"]
+    assert "files" not in result[0]
+    url, params = calls[0]
+    assert url.endswith("/project/chunky/version")
+    assert json.loads(params["loaders"]) == ["quilt", "fabric"]
+    assert json.loads(params["game_versions"]) == ["1.21.4"]
+    with pytest.raises(modrinth.ModrinthError) as ex:
+        modrinth.versions("../x", "quilt", "1.21.4")
+    assert ex.value.code == "INVALID_PROJECT"
+
+
+def test_install_a_chosen_version(tmp_path, monkeypatch):
+    listed = [
+        _version("chunky", "1.4", b"new"),
+        _version("chunky", "1.3", b"old"),
+    ]
+    _fake_version_list(monkeypatch, listed, {"1.3.jar": b"old"})
+    result = modrinth.install(tmp_path, "fabric", "1.21.4", "chunky", "s1", "1.3")
+    assert [item["file"] for item in result["installed"]] == ["chunky-1.3.jar"]
+    assert (tmp_path / "mods" / "chunky-1.3.jar").read_bytes() == b"old"
+
+
+@pytest.mark.parametrize(
+    "version_id, code",
+    [("2.0", "NO_COMPATIBLE_VERSION"), ("../x", "INVALID_VERSION_ID")],
+)
+def test_install_refuses_a_version_it_cannot_use(
+    tmp_path, monkeypatch, version_id, code
+):
+    _fake_version_list(monkeypatch, [_version("chunky", "1.4", b"new")], {})
+    with pytest.raises(modrinth.ModrinthError) as ex:
+        modrinth.install(tmp_path, "fabric", "1.21.4", "chunky", "s1", version_id)
+    assert ex.value.code == code
+    assert not (tmp_path / "mods").exists()
+
+
 def test_install_refuses_a_damaged_download(tmp_path, monkeypatch):
     versions = {"chunky": _version("chunky", "1.4", b"chunky")}
     _fake_modrinth(monkeypatch, versions, {"1.4.jar": b"something else"})
