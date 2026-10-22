@@ -1,10 +1,12 @@
 // Mods page: choosing the server type when it is not found, the most
 // downloaded list, a search, installing a plugin from Modrinth, turning it
-// off and on, removing it, refused requests, and phone width. Needs the internet (api.modrinth.com and
+// off and on, removing it, refused requests, updating two old jars with
+// Update all, and phone width. Needs the internet (api.modrinth.com and
 // cdn.modrinth.com). Removes the plugins folder it made at the end.
 const L = require('./local');
 const { chromium } = L;
 const fs = require('fs');
+const { execFileSync } = require('child_process');
 const path = require('path');
 const TOKEN = L.token();
 const S1 = L.S1;
@@ -110,6 +112,34 @@ const SHOTS = process.env.SHOTS || path.join(__dirname, 'shots');
   ];
   bad.forEach(([res, code, error]) => check(res.code === code && res.body.error === error, `refused: ${error}`));
   errors.splice(0, errors.length, ...errors.filter(e => !/^(400|404) \/api\/v2\/servers\/[^/]+\/modrinth/.test(e)));
+
+  // Update all: older LuckPerms and Chunky jars in plugins/ get both updated
+  const modrinth = (url) => execFileSync('curl', ['-sSfL', '-A', 'GiorgosPap777/Better-Crafty tests', url], { maxBuffer: 64 << 20 });
+  const oldest = (slug) => {
+    const query = `loaders=${encodeURIComponent('["paper","bukkit"]')}&game_versions=${encodeURIComponent('["1.21.4"]')}`;
+    const versions = JSON.parse(modrinth(`https://api.modrinth.com/v2/project/${slug}/version?${query}`));
+    const old = versions[versions.length - 1];
+    return old.files.find(f => f.primary) || old.files[0];
+  };
+  const plugins = path.join(SERVER, 'plugins');
+  fs.readdirSync(plugins).forEach(f => fs.rmSync(path.join(plugins, f), { recursive: true, force: true }));
+  const oldJars = ['luckperms', 'chunky'].map(slug => {
+    const file = oldest(slug);
+    fs.writeFileSync(path.join(plugins, file.filename), modrinth(file.url));
+    return file.filename;
+  });
+  console.log('     old jars:', oldJars.join(', '));
+  await p.reload();
+  await p.waitForSelector('.mods-update-all', { timeout: 60000 });
+  check((await p.textContent('.mods-update-all')).trim() === 'Update all (2)', 'offers Update all (2)');
+  check(await p.locator('#mods_installed button', { hasText: 'Update to' }).count() === 2, 'each jar has its own Update button');
+  await p.click('.mods-update-all');
+  await p.waitForSelector('#mods_status.alert-success:has-text("Installed")', { timeout: 180000 });
+  console.log('     ' + await p.textContent('#mods_status'));
+  const newJars = fs.readdirSync(plugins).filter(f => f.endsWith('.jar'));
+  check(newJars.length === 2 && !newJars.some(f => oldJars.includes(f)), 'both jars were replaced by new ones');
+  check(await p.locator('.mods-update-all').count() === 0, 'no Update all button after updating');
+  await p.screenshot({ path: path.join(SHOTS, 'mods-updated.png'), fullPage: true });
 
   await p.setViewportSize({ width: 390, height: 844 });
   await p.reload();

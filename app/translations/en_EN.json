@@ -1392,6 +1392,7 @@
         "turnedOff": "Turned off {file}.",
         "turnedOn": "Turned on {file}.",
         "changeFailed": "Could not change",
-        "offline": "Modrinth could not be reached, so names and updates are missing ({error})."
+        "offline": "Modrinth could not be reached, so names and updates are missing ({error}).",
+        "updateAll": "Update all ({count})"
     }
 }

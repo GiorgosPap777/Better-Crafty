@@ -148,6 +148,7 @@ MODS_TEXT = (
     "turnedOn",
     "changeFailed",
     "offline",
+    "updateAll",
 )
 
 SCHEDULE_AUTH_ERROR_URL = "/panel/error?error=Unauthorized access To Schedules"

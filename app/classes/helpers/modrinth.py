@@ -452,7 +452,9 @@ def _download(url: str, target: Path, sha512: str) -> None:
                 raise ModrinthError(
                     "DOWNLOAD_FAILED", f"The download answered {response.status_code}"
                 )
-            with open(part, "wb") as f:
+            # A new file, never one a link in the folder points to
+            part.unlink(missing_ok=True)
+            with open(part, "xb") as f:
                 for chunk in response.iter_content(1024 * 1024):
                     size += len(chunk)
                     if size > MAX_FILE_SIZE:

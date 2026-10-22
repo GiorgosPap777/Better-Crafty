@@ -182,7 +182,7 @@
 
   function projectIcon(url) {
     const icon = $('<div class="mods-icon"></div>');
-    if (url) {
+    if (/^https:\/\//.test(url || "")) {
       icon.append($('<img alt="" loading="lazy" referrerpolicy="no-referrer">').attr("src", url));
     } else {
       icon.append('<i class="ph-fill ph-puzzle-piece"></i>');
@@ -195,6 +195,13 @@
     if (!mods.installed.length) {
       box.append($('<p class="mods-empty"></p>').text(fill(modsText.noneInstalled, { folder: mods.folder })));
       return;
+    }
+    const outdated = mods.installed.filter((jar) => jar.update && jar.project_id);
+    if (outdated.length > 1) {
+      const all = $('<button type="button" class="btn btn-primary btn-sm mods-action mods-update-all"></button>')
+        .text(fill(modsText.updateAll, { count: outdated.length }))
+        .on("click", () => updateAll(outdated, all));
+      box.append($('<div class="mods-update-row"></div>').append(all));
     }
     mods.installed.forEach((jar) => {
       const row = $('<div class="mods-row"></div>').append(projectIcon(jar.icon_url));
@@ -226,6 +233,39 @@
       row.append(buttons);
       box.append(row);
     });
+  }
+
+  async function updateAll(jars, button) {
+    if (modsInstalling) return;
+    modsInstalling = true;
+    $(".mods-action").prop("disabled", true);
+    button.text(modsText.installing);
+    const files = [];
+    const failed = [];
+    let restart = false;
+    for (const jar of jars) {
+      try {
+        const result = await modsApi("/install", {
+          method: "POST",
+          headers: { "X-XSRFToken": getCookie("_xsrf"), "Content-Type": "application/json" },
+          body: JSON.stringify({ project_id: jar.project_id, ...modsChosen }),
+        });
+        result.installed.filter((item) => !item.up_to_date).forEach((item) => files.push(item.file));
+        restart = restart || result.restart_needed;
+      } catch (e) {
+        failed.push(`${jar.title || jar.file}: ${e.message}`);
+      }
+    }
+    modsInstalling = false;
+    await loadMods();
+    const parts = [];
+    if (files.length) {
+      parts.push(fill(modsText.installDone, { files: files.join(", ") }));
+      parts.push(restart ? modsText.restartNeeded : modsText.loadsOnStart);
+    }
+    if (failed.length) parts.push(`${modsText.installFailed}: ${failed.join("; ")}`);
+    showStatus(failed.length ? "warning" : "success", parts.join(" "));
+    $(".mods-action:not(.mods-done)").prop("disabled", false);
   }
 
   function confirmRemove(file) {

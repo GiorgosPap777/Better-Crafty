@@ -217,7 +217,8 @@ on any machine.
 | `62f6769d` | Handoff: the Docker Hub only build passed (session 12) |
 | `2fd74dea` | Modrinth installer: a Mods tab that finds plugins and mods for the server and installs them with what they need (session 12) |
 | `1116acab` | Mods tab: turn jars off and on, remove them; list the jars when Modrinth cannot be reached (session 12) |
-| (this commit) | Mods tab: a Paper server was taken for NeoForge (its libraries folder); tried on real Paper and Fabric servers (session 12) |
+| `8d818089` | Mods tab: a Paper server was taken for NeoForge (its libraries folder); tried on real Paper and Fabric servers (session 12) |
+| (this commit) | Mods tab: "Update all"; downloads always go to a new file, icons only over https (session 12) |
 
 ### 1. Login (`d3946c3f`)
 
@@ -1379,7 +1380,8 @@ lists) finds plugins and mods on Modrinth and installs them.
 - **Install** (`install()`): picks the newest release (else beta, else
   alpha) for the best loader, checks the file (https on
   `cdn.modrinth.com`, a plain `.jar` name, a sha512, at most 256 MB),
-  downloads it to a hidden `.part` file, checks the sha512, then moves it
+  downloads it to a hidden `.part` file (made new each time, so a link
+  left in the folder is never written through), checks the sha512, then moves it
   into place. Required dependencies are installed too unless already there
   (Chunky for Fabric brings Fabric API); at most 12 files per install;
   dependencies Modrinth has no file for are reported as "missing". A
@@ -1391,7 +1393,9 @@ lists) finds plugins and mods on Modrinth and installs them.
   `.jar.disabled`), named through Modrinth's `version_files` (sha1 of each
   jar), with an "Update to x" button when `version_files/update` has a
   newer file for these loaders and version. Jars from elsewhere show as
-  "Not from Modrinth".
+  "Not from Modrinth". With two or more updates, an **"Update all (n)"**
+  button installs them one after another and reports the new files (and
+  any that failed).
 - **Turn off, turn on, remove** (`change_jar()`): each installed jar has
   "Turn off" (renames `a.jar` to `a.jar.disabled`, which the server does
   not load), "Turn on", and a bin button that asks first. Only names that
@@ -1408,8 +1412,10 @@ lists) finds plugins and mods on Modrinth and installs them.
   `platform` and `game_version` to override the guess. Errors:
   `INVALID_ACTION`, `FILE_NOT_FOUND`, `FILE_EXISTS`, `INVALID_PROJECT`,
   `INVALID_PLATFORM`, `INVALID_VERSION`, `NO_COMPATIBLE_VERSION` (404),
-  `BUSY` (409), `MODRINTH_UNREACHABLE` / `MODRINTH_ERROR` (502),
+  `BUSY` (409), `BAD_FOLDER` (409: the plugins or mods folder leads
+  outside the server), `MODRINTH_UNREACHABLE` / `MODRINTH_ERROR` (502),
   `BAD_FILE`, `BAD_CHECKSUM`.
+- Project icons are only shown from `https://` addresses.
 - Text: `serverMods` and `serverDetails.mods` in `en_EN.json`; the page's
   script gets them through `MODS_TEXT` in `panel_handler.py`. Page:
   `templates/panel/server_mods.html`, `css/partial/crafty-mods.css`.
@@ -1421,7 +1427,9 @@ lists) finds plugins and mods on Modrinth and installs them.
   choose Paper 1.21.4, most downloaded, Show more, search "luckperms",
   install it (the jar lands in `plugins/`), turn it off and on, remove it
   (and `../server.properties` is refused), install it again, install again
-  (no change), refused requests, phone width; it deletes the `plugins` folder it made.
+  (no change), refused requests, then puts the oldest 1.21.4 LuckPerms and
+  Chunky jars in `plugins/` and checks that "Update all (2)" replaces both,
+  phone width; it deletes the `plugins` folder it made.
   Also run by hand against Modrinth: LuckPerms on a Paper folder, Chunky
   plus Fabric API on a Fabric folder. With Modrinth unreachable the API
   still listed a jar and search answered `MODRINTH_UNREACHABLE`.
@@ -1444,7 +1452,7 @@ lists) finds plugins and mods on Modrinth and installs them.
 3. Not tried with Forge, NeoForge, Velocity or a server run by Crafty
    itself (the real Paper and Fabric runs above were outside Crafty).
 4. Add the Mods tab to the README (screenshot) once the owner has seen it.
-5. "Update all" for when several jars have updates.
+5. ~~"Update all" for when several jars have updates.~~ Done.
 
 ### Update check (done)
 

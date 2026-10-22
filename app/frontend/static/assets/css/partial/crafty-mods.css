@@ -143,6 +143,11 @@
     gap: 0.35rem;
 }
 
+.mods-update-row {
+    display: flex;
+    justify-content: flex-end;
+}
+
 .mods-action.mods-done:disabled {
     opacity: 1;
 }
