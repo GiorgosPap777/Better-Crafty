@@ -42,7 +42,7 @@ on any machine.
    repo default, so a fresh clone is already on it. In an existing clone:
    `git fetch origin && git checkout claude/login-server-admin-improvements-ctbqdu && git pull`.
 2. **Set up and check** with "Development setup" below (about 10 minutes).
-   You should see 294 passing pytest tests before changing anything.
+   You should see 295 passing pytest tests before changing anything.
 3. **Finish the Modrinth installer's follow-ups** ("Modrinth installer
    (first version)" in Session 12), unless the owner asks for something else.
 4. Before you finish, update this file, commit and push (see "The project").
@@ -231,7 +231,8 @@ on any machine.
 | `c525af64` | Mods tab: choose which version to install; Versions and Turn off readable on the dark theme (session 12) |
 | `bf3e4766` | Mods tab: a Versions button on installed jars too; the bin button stays small at phone width (session 12) |
 | `e9ca3c2f` | Handoff: the Mods code tried on a real Velocity proxy (session 12) |
-| (this commit) | Handoff: the Mods code tried on a real NeoForge server (session 12) |
+| `de97f674` | Handoff: the Mods code tried on a real NeoForge server (session 12) |
+| (this commit) | Mods tab: NeoForge's Minecraft version also from its library folder (session 12) |
 
 ### 1. Login (`d3946c3f`)
 
@@ -1380,7 +1381,8 @@ lists) finds plugins and mods on Modrinth and installs them.
 - **Minecraft version:** Paper's `version_history.json` ("MC: x"), else the
   version from the server's last ping, else a Minecraft-looking version in
   the jar name or the start command (1.7 to 1.21.x, and 26.x), else
-  NeoForge's own version (21.1.x is 1.21.1). Proxies (Velocity,
+  NeoForge's own version (21.1.x is 1.21.1) from the start command or
+  from its library folder's name. Proxies (Velocity,
   BungeeCord, Waterfall) ignore the version.
 - When either is not found (the fake test server, a plain `server.jar`),
   the page asks for the type and version; the choice is kept in the
@@ -1447,7 +1449,7 @@ lists) finds plugins and mods on Modrinth and installs them.
 - Text: `serverMods` and `serverDetails.mods` in `en_EN.json`; the page's
   script gets them through `MODS_TEXT` in `panel_handler.py`. Page:
   `templates/panel/server_mods.html`, `css/partial/crafty-mods.css`.
-- **Tested:** `tests/classes/helpers/test_modrinth.py` (42: detection,
+- **Tested:** `tests/classes/helpers/test_modrinth.py` (43: detection,
   versions, facets, file checks, install with dependencies, replacing,
   a damaged download, one at a time, turn off/on/remove and what they
   refuse, the version list, a chosen version and the ones refused;
@@ -1482,9 +1484,8 @@ lists) finds plugins and mods on Modrinth and installs them.
   `install()` put `Chunky-NeoForge-1.4.23.jar` in `mods/`; the server
   listed "Chunky 1.4.23 (chunky)" among its mods and reached `Done`. With
   a plain `java -jar server.jar` command the type is still NeoForge (its
-  library folder) but the Minecraft version is not found, so the page asks
-  for it; looking at the `libraries/net/neoforged/neoforge/<version>`
-  folder name would fill it in.
+  library folder), and the Minecraft version now comes from the name of
+  `libraries/net/neoforged/neoforge/<version>` (it was missing before).
 - In the cloud sandbox Crafty (the `crafty` user) cannot read the sandbox's
   CA bundle, so Modrinth calls fail there unless Crafty is started with
   `REQUESTS_CA_BUNDLE` pointing at a readable copy. On a normal machine
@@ -1933,7 +1934,7 @@ section. Commands are for a terminal in the repo root. On Windows use
 python3 -m venv .venv
 . .venv/bin/activate            # Windows: .venv\Scripts\activate
 pip install -r requirements.txt pytest black pylint
-pytest -q tests                 # 294 pass
+pytest -q tests                 # 295 pass
 black --check app tests
 node dev/command-data/test_complete.js   # command suggestions engine, no browser
 ```

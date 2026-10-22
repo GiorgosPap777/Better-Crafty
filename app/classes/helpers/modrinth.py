@@ -150,11 +150,19 @@ def detect_game_version(
         found = _MC_VERSION.search(text)
         if found:
             return found.group(1)
-    # NeoForge's own version tells the Minecraft one: 21.1.x is 1.21.1
-    found = _NEOFORGE_LIBRARY.search(command or "")
-    if found and int(found.group(1)) < 25:
-        minor = int(found.group(2))
-        return f"1.{found.group(1)}" + (f".{minor}" if minor else "")
+    # NeoForge's own version tells the Minecraft one: 21.1.x is 1.21.1. It is
+    # in Crafty's start command, else in the name of its library folder.
+    texts = [command or ""]
+    try:
+        library = Path(server_path) / "libraries" / "net" / "neoforged" / "neoforge"
+        texts += sorted(f"neoforge/{path.name}" for path in library.iterdir())[-1:]
+    except OSError:
+        pass
+    for text in texts:
+        found = _NEOFORGE_LIBRARY.search(text)
+        if found and int(found.group(1)) < 25:
+            minor = int(found.group(2))
+            return f"1.{found.group(1)}" + (f".{minor}" if minor else "")
     return None
 
 

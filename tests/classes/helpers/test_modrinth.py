@@ -29,6 +29,16 @@ def test_platform_from_the_files(tmp_path):
     assert modrinth.detect_platform(tmp_path, "server.jar") == "fabric"
 
 
+def test_neoforge_version_from_its_library_folder(tmp_path):
+    library = tmp_path / "libraries" / "net" / "neoforged" / "neoforge"
+    (library / "21.1.264").mkdir(parents=True)
+    assert (
+        modrinth.detect_game_version(tmp_path, "", "server.jar", "java -jar server.jar")
+        == "1.21.1"
+    )
+    assert modrinth.detect_game_version(tmp_path / "missing") is None
+
+
 def test_paper_with_neoforged_tools_is_paper(tmp_path):
     # A real Paper 1.21.4 keeps NeoForged's remapping tools in libraries/
     (tmp_path / "libraries" / "net" / "neoforged" / "AutoRenamingTool").mkdir(
