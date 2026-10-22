@@ -42,7 +42,7 @@ on any machine.
    repo default, so a fresh clone is already on it. In an existing clone:
    `git fetch origin && git checkout claude/login-server-admin-improvements-ctbqdu && git pull`.
 2. **Set up and check** with "Development setup" below (about 10 minutes).
-   You should see 283 passing pytest tests before changing anything.
+   You should see 289 passing pytest tests before changing anything.
 3. **Finish the Modrinth installer's follow-ups** ("Modrinth installer
    (first version)" in Session 12), unless the owner asks for something else.
 4. Before you finish, update this file, commit and push (see "The project").
@@ -215,7 +215,8 @@ on any machine.
 | `ab260582` | Handoff: release 1.0.0 and the Docker Hub page checked (session 12) |
 | `a379ce22` | Image published to Docker Hub only, no more `ghcr.io` (session 12) |
 | `62f6769d` | Handoff: the Docker Hub only build passed (session 12) |
-| (this commit) | Modrinth installer: a Mods tab that finds plugins and mods for the server and installs them with what they need (session 12) |
+| `2fd74dea` | Modrinth installer: a Mods tab that finds plugins and mods for the server and installs them with what they need (session 12) |
+| (this commit) | Mods tab: turn jars off and on, remove them; list the jars when Modrinth cannot be reached (session 12) |
 
 ### 1. Login (`d3946c3f`)
 
@@ -1389,26 +1390,39 @@ lists) finds plugins and mods on Modrinth and installs them.
   jar), with an "Update to x" button when `version_files/update` has a
   newer file for these loaders and version. Jars from elsewhere show as
   "Not from Modrinth".
+- **Turn off, turn on, remove** (`change_jar()`): each installed jar has
+  "Turn off" (renames `a.jar` to `a.jar.disabled`, which the server does
+  not load), "Turn on", and a bin button that asks first. Only names that
+  are in the folder's jar list are accepted, so nothing else can be
+  reached. Audit log: "turned off / turned on / removed <file> on server
+  <name>".
+- **When Modrinth cannot be reached** the page still lists the jars (by
+  file name) with a note; search and install say Modrinth is unreachable.
 - **API** (`routes/api/servers/server/modrinth.py`):
   `GET /api/v2/servers/<id>/modrinth` (platform, version, folder,
-  installed), `GET .../modrinth/search?query=&offset=`, `POST
-  .../modrinth/install {"project_id"}`; all take `platform` and
-  `game_version` to override the guess. Errors: `INVALID_PROJECT`,
+  installed, `modrinth_error`), `GET .../modrinth/search?query=&offset=`,
+  `POST .../modrinth/install {"project_id"}`, `POST .../modrinth/jar
+  {"file", "action": "disable" | "enable" | "remove"}`; all take
+  `platform` and `game_version` to override the guess. Errors:
+  `INVALID_ACTION`, `FILE_NOT_FOUND`, `FILE_EXISTS`, `INVALID_PROJECT`,
   `INVALID_PLATFORM`, `INVALID_VERSION`, `NO_COMPATIBLE_VERSION` (404),
   `BUSY` (409), `MODRINTH_UNREACHABLE` / `MODRINTH_ERROR` (502),
   `BAD_FILE`, `BAD_CHECKSUM`.
 - Text: `serverMods` and `serverDetails.mods` in `en_EN.json`; the page's
   script gets them through `MODS_TEXT` in `panel_handler.py`. Page:
   `templates/panel/server_mods.html`, `css/partial/crafty-mods.css`.
-- **Tested:** `tests/classes/helpers/test_modrinth.py` (31: detection,
+- **Tested:** `tests/classes/helpers/test_modrinth.py` (37: detection,
   versions, facets, file checks, install with dependencies, replacing,
-  a damaged download, one at a time; Modrinth is faked).
+  a damaged download, one at a time, turn off/on/remove and what they
+  refuse; Modrinth is faked).
   `dev/handoff-tools/test_mods.js` (needs the internet) on server 1:
   choose Paper 1.21.4, most downloaded, Show more, search "luckperms",
-  install it (the jar lands in `plugins/`), install again (no change),
-  refused requests, phone width; it deletes the `plugins` folder it made.
+  install it (the jar lands in `plugins/`), turn it off and on, remove it
+  (and `../server.properties` is refused), install it again, install again
+  (no change), refused requests, phone width; it deletes the `plugins` folder it made.
   Also run by hand against Modrinth: LuckPerms on a Paper folder, Chunky
-  plus Fabric API on a Fabric folder.
+  plus Fabric API on a Fabric folder. With Modrinth unreachable the API
+  still listed a jar and search answered `MODRINTH_UNREACHABLE`.
 - In the cloud sandbox Crafty (the `crafty` user) cannot read the sandbox's
   CA bundle, so Modrinth calls fail there unless Crafty is started with
   `REQUESTS_CA_BUNDLE` pointing at a readable copy. On a normal machine
@@ -1417,16 +1431,13 @@ lists) finds plugins and mods on Modrinth and installs them.
 
 **Follow-ups (not done yet):**
 
-1. Remove and turn off/on (`.jar` ↔ `.jar.disabled`) from the Installed
-   list (the Files tab can do it today).
-2. If Modrinth cannot be reached, the whole page shows "Could not load";
-   it could still list the jars without names.
-3. Choose a version other than the newest (a version list per project).
-4. Modpacks (`.mrpack`) and data packs are not handled.
-5. Not yet tried with a real Paper or Fabric server running (only the fake
+1. Choose a version other than the newest (a version list per project).
+2. Modpacks (`.mrpack`) and data packs are not handled.
+3. Not yet tried with a real Paper or Fabric server running (only the fake
    server and folders); try one, and check the server loads what was
    installed.
-6. Add the Mods tab to the README (screenshot) once the owner has seen it.
+4. Add the Mods tab to the README (screenshot) once the owner has seen it.
+5. "Update all" for when several jars have updates.
 
 ### Update check (done)
 
@@ -1860,7 +1871,7 @@ section. Commands are for a terminal in the repo root. On Windows use
 python3 -m venv .venv
 . .venv/bin/activate            # Windows: .venv\Scripts\activate
 pip install -r requirements.txt pytest black pylint
-pytest -q tests                 # 283 pass
+pytest -q tests                 # 289 pass
 black --check app tests
 node dev/command-data/test_complete.js   # command suggestions engine, no browser
 ```
@@ -1958,7 +1969,7 @@ Settings come from `local.json`; the environment variables `CRAFTY_URL`,
 | `test_audit.js` | Schedule and webhook switches, restore errors, editor saves |
 | `test_restart_warned.js` | Restart with in-game warnings: dialog, countdown, Cancel, schedules, phone (about 2 minutes; leaves server 1 running) |
 | `test_world.js` | World tab: download (stopped and running), reset of the End and the Nether, phone; writes the test world again at the end |
-| `test_mods.js` | Mods tab: choose the server type, most downloaded, search, install LuckPerms from Modrinth, refused requests, phone; needs the internet, deletes the `plugins` folder it made |
+| `test_mods.js` | Mods tab: choose the server type, most downloaded, search, install LuckPerms from Modrinth, turn it off and on, remove it, refused requests, phone; needs the internet, deletes the `plugins` folder it made |
 | `test_offsite.js` | Off-site storage page and a backup's off-site copy: folder place always; S3 too when `S3_ENDPOINT`, `S3_BUCKET`, `S3_KEY`, `S3_SECRET` are set (see Session 12) |
 | `crawl.js` | Opens every panel page (desktop and phone), reports page errors; `node crawl.js [substring]` |
 | `chk_metrics.js` | Metrics chart zoom |

@@ -136,6 +136,13 @@
     flex: 0 0 auto;
 }
 
+.mods-buttons {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: 0.35rem;
+}
+
 .mods-action.mods-done:disabled {
     opacity: 1;
 }
@@ -151,5 +158,14 @@
 
     .mods-action {
         width: 100%;
+    }
+
+    .mods-buttons {
+        width: 100%;
+    }
+
+    .mods-buttons .mods-action {
+        width: auto;
+        flex: 1 1 auto;
     }
 }

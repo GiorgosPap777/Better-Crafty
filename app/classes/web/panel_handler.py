@@ -137,6 +137,17 @@ MODS_TEXT = (
     "installFailed",
     "searchFailed",
     "modrinthNote",
+    "turnOff",
+    "turnOn",
+    "remove",
+    "removeTitle",
+    "removeMessage",
+    "cancel",
+    "removed",
+    "turnedOff",
+    "turnedOn",
+    "changeFailed",
+    "offline",
 )
 
 SCHEDULE_AUTH_ERROR_URL = "/panel/error?error=Unauthorized access To Schedules"

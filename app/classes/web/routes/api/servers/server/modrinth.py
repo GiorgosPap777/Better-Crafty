@@ -16,6 +16,9 @@ MODRINTH_ERROR_STATUS = {
     "NO_COMPATIBLE_VERSION": 404,
     "BUSY": 409,
     "FILE_TOO_BIG": 413,
+    "INVALID_ACTION": 400,
+    "FILE_NOT_FOUND": 404,
+    "FILE_EXISTS": 409,
 }
 
 
@@ -105,10 +108,18 @@ class ApiServersServerModrinthHandler(BaseApiHandler):
             info = modrinth.platform_info(platform, game_version)
             info["platforms"] = modrinth.PLATFORM_NAMES
             info["installed"] = []
+            info["modrinth_error"] = None
             if info["supported"]:
-                info["installed"] = await _run(
-                    modrinth.installed, server_data["path"], platform, game_version
-                )
+                try:
+                    info["installed"] = await _run(
+                        modrinth.installed, server_data["path"], platform, game_version
+                    )
+                except modrinth.ModrinthError as ex:
+                    # Still show the jars, without their names from Modrinth
+                    info["modrinth_error"] = str(ex)
+                    info["installed"] = await _run(
+                        modrinth.local_jars, server_data["path"], platform
+                    )
         except modrinth.ModrinthError as ex:
             _refused(ex).send(self)
             return
@@ -207,3 +218,59 @@ class ApiServersServerModrinthInstallHandler(BaseApiHandler):
         svr = self.controller.servers.get_server_instance_by_id(server_id)
         result["restart_needed"] = bool(svr.check_running())
         self.finish_json(200, {"status": "ok", "data": result})
+
+
+class ApiServersServerModrinthJarHandler(BaseApiHandler):
+    """Turn a jar in the plugins or mods folder off or on, or remove it:
+    {"file": "x.jar", "action": "disable" | "enable" | "remove"}."""
+
+    async def post(self, server_id: str):
+        auth_data = _authorize_mods(self, server_id)
+        if not auth_data:
+            return
+        try:
+            body = json.loads(self.request.body)
+            if not isinstance(body, dict):
+                raise Refused(400, "INVALID_JSON", "Send a JSON object")
+            server_data, platform, _ = _target(
+                self, server_id, {"platform": body.get("platform")}
+            )
+            if platform is None:
+                raise Refused(400, "NOT_SUPPORTED", "Choose the server's platform")
+            name = str(body.get("file") or "")
+            action = str(body.get("action") or "")
+            new_name = await _run(
+                modrinth.change_jar, server_data["path"], platform, name, action
+            )
+        except json.decoder.JSONDecodeError as ex:
+            Refused(400, "INVALID_JSON", str(ex)).send(self)
+            return
+        except modrinth.ModrinthError as ex:
+            _refused(ex).send(self)
+            return
+        except Refused as ex:
+            ex.send(self)
+            return
+        except OSError as ex:
+            logger.exception(f"Could not change {body.get('file')}")
+            Refused(500, "CHANGE_FAILED", str(ex)).send(self)
+            return
+
+        done = {"remove": "removed", "disable": "turned off", "enable": "turned on"}
+        self.controller.management.add_to_audit_log(
+            auth_data[4]["user_id"],
+            f"{done[action]} {name} on server {server_data['server_name']}",
+            server_id,
+            self.get_remote_ip(),
+        )
+        svr = self.controller.servers.get_server_instance_by_id(server_id)
+        self.finish_json(
+            200,
+            {
+                "status": "ok",
+                "data": {
+                    "file": new_name,
+                    "restart_needed": bool(svr.check_running()),
+                },
+            },
+        )

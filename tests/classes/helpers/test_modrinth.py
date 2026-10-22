@@ -266,3 +266,50 @@ def test_one_install_at_a_time(tmp_path, monkeypatch):
         assert ex.value.code == "BUSY"
     finally:
         modrinth._busy.discard("s1")  # pylint: disable=protected-access
+
+
+def test_turn_a_jar_off_on_and_remove_it(tmp_path):
+    plugins = tmp_path / "plugins"
+    plugins.mkdir()
+    (plugins / "a.jar").write_bytes(b"a")
+    (plugins / "notes.txt").write_text("")
+    (plugins / "folder.jar").mkdir()
+    jars = modrinth.local_jars(tmp_path, "paper")
+    assert [(jar["file"], jar["enabled"]) for jar in jars] == [("a.jar", True)]
+    assert modrinth.change_jar(tmp_path, "paper", "a.jar", "disable") == (
+        "a.jar.disabled"
+    )
+    assert (plugins / "a.jar.disabled").is_file()
+    assert modrinth.change_jar(tmp_path, "paper", "a.jar.disabled", "disable") == (
+        "a.jar.disabled"
+    )
+    assert modrinth.change_jar(tmp_path, "paper", "a.jar.disabled", "enable") == (
+        "a.jar"
+    )
+    assert modrinth.change_jar(tmp_path, "paper", "a.jar", "remove") is None
+    assert sorted(p.name for p in plugins.iterdir()) == ["folder.jar", "notes.txt"]
+
+
+@pytest.mark.parametrize(
+    "name, action, code",
+    [
+        ("a.jar", "delete", "INVALID_ACTION"),
+        ("../server.properties", "remove", "FILE_NOT_FOUND"),
+        ("notes.txt", "remove", "FILE_NOT_FOUND"),
+        ("folder.jar", "remove", "FILE_NOT_FOUND"),
+        ("b.jar", "disable", "FILE_EXISTS"),
+    ],
+)
+def test_change_jar_refuses(tmp_path, name, action, code):
+    plugins = tmp_path / "plugins"
+    plugins.mkdir()
+    (tmp_path / "server.properties").write_text("")
+    (plugins / "a.jar").write_bytes(b"a")
+    (plugins / "b.jar").write_bytes(b"b")
+    (plugins / "b.jar.disabled").write_bytes(b"old b")
+    (plugins / "notes.txt").write_text("")
+    (plugins / "folder.jar").mkdir()
+    with pytest.raises(modrinth.ModrinthError) as ex:
+        modrinth.change_jar(tmp_path, "paper", name, action)
+    assert ex.value.code == code
+    assert (tmp_path / "server.properties").exists()

@@ -47,6 +47,7 @@ from app.classes.web.routes.api.servers.server.players import (
 from app.classes.web.routes.api.servers.server.modrinth import (
     ApiServersServerModrinthHandler,
     ApiServersServerModrinthInstallHandler,
+    ApiServersServerModrinthJarHandler,
     ApiServersServerModrinthSearchHandler,
 )
 from app.classes.web.routes.api.servers.server.world import (
@@ -593,6 +594,11 @@ def api_handlers(handler_args):
         (
             r"/api/v2/servers/([a-z0-9-]+)/modrinth/install/?",
             ApiServersServerModrinthInstallHandler,
+            handler_args,
+        ),
+        (
+            r"/api/v2/servers/([a-z0-9-]+)/modrinth/jar/?",
+            ApiServersServerModrinthJarHandler,
             handler_args,
         ),
         (

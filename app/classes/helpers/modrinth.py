@@ -92,6 +92,8 @@ FILE_HINTS = (
     ("spigot.yml", "spigot"),
     ("bukkit.yml", "bukkit"),
 )
+DISABLED = ".jar.disabled"
+JAR_ACTIONS = ("enable", "disable", "remove")
 GAME_VERSION = re.compile(r"^[0-9][0-9A-Za-z.\-+]{0,31}$")
 PROJECT_ID = re.compile(r"^[A-Za-z0-9_.\-]{1,64}$")
 # Minecraft versions: 1.8 to 1.21.x, and the year numbers from 26.1 on
@@ -341,28 +343,66 @@ def _sha1(path: Path) -> str:
     return digest.hexdigest()
 
 
-def installed(server_path, platform: str, game_version=None):
-    """The jars in the plugins or mods folder, with the Modrinth project each
-    one belongs to (None for jars from elsewhere) and whether Modrinth has a
-    newer file for this server."""
+def local_jars(server_path, platform: str):
+    """The jars in the plugins or mods folder, also the turned off ones
+    (.jar.disabled), without asking Modrinth."""
     folder = jar_folder(server_path, platform)
     jars = []
     if folder.is_dir():
         for path in sorted(folder.iterdir(), key=lambda p: p.name.lower()):
             name = path.name
             enabled = name.lower().endswith(".jar")
-            if not path.is_file() or not (
-                enabled or name.lower().endswith(".jar.disabled")
-            ):
+            if not path.is_file() or not (enabled or name.lower().endswith(DISABLED)):
                 continue
             jars.append(
                 {
                     "file": name,
                     "size": path.stat().st_size,
                     "enabled": enabled,
-                    "sha1": _sha1(path),
+                    "project_id": None,
+                    "title": None,
+                    "slug": None,
+                    "icon_url": None,
+                    "version": None,
+                    "version_id": None,
+                    "update": None,
                 }
             )
+    return jars
+
+
+def change_jar(server_path, platform: str, name: str, action: str):
+    """Turn a jar off (rename it to .jar.disabled), on again, or remove it.
+    Returns the jar's new name, or None when it was removed."""
+    if action not in JAR_ACTIONS:
+        raise ModrinthError("INVALID_ACTION", "action: enable, disable or remove")
+    # Only names that are in the folder: nothing else can be reached
+    if name not in {jar["file"] for jar in local_jars(server_path, platform)}:
+        raise ModrinthError("FILE_NOT_FOUND", "There is no such jar in the folder")
+    folder = jar_folder(server_path, platform)
+    path = folder / name
+    if action == "remove":
+        path.unlink()
+        return None
+    disabled = name.lower().endswith(DISABLED)
+    if (action == "disable") == disabled:
+        return name  # already the way it was asked
+    # a.jar <-> a.jar.disabled
+    new = folder / (name[: -len(".disabled")] if disabled else name + ".disabled")
+    if new.exists():
+        raise ModrinthError("FILE_EXISTS", f"{new.name} is already there")
+    path.rename(new)
+    return new.name
+
+
+def installed(server_path, platform: str, game_version=None):
+    """The jars in the plugins or mods folder, with the Modrinth project each
+    one belongs to (None for jars from elsewhere) and whether Modrinth has a
+    newer file for this server."""
+    folder = jar_folder(server_path, platform)
+    jars = local_jars(server_path, platform)
+    for jar in jars:
+        jar["sha1"] = _sha1(folder / jar["file"])
     if not jars:
         return []
     hashes = [jar["sha1"] for jar in jars]

@@ -1381,6 +1381,17 @@
         "loadsOnStart": "The server loads the new files when it starts.",
         "installFailed": "Could not install",
         "searchFailed": "Could not search Modrinth",
-        "modrinthNote": "Files come from modrinth.com. Only install mods and plugins you trust: they run with the server's access."
+        "modrinthNote": "Files come from modrinth.com. Only install mods and plugins you trust: they run with the server's access.",
+        "turnOff": "Turn off",
+        "turnOn": "Turn on",
+        "remove": "Remove",
+        "removeTitle": "Remove {file}?",
+        "removeMessage": "The jar is deleted from the {folder} folder. Its settings folder stays, if it made one.",
+        "cancel": "Cancel",
+        "removed": "Removed {file}.",
+        "turnedOff": "Turned off {file}.",
+        "turnedOn": "Turned on {file}.",
+        "changeFailed": "Could not change",
+        "offline": "Modrinth could not be reached, so names and updates are missing ({error})."
     }
 }

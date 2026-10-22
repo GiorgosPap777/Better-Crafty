@@ -1,6 +1,6 @@
 // Mods page: choosing the server type when it is not found, the most
-// downloaded list, a search, installing a plugin from Modrinth, refused
-// requests, and phone width. Needs the internet (api.modrinth.com and
+// downloaded list, a search, installing a plugin from Modrinth, turning it
+// off and on, removing it, refused requests, and phone width. Needs the internet (api.modrinth.com and
 // cdn.modrinth.com). Removes the plugins folder it made at the end.
 const L = require('./local');
 const { chromium } = L;
@@ -70,6 +70,32 @@ const SHOTS = process.env.SHOTS || path.join(__dirname, 'shots');
   const jars = fs.readdirSync(path.join(SERVER, 'plugins')).filter(f => f.endsWith('.jar'));
   check(jars.length === 1 && /^LuckPerms-Bukkit-/.test(jars[0]), 'the jar is in plugins/');
   await p.screenshot({ path: path.join(SHOTS, 'mods-installed.png'), fullPage: true });
+
+  // Turn it off, on again, then remove it
+  const row = p.locator('#mods_installed .mods-row').first();
+  await row.locator('button', { hasText: 'Turn off' }).click();
+  await p.waitForSelector('#mods_status:has-text("Turned off")', { timeout: 30000 });
+  let files = fs.readdirSync(path.join(SERVER, 'plugins'));
+  check(files.length === 1 && files[0] === jars[0] + '.disabled', 'Turn off renames it to .jar.disabled');
+  check(/Turned off/.test(await p.textContent('#mods_installed')), 'the list says it is turned off');
+  await p.locator('#mods_installed .mods-row').first().locator('button', { hasText: 'Turn on' }).click();
+  await p.waitForSelector('#mods_status:has-text("Turned on")', { timeout: 30000 });
+  files = fs.readdirSync(path.join(SERVER, 'plugins'));
+  check(files.length === 1 && files[0] === jars[0], 'Turn on gives it its name back');
+  await p.locator('#mods_installed .mods-row').first().locator('.btn-outline-danger').click();
+  await p.waitForSelector('.mods-remove-confirm', { timeout: 10000 });
+  check(/Remove LuckPerms-Bukkit-/.test(await p.textContent('.modal-title')), 'asks before removing');
+  await p.click('.mods-remove-confirm');
+  await p.waitForSelector('#mods_status:has-text("Removed")', { timeout: 30000 });
+  check(fs.readdirSync(path.join(SERVER, 'plugins')).length === 0, 'Remove deletes the jar');
+  check(/Nothing in the plugins folder/.test(await p.textContent('#mods_installed')), 'the list is empty again');
+  await p.waitForFunction(() => /Install/.test(document.querySelector('#mods_results .mods-row .mods-action')?.textContent || ''), null, { timeout: 30000 });
+  check((await p.locator('#mods_results .mods-row').first().locator('.mods-action').textContent()).trim() === 'Install', 'the search result can be installed again');
+  const outside = await api('POST', '/modrinth/jar', { file: '../server.properties', action: 'remove', platform: 'paper' });
+  check(outside.code === 404 && outside.body.error === 'FILE_NOT_FOUND', 'refused: a file outside the folder');
+  check(fs.existsSync(path.join(SERVER, 'server.properties')), 'server.properties is still there');
+  await p.locator('#mods_results .mods-row').first().locator('.mods-action').click();
+  await p.waitForSelector('#mods_status:has-text("Installed")', { timeout: 120000 });
 
   const again = await api('POST', '/modrinth/install', { project_id: 'luckperms', platform: 'paper', game_version: '1.21.4' });
   check(again.code === 200 && again.body.data.installed[0].up_to_date === true, 'installing it again changes nothing');

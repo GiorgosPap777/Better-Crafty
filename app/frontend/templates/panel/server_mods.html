@@ -174,9 +174,10 @@
       .text(modsText.change)
       .on("click", () => $("#mods_choose").toggleClass("d-none"));
     box.append($('<div class="mods-fact mods-fact-button"></div>').append(change));
-    if (mods.needs_game_version && !mods.game_version) {
-      note.removeClass("d-none").text(modsText.noVersion);
-    }
+    const notes = [];
+    if (mods.needs_game_version && !mods.game_version) notes.push(modsText.noVersion);
+    if (mods.modrinth_error) notes.push(fill(modsText.offline, { error: mods.modrinth_error }));
+    if (notes.length) note.removeClass("d-none").text(notes.join(" "));
   }
 
   function projectIcon(url) {
@@ -206,14 +207,71 @@
         text.find(".mods-name").append(" ", $('<span class="badge badge-secondary"></span>').text(modsText.disabled));
       }
       row.append(text);
+      const buttons = $('<div class="mods-buttons"></div>');
       if (jar.update && jar.project_id) {
         const button = $('<button type="button" class="btn btn-outline-primary btn-sm mods-action"></button>')
           .text(fill(modsText.updateTo, { version: jar.update }))
           .on("click", () => installProject(jar.project_id, jar.title || jar.file, button));
-        row.append(button);
+        buttons.append(button);
       }
+      buttons.append(
+        $('<button type="button" class="btn btn-outline-secondary btn-sm mods-action"></button>')
+          .text(jar.enabled ? modsText.turnOff : modsText.turnOn)
+          .on("click", () => changeJar(jar.file, jar.enabled ? "disable" : "enable")),
+        $('<button type="button" class="btn btn-outline-danger btn-sm mods-action"></button>')
+          .attr("title", modsText.remove)
+          .append('<i class="ph-bold ph-trash"></i>', $('<span class="sr-only"></span>').text(modsText.remove))
+          .on("click", () => confirmRemove(jar.file)),
+      );
+      row.append(buttons);
       box.append(row);
     });
+  }
+
+  function confirmRemove(file) {
+    bootbox.dialog({
+      title: escapeHtml(fill(modsText.removeTitle, { file: file })),
+      message: escapeHtml(fill(modsText.removeMessage, { folder: mods.folder })),
+      buttons: {
+        cancel: { label: escapeHtml(modsText.cancel), className: "btn-secondary" },
+        remove: {
+          label: escapeHtml(modsText.remove),
+          className: "btn-danger mods-remove-confirm",
+          callback: function () {
+            changeJar(file, "remove");
+          },
+        },
+      },
+    });
+  }
+
+  async function changeJar(file, action) {
+    if (modsInstalling) return;
+    modsInstalling = true;
+    $(".mods-action").prop("disabled", true);
+    let result = null;
+    try {
+      result = await modsApi("/jar", {
+        method: "POST",
+        headers: { "X-XSRFToken": getCookie("_xsrf"), "Content-Type": "application/json" },
+        body: JSON.stringify({ file: file, action: action, platform: modsChosen.platform }),
+      });
+    } catch (e) {
+      showStatus("danger", `${modsText.changeFailed} ${file}: ${e.message}`);
+    }
+    modsInstalling = false;
+    if (!result) {
+      $(".mods-action:not(.mods-done)").prop("disabled", false);
+      return;
+    }
+    await loadMods();
+    const done = { remove: modsText.removed, disable: modsText.turnedOff, enable: modsText.turnedOn }[action];
+    const parts = [fill(done, { file: file })];
+    if (result.restart_needed) parts.push(modsText.restartNeeded);
+    showStatus("success", parts.join(" "));
+    if (modsQuery || $("#mods_results .mods-row").length) {
+      searchMods(false);
+    }
   }
 
   function markInstalled(button) {
@@ -289,7 +347,7 @@
     modsInstalling = false;
     if (!result) {
       button.text(label);
-      $(".mods-action").prop("disabled", false);
+      $(".mods-action:not(.mods-done)").prop("disabled", false);
       return;
     }
     const [main, ...needed] = result.installed;
@@ -309,7 +367,7 @@
     showStatus(result.missing.length ? "warning" : "success", parts.join(" "));
     // Mark what is installed now in the results that are on the page
     const have = installedIds();
-    $(".mods-action").prop("disabled", false);
+    $(".mods-action:not(.mods-done)").prop("disabled", false);
     if (have.has(projectId)) {
       markInstalled(button);
     }
