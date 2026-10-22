@@ -29,6 +29,19 @@ def test_platform_from_the_files(tmp_path):
     assert modrinth.detect_platform(tmp_path, "server.jar") == "fabric"
 
 
+def test_paper_with_neoforged_tools_is_paper(tmp_path):
+    # A real Paper 1.21.4 keeps NeoForged's remapping tools in libraries/
+    (tmp_path / "libraries" / "net" / "neoforged" / "AutoRenamingTool").mkdir(
+        parents=True
+    )
+    (tmp_path / "config").mkdir()
+    (tmp_path / "config" / "paper-global.yml").write_text("")
+    (tmp_path / "bukkit.yml").write_text("")
+    assert modrinth.detect_platform(tmp_path, "server.jar") == "paper"
+    (tmp_path / "libraries" / "net" / "neoforged" / "neoforge").mkdir()
+    assert modrinth.detect_platform(tmp_path, "server.jar") == "neoforge"
+
+
 @pytest.mark.parametrize(
     "stats, executable, command, expected",
     [

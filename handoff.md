@@ -42,7 +42,7 @@ on any machine.
    repo default, so a fresh clone is already on it. In an existing clone:
    `git fetch origin && git checkout claude/login-server-admin-improvements-ctbqdu && git pull`.
 2. **Set up and check** with "Development setup" below (about 10 minutes).
-   You should see 289 passing pytest tests before changing anything.
+   You should see 290 passing pytest tests before changing anything.
 3. **Finish the Modrinth installer's follow-ups** ("Modrinth installer
    (first version)" in Session 12), unless the owner asks for something else.
 4. Before you finish, update this file, commit and push (see "The project").
@@ -216,7 +216,8 @@ on any machine.
 | `a379ce22` | Image published to Docker Hub only, no more `ghcr.io` (session 12) |
 | `62f6769d` | Handoff: the Docker Hub only build passed (session 12) |
 | `2fd74dea` | Modrinth installer: a Mods tab that finds plugins and mods for the server and installs them with what they need (session 12) |
-| (this commit) | Mods tab: turn jars off and on, remove them; list the jars when Modrinth cannot be reached (session 12) |
+| `1116acab` | Mods tab: turn jars off and on, remove them; list the jars when Modrinth cannot be reached (session 12) |
+| (this commit) | Mods tab: a Paper server was taken for NeoForge (its libraries folder); tried on real Paper and Fabric servers (session 12) |
 
 ### 1. Login (`d3946c3f`)
 
@@ -1357,8 +1358,9 @@ lists) finds plugins and mods on Modrinth and installs them.
   `detect_platform()` looks for a name (neoforge, forge, quilt, fabric,
   purpur, folia, paper, waterfall, velocity, bungeecord, spigot, bukkit) in
   the jar name and the start command, then for files the server leaves
-  (`libraries/net/neoforged`, `.fabric`, `config/paper-global.yml`,
-  `bukkit.yml`, ...). `PLATFORMS` maps each to its folder (`plugins` or
+  (`libraries/net/neoforged/neoforge`, `.fabric`, `config/paper-global.yml`,
+  `bukkit.yml`, ...). Only the loader's own library folder counts: a real
+  Paper keeps NeoForged's remapping tools in `libraries/net/neoforged`. `PLATFORMS` maps each to its folder (`plugins` or
   `mods`) and the Modrinth loaders it can use, best first (Paper takes
   paper, spigot and bukkit plugins; Purpur also purpur ones).
 - **Minecraft version:** Paper's `version_history.json` ("MC: x"), else the
@@ -1411,7 +1413,7 @@ lists) finds plugins and mods on Modrinth and installs them.
 - Text: `serverMods` and `serverDetails.mods` in `en_EN.json`; the page's
   script gets them through `MODS_TEXT` in `panel_handler.py`. Page:
   `templates/panel/server_mods.html`, `css/partial/crafty-mods.css`.
-- **Tested:** `tests/classes/helpers/test_modrinth.py` (37: detection,
+- **Tested:** `tests/classes/helpers/test_modrinth.py` (38: detection,
   versions, facets, file checks, install with dependencies, replacing,
   a damaged download, one at a time, turn off/on/remove and what they
   refuse; Modrinth is faked).
@@ -1423,6 +1425,12 @@ lists) finds plugins and mods on Modrinth and installs them.
   Also run by hand against Modrinth: LuckPerms on a Paper folder, Chunky
   plus Fabric API on a Fabric folder. With Modrinth unreachable the API
   still listed a jar and search answered `MODRINTH_UNREACHABLE`.
+- **Real servers (outside Crafty):** Paper 1.21.4 build 232 with LuckPerms
+  and Chunky installed by `install()`: both "Enabling", `Done`. Fabric
+  1.21.4 (loader 0.16.10) with Chunky, which brought Fabric API: "Loading
+  43 mods" lists both, `Done`. On the real folders, with the jar renamed
+  `server.jar`, the type and version are still found (Paper's
+  `version_history.json`, Fabric's `.fabric`).
 - In the cloud sandbox Crafty (the `crafty` user) cannot read the sandbox's
   CA bundle, so Modrinth calls fail there unless Crafty is started with
   `REQUESTS_CA_BUNDLE` pointing at a readable copy. On a normal machine
@@ -1433,9 +1441,8 @@ lists) finds plugins and mods on Modrinth and installs them.
 
 1. Choose a version other than the newest (a version list per project).
 2. Modpacks (`.mrpack`) and data packs are not handled.
-3. Not yet tried with a real Paper or Fabric server running (only the fake
-   server and folders); try one, and check the server loads what was
-   installed.
+3. Not tried with Forge, NeoForge, Velocity or a server run by Crafty
+   itself (the real Paper and Fabric runs above were outside Crafty).
 4. Add the Mods tab to the README (screenshot) once the owner has seen it.
 5. "Update all" for when several jars have updates.
 
@@ -1871,7 +1878,7 @@ section. Commands are for a terminal in the repo root. On Windows use
 python3 -m venv .venv
 . .venv/bin/activate            # Windows: .venv\Scripts\activate
 pip install -r requirements.txt pytest black pylint
-pytest -q tests                 # 289 pass
+pytest -q tests                 # 290 pass
 black --check app tests
 node dev/command-data/test_complete.js   # command suggestions engine, no browser
 ```

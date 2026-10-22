@@ -78,8 +78,9 @@ NAME_HINTS = (
 )
 # Files a server leaves behind, for jars with a plain name like server.jar
 FILE_HINTS = (
-    ("libraries/net/neoforged", "neoforge"),
-    ("libraries/net/minecraftforge", "forge"),
+    # The loaders themselves: Paper keeps other NeoForged tools in libraries/
+    ("libraries/net/neoforged/neoforge", "neoforge"),
+    ("libraries/net/minecraftforge/forge", "forge"),
     (".quilt", "quilt"),
     ("quilt-server-launch.jar", "quilt"),
     (".fabric", "fabric"),
