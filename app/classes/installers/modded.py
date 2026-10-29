@@ -129,13 +129,17 @@ class ModdedInstaller:
         if not match:
             return False
 
-        arg1, path, version, txt, extra = match.groups()
+        arg1, path, version, txt, _ = match.groups()
         exec_path = f"{path}{version}/"
 
         server_obj.executable = f"{exec_path}{loader}-{version}-server.jar"
 
+        xms, xmx = self._get_memory(server_obj.execution_command)
+
+        # Keep the memory chosen in the wizard (after user_jvm_args.txt, so it
+        # wins); run.sh's "$@" and run.bat's %* are for the shell, not Java
         server_obj.execution_command = (
-            f"java @{arg1} @{exec_path}{txt} nogui {extra or ''}"
+            f"java @{arg1} -Xms{xms} -Xmx{xmx} @{exec_path}{txt} nogui"
         )
         self.servers_controller.update_server(server_obj)
 

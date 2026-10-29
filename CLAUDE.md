@@ -22,7 +22,7 @@ questions, and how to set up and test on any machine.
 
 - `black --check app tests main.py` and `pylint app tests main.py` (must be
   clean: GitHub Actions fails the build otherwise).
-- `pytest -q tests` (295 pass).
+- `pytest -q tests` (301 pass).
 - `node dev/command-data/test_complete.js` after touching command
   suggestions.
 - For UI changes, the browser checks in `dev/handoff-tools/` (see

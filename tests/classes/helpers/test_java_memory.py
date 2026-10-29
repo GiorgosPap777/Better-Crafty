@@ -1,5 +1,6 @@
 import pytest
 
+from app.classes.helpers.helpers import Helpers
 from app.classes.helpers.java_memory import read_memory, set_memory
 
 COMMAND = "java -Xms1024M -Xmx2048M -jar server.jar nogui"
@@ -63,3 +64,11 @@ def test_set_memory_rejects_bad_values(mem_min, mem_max):
 def test_set_memory_needs_the_flag():
     with pytest.raises(ValueError):
         set_memory("java -jar server.jar", mem_max=2048)
+
+
+@pytest.mark.parametrize("gbs, mib", [(1, 1024), (0.5, 512), (2.5, 2560), (3, 3072)])
+def test_wizard_gb_become_whole_mib(gbs, mib):
+    # So the Config page shows the GB picked in the create wizard
+    assert Helpers.float_to_string(gbs) == str(mib)
+    command = f"java -Xms{Helpers.float_to_string(gbs)}M -jar server.jar"
+    assert read_memory(command)["mem_min"] == mib

@@ -8,6 +8,12 @@ commits table.
 
 ## Start here
 
+**State (2026-10-29, session 13):** the Mods tab was tried on real Forge
+and NeoForge servers made and run by Crafty, which found and fixed an
+upstream bug: Forge 1.17 to 1.20.2 and NeoForge servers lost the memory
+picked when creating them. See "Session 13". The owner was given a list of
+ideas for later (in that section); nothing is in progress.
+
 **State (2026-10-17, session 12, after the owner said "continue"):** the
 Docker Hub release is done on our side: the image
 `giorgospap777/better-crafty` was run and checked, moving from the original
@@ -42,7 +48,7 @@ on any machine.
    repo default, so a fresh clone is already on it. In an existing clone:
    `git fetch origin && git checkout claude/login-server-admin-improvements-ctbqdu && git pull`.
 2. **Set up and check** with "Development setup" below (about 10 minutes).
-   You should see 295 passing pytest tests before changing anything.
+   You should see 301 passing pytest tests before changing anything.
 3. **Finish the Modrinth installer's follow-ups** ("Modrinth installer
    (first version)" in Session 12), unless the owner asks for something else.
 4. Before you finish, update this file, commit and push (see "The project").
@@ -167,6 +173,12 @@ on any machine.
 28. Session 12, near 8 o'clock: "Burn until 98%". Kept working past the
     time, until the weekly limit reaches 98%. Used for the run on a server
     started by Crafty itself (below).
+29. Session 13 (2026-10-29), after the weekly limit reset: "Okay, now we
+    can continue a bit. What is still open?"
+30. Session 13, after the list: "Okay, start by whatever you think needs
+    more attention. When you're done, tell me some suggestions on what we
+    could add later and stop." Chose Forge (the biggest untested case);
+    see "Session 13".
 
 ### Questions still waiting on the owner
 
@@ -237,7 +249,8 @@ on any machine.
 | `de97f674` | Handoff: the Mods code tried on a real NeoForge server (session 12) |
 | `905b0c2f` | Mods tab: NeoForge's Minecraft version also from its library folder (session 12) |
 | `c6190f06` | Mods tab: fix the pylint failure on GitHub (`pick_version`'s argument clashed with the new `versions()`; GitHub's newer pylint flags it, the local one did not) (session 12) |
-| (this commit) | Mods tab: tried on a Paper server run by Crafty itself; the Turn on message names the jar without `.disabled` (session 12) |
+| `c22b879a` | Mods tab: tried on a Paper server run by Crafty itself; the Turn on message names the jar without `.disabled` (session 12) |
+| (this commit) | Forge 1.17 to 1.20.2 and NeoForge servers keep the memory picked when creating them; 1 GB is 1024M; the Mods tab tried on Forge and NeoForge servers made by Crafty (session 13) |
 
 ### 1. Login (`d3946c3f`)
 
@@ -1514,8 +1527,9 @@ lists) finds plugins and mods on Modrinth and installs them.
 1. ~~Choose a version other than the newest.~~ Done (search results and
    Installed rows).
 2. Modpacks (`.mrpack`) and data packs are not handled.
-3. Not tried with Forge. Run by Crafty itself: only Paper so far (the
-   Fabric, Velocity and NeoForge runs above were outside Crafty).
+3. ~~Forge, and servers run by Crafty itself.~~ Done: Paper (above),
+   Forge 1.21.1 and 1.20.1, NeoForge 1.21.1 (see "Session 13"). Fabric
+   and Velocity were only run outside Crafty.
 4. Add the Mods tab to the README (screenshot) once the owner has seen it.
 5. ~~"Update all" for when several jars have updates.~~ Done.
 
@@ -1931,6 +1945,82 @@ storage. A backup on the same disk doesn't help if that disk dies."
   `tests/classes/shared/test_offsite_copies.py` (new),
   `dev/handoff-tools/test_offsite.js` (new), `crawl.js`
 
+## Session 13: Forge, NeoForge and server memory (done)
+
+The owner asked what was still open, then to start with whatever needs
+most attention and, when done, give suggestions for later and stop. The
+biggest untested case was the Mods tab on Forge, so real servers were made
+through Crafty's own Create server (download, 1 to 3 GB) and run by it.
+
+- **Mods tab on servers made and run by Crafty:**
+  - Forge 1.21.1 (52.1.20, started with `forge-1.21.1-52.1.20-shim.jar`):
+    found as Forge 1.21.1. Installed Chunky, and Waystones, which brought
+    Balm; all three loaded and the server reached `Done`. While it ran:
+    the Installed list named all three from Modrinth; Turn off and Turn on
+    said to restart; Fabric API was refused (`NO_COMPATIBLE_VERSION`) and
+    is not in search; an older Waystones from the version list was offered
+    the update, which put the newest back; after Restart (from Crafty) the
+    newest Waystones loaded.
+  - Forge 1.20.1 (47.4.28, started with
+    `@libraries/net/minecraftforge/forge/.../unix_args.txt`): found as
+    Forge 1.20.1; Waystones (with Balm) and Chunky loaded, `Done`.
+  - NeoForge 1.21.1 (21.1.265): found as NeoForge 1.21.1; Waystones (with
+    Balm) and Chunky loaded, `Done`.
+- **Fixed (upstream bug): memory lost on Forge 1.17 to 1.20.2 and on every
+  NeoForge server** (`app/classes/installers/modded.py`, `_handle_mid`).
+  After the installer, Crafty rewrote the start command as
+  `java @user_jvm_args.txt @libraries/.../unix_args.txt nogui "$@"`. It had
+  no `-Xms` / `-Xmx`, so the memory picked when creating the server was
+  dropped (Java takes a quarter of the machine's memory by default) and
+  the Config page showed no memory fields; and `"$@"` (`%*` on Windows),
+  which is for the shell, reached the server as an argument. Now:
+  `java @user_jvm_args.txt -Xms1024M -Xmx3072M @libraries/.../unix_args.txt nogui`.
+  The flags come after `user_jvm_args.txt`, so the Config page's setting
+  wins over that file. Checked on the running servers (`jcmd ... VM.flags`)
+  and on the Config page. Servers made before this keep their old command
+  (no memory fields); adding `-Xms1024M -Xmx4096M` after
+  `@user_jvm_args.txt` in the start command brings the fields back.
+- **Fixed (upstream): 1 GB in the create wizard became 1000M**
+  (`Helpers.float_to_string`), so the Config page showed 0.977 and 2.93 GB
+  for 1 and 3. It is now 1024M per GB, rounded to whole MiB, as imports
+  already were. A Paper server made by download with 1 to 3 GB gets
+  `-Xms1024M -Xmx3072M`; the Config page shows 1 and 3.
+- Tests: `tests/classes/installers/test_modded.py` (new: the Forge 1.20.1
+  and NeoForge commands keep the memory, without `"$@"`), and
+  `test_java_memory.py` (the wizard's GB become whole MiB). 301 pass.
+- In the cloud sandbox, Java started by Crafty can download only with the
+  sandbox's Java proxy settings (`JAVA_TOOL_OPTIONS`), which the usual
+  start scripts remove (they print into the console); the Forge and
+  NeoForge installers download their libraries, so Crafty was started
+  without removing them. On a normal machine nothing is needed.
+
+### Suggestions for later (given to the owner)
+
+1. **Modpacks:** make a new server from a Modrinth modpack (`.mrpack`):
+   pick a pack, Crafty sets up the loader and downloads every mod.
+2. **Data packs:** install Modrinth data packs into the world's
+   `datapacks` folder (works on plain vanilla servers too).
+3. **Mod update notices:** a badge on the dashboard when a server's mods
+   or plugins have updates, and an optional scheduled "update all" before
+   a restart (with a backup first).
+4. **Let Bedrock players join:** one button that installs Geyser (on
+   Modrinth) and Floodgate (from GeyserMC) and opens the Bedrock port.
+5. **Server software updates:** move Paper or Purpur to the newest build,
+   or to a new Minecraft version, from the panel, with a backup first.
+6. **Crash explainer:** when a server crashes, show the reason in plain
+   words from the crash report ("mod X needs Y", "needs Java 21").
+7. **Memory fields for older Forge and NeoForge servers:** offer to add
+   the memory flags when the start command has none.
+8. **Copy a server:** clone a server (or save it as a template) to try
+   changes without touching the real one.
+
+### Files (session 13)
+
+- `app/classes/installers/modded.py`, `app/classes/helpers/helpers.py`
+- `tests/classes/installers/test_modded.py` (new),
+  `tests/classes/helpers/test_java_memory.py`
+- `CLAUDE.md` (test count), `handoff.md`
+
 ## Development setup (any machine)
 
 Written for Linux, macOS and Windows, but so far only run on Linux (the
@@ -1951,7 +2041,7 @@ section. Commands are for a terminal in the repo root. On Windows use
 python3 -m venv .venv
 . .venv/bin/activate            # Windows: .venv\Scripts\activate
 pip install -r requirements.txt pytest black pylint
-pytest -q tests                 # 295 pass
+pytest -q tests                 # 301 pass
 black --check app tests
 node dev/command-data/test_complete.js   # command suggestions engine, no browser
 ```

@@ -396,8 +396,9 @@ class Helpers:
 
     @staticmethod
     def float_to_string(gbs: float):
-        s = str(float(gbs) * 1000).rstrip("0").rstrip(".")
-        return s
+        # GB from the create wizard to whole MiB for -Xms / -Xmx (1 GB was
+        # 1000M, which the Config page then showed as 0.977 GB)
+        return str(round(float(gbs) * 1024))
 
     @staticmethod
     def check_file_perms(path):
