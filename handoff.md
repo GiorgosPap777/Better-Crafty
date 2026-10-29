@@ -48,7 +48,7 @@ on any machine.
    repo default, so a fresh clone is already on it. In an existing clone:
    `git fetch origin && git checkout claude/login-server-admin-improvements-ctbqdu && git pull`.
 2. **Set up and check** with "Development setup" below (about 10 minutes).
-   You should see 301 passing pytest tests before changing anything.
+   You should see 303 passing pytest tests before changing anything.
 3. **Finish the Modrinth installer's follow-ups** ("Modrinth installer
    (first version)" in Session 12), unless the owner asks for something else.
 4. Before you finish, update this file, commit and push (see "The project").
@@ -179,6 +179,11 @@ on any machine.
     more attention. When you're done, tell me some suggestions on what we
     could add later and stop." Chose Forge (the biggest untested case);
     see "Session 13".
+31. Session 14, with two screenshots (the server page's tab bar with
+    "Update Center" alone on a second row, and the Dashboard): "ok could
+    u start by doing a general cleanup and butification especialy on the
+    screenshoted pages that re the most often visited". Started with those
+    two pages; see "Session 14".
 
 ### Questions still waiting on the owner
 
@@ -250,7 +255,8 @@ on any machine.
 | `905b0c2f` | Mods tab: NeoForge's Minecraft version also from its library folder (session 12) |
 | `c6190f06` | Mods tab: fix the pylint failure on GitHub (`pick_version`'s argument clashed with the new `versions()`; GitHub's newer pylint flags it, the local one did not) (session 12) |
 | `c22b879a` | Mods tab: tried on a Paper server run by Crafty itself; the Turn on message names the jar without `.disabled` (session 12) |
-| (this commit) | Forge 1.17 to 1.20.2 and NeoForge servers keep the memory picked when creating them; 1 GB is 1024M; the Mods tab tried on Forge and NeoForge servers made by Crafty (session 13) |
+| `6beb7ce7` | Forge 1.17 to 1.20.2 and NeoForge servers keep the memory picked when creating them; 1 GB is 1024M; the Mods tab tried on Forge and NeoForge servers made by Crafty (session 13) |
+| (this commit) | Dashboard redone (stat tiles with bars, cleaner servers table and phone cards, live online/offline counts); server tabs in one row that scrolls; host CPU no longer divided by the cores; Backup tab lit on the add/edit backup pages (session 14) |
 
 ### 1. Login (`d3946c3f`)
 
@@ -1987,7 +1993,8 @@ through Crafty's own Create server (download, 1 to 3 GB) and run by it.
   `-Xms1024M -Xmx3072M`; the Config page shows 1 and 3.
 - Tests: `tests/classes/installers/test_modded.py` (new: the Forge 1.20.1
   and NeoForge commands keep the memory, without `"$@"`), and
-  `test_java_memory.py` (the wizard's GB become whole MiB). 301 pass.
+  `test_java_memory.py` (the wizard's GB become whole MiB). 301 pass
+  then.
 - In the cloud sandbox, Java started by Crafty can download only with the
   sandbox's Java proxy settings (`JAVA_TOOL_OPTIONS`), which the usual
   start scripts remove (they print into the console); the Forge and
@@ -2021,6 +2028,72 @@ through Crafty's own Create server (download, 1 to 3 GB) and run by it.
   `tests/classes/helpers/test_java_memory.py`
 - `CLAUDE.md` (test count), `handoff.md`
 
+## Session 14: Dashboard and server tabs cleanup (done)
+
+The owner sent screenshots of the two most visited pages and asked for a
+general cleanup and a nicer look, starting with those.
+
+- **Server page tabs** (`parts/server_controls_list.html`, used by all 15
+  server pages; the phone copy `m_server_controls_list.html` is gone):
+  one row of tabs with an icon each. When they don't fit (phones, narrow
+  windows) the row scrolls sideways, the edges fade, arrow buttons appear
+  and the open tab is scrolled into view. All 12 fit at 1540 px wide. The
+  phone's old "Server Controls" drop-down is replaced by the same row. A
+  failed backup turns the Backup tab red with a mark; an update waiting
+  turns Update Center yellow (`details_stats.html`). "Player Controls" is
+  now "Players". The styles are under "Server page tabs" in `crafty.css`.
+- **Dashboard** (`dashboard.html`, new `partial/crafty-dashboard.css`,
+  new `parts/dashboard_actions.html` and `parts/dashboard_status.html`,
+  shared by the table and the phone cards):
+  - Top: one row of tiles (Servers with online/offline, Players, CPU,
+    Memory, one per monitored disk), each with a bar that turns yellow at
+    70% (75% for disks) and red at 90%. Before, the colours were fixed
+    (memory was always red).
+  - Servers card: search box (with icon) and the column gear next to
+    Stop All and Create New Server; no "Showing 1 to 3 of 3 entries".
+  - Table: bold server names, a drag handle that shows on hover, square
+    start/stop/restart/kill/clone buttons, CPU and memory as a number
+    over a small bar, status as the same pills as the server page.
+  - Phone: one card per server (name, status, buttons; the arrow shows
+    CPU, memory, size, players, port, version).
+  - Live updates now also change the online/offline counts and hide or
+    show Stop All; the phone cards update too (before they never did).
+    Unknown versions show "—" instead of "False"; usage shows one decimal.
+  - Removed: the inline `<style>` (moved to the new CSS file), old unused
+    rules in `crafty.css` (`.actions_serveritem`, `#desc_id`,
+    `.disk-usage`, `.server-desc`), a duplicated `id="host_storage"` and
+    stray closing tags.
+- **Fixed (upstream bug): host CPU was divided by the number of cores**
+  (`remote_stats/stats.py`, `try_get_cpu_usage`): `psutil.cpu_percent()`
+  is already for the whole machine, so 40% on 8 cores showed 5%. The
+  owner's screenshot showed "0.02". Per-server CPU still divides (a
+  process's percent can go above 100). Test:
+  `tests/classes/remote_stats/test_host_cpu.py` (new). 303 pass.
+- **Fixed (upstream): no tab lit on the add/edit backup pages**
+  (`panel_handler.py` set `"backups"`, the tab checks `"backup"`).
+- Checked: the dashboard at 1540, 1100 and 390 px wide; a server started
+  and stopped (counts, pills, buttons, Stop All, phone cards change
+  live); search; the column gear; all server sub-pages and the add pages
+  (tabs there, right tab lit, no page errors, desktop and phone);
+  `crawl.js`, `test_server.js`, `test_world.js`, `test_backups.js` pass.
+  (`test_backups.js` expects only the default plan plus its own; remove
+  other plans from server 1 first.)
+
+### Files (session 14)
+
+- `app/frontend/templates/panel/dashboard.html`,
+  `parts/dashboard_actions.html` (new), `parts/dashboard_status.html`
+  (new), `parts/server_controls_list.html`, `parts/details_stats.html`,
+  `parts/m_server_controls_list.html` (deleted), the 15 `server_*.html`
+  pages that include the tabs
+- `app/frontend/static/assets/css/crafty.css`,
+  `partial/crafty-dashboard.css` (new)
+- `app/classes/remote_stats/stats.py`, `app/classes/web/panel_handler.py`
+- `app/translations/en_EN.json` (`dashboard.searchServers`, "Players")
+- `tests/classes/remote_stats/test_host_cpu.py` (new)
+- `dev/handoff-tools/test_world.js`, `readme_shots.js` (new tab selectors)
+- `CLAUDE.md` (test count), `handoff.md`
+
 ## Development setup (any machine)
 
 Written for Linux, macOS and Windows, but so far only run on Linux (the
@@ -2041,7 +2114,7 @@ section. Commands are for a terminal in the repo root. On Windows use
 python3 -m venv .venv
 . .venv/bin/activate            # Windows: .venv\Scripts\activate
 pip install -r requirements.txt pytest black pylint
-pytest -q tests                 # 301 pass
+pytest -q tests                 # 303 pass
 black --check app tests
 node dev/command-data/test_complete.js   # command suggestions engine, no browser
 ```

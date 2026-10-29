@@ -72,7 +72,8 @@ class Stats:
     @staticmethod
     def try_get_cpu_usage():
         try:
-            return psutil.cpu_percent(interval=0.5) / psutil.cpu_count()
+            # Already 0-100 for the whole machine; don't divide by the cores
+            return round(psutil.cpu_percent(interval=0.5), 1)
         except Exception as e:
             logger.debug(
                 "getting the cpu usage failed due to the following error:", exc_info=e

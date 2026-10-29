@@ -22,12 +22,7 @@
       <div class="card">
         <div class="card-body  pt-0">
 
-          <span class="d-none d-sm-block">
-            {% include "parts/server_controls_list.html %}
-          </span>
-          <span class="d-block d-sm-none">
-            {% include "parts/m_server_controls_list.html %}
-          </span>
+          {% include "parts/server_controls_list.html" %}
           {% set sid = data['server_stats']['server_id']['server_id'] %}
           <div class="backup-head">
             <div>

@@ -188,7 +188,8 @@
         "stopAll": "Stop All",
         "stopAllConfirm": "Are you sure you want to stop all running servers?",
         "stopAllServers": "Stop All Servers",
-        "stoppingServers": "Please be patient while we stop all servers."
+        "stoppingServers": "Please be patient while we stop all servers.",
+        "searchServers": "Search servers"
     },
     "datatables": {
         "i18n": {
@@ -640,7 +641,7 @@
         "metrics": "Metrics",
         "noLogFiles": "No log files found",
         "noLogsYet": "No log files yet. The server writes them once it has run.",
-        "playerControls": "Player Management",
+        "playerControls": "Players",
         "reset": "Reset Scroll",
         "schedule": "Schedule",
         "serverDetails": "Server Details",

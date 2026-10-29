@@ -77,7 +77,7 @@ const hasDragonFight = () => python(['-c', 'import gzip, sys; print(b"DragonFigh
   await p.waitForSelector('#world_content:not(.d-none)');
   const facts = await p.$eval('#world_facts', el => el.innerText);
   check(facts.includes('1.21.4') && facts.includes('-4172144997902289642') && facts.includes('world'), 'version, seed and name shown');
-  check(await p.$eval('.tab-simple-styled .nav-link.active', el => el.innerText.trim()) === 'World', 'World tab is active');
+  check(await p.$eval('.server-tabs .nav-link.active', el => el.innerText.trim()) === 'World', 'World tab is active');
   check(await p.$$eval('.world-dimension', els => els.length) === 3, 'three dimensions');
   check((await p.$eval('.world-overworld', el => el.innerText)).includes('<img src=x'), 'odd player name shown as text');
   check(await p.evaluate(() => window.__xss2 === undefined), 'player name is not run as HTML');

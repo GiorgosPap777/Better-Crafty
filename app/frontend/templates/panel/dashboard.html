@@ -6,21 +6,22 @@
 {% block title %}Crafty Controller - {{ translate('dashboard', 'dashboard', data['lang']) }}{% end %}
 
 {% block content %}
+<link rel="stylesheet" href="/static/assets/css/partial/crafty-server-overview.css">
+<link rel="stylesheet" href="/static/assets/css/partial/crafty-dashboard.css">
 
 <div class="content-wrapper">
 
   <!-- Page Title Header Starts-->
   <div class="row page-title-header">
     <div class="col-12">
-      <div class="page-header">
-        <h4 class="page-title">{{ translate('dashboard', 'dashboard', data['lang']) }}
-          {% if data['server_stats']['running'] != 0 %}
-          <span id="sync" class="ml-5"><i class="ph-fill ph-arrows-clockwise"></i></span>
-          {% end %}
-        </h4>
+      <div class="page-header dash-header">
+        <h4 class="page-title">{{ translate('dashboard', 'dashboard', data['lang']) }}</h4>
+        {% if data['server_stats']['running'] != 0 %}
+        <!-- Emptied once the first live player counts arrive -->
+        <span id="sync" class="dash-sync"><i class="ph ph-arrows-clockwise ph-spin"></i></span>
+        {% end %}
       </div>
     </div>
-
   </div>
   <!-- Page Title Header Ends-->
   {% if data['first_log'] %}
@@ -44,104 +45,54 @@
     });
   </script>
   {% end %}
+  {% set host = data['hosts_data'] %}
   <div class="row">
-    <div class="col-md-12 grid-margin">
+    <div class="col-12 grid-margin">
       <div class="card">
-        <div class="card-body">
-          <div class="row">
-            <div class="col-xl-4 col-md-5">
-              <div class="d-flex">
-                <div class="wrapper">
-                  <h5 class="mb-1 font-weight-medium text-primary"> {{ translate('dashboard', 'host', data['lang']) }}
-                  </h5>
-                  <h3 class="mb-0 font-weight-semibold"> <i class="ph ph-chart-line"></i></h3>
-
-                </div>
-                <div class="wrapper my-auto ml-auto ml-lg-4">
-                  <p id="cpu_data" class="mb-0 text-success" data-toggle="tooltip" data-placement="top" data-html="true"
-                    title="{% raw translate('dashboard', 'cpuCores', data['lang']) %}: {{ data.get('hosts_data').get('cpu_cores') }} <br /> {% raw translate('dashboard', 'cpuCurFreq', data['lang']) %}: {{ data.get('hosts_data').get('cpu_cur_freq') }} <br /> {% raw translate('dashboard', 'cpuMaxFreq', data['lang']) %}: {{ data.get('hosts_data').get('cpu_max_freq') }}">
-                    {{ translate('dashboard', 'cpuUsage', data['lang']) }}: <span id="cpu_usage">{{
-                      data.get('hosts_data').get('cpu_usage') }}</span>
-                  </p>
-                  <p id="mem_usage" class="mb-0 text-danger" data-toggle="tooltip" data-placement="top"
-                    title="{{ translate('dashboard', 'memUsage', data['lang']) }}: {{ data.get('hosts_data').get('mem_usage') }} / {{ data.get('hosts_data').get('mem_total') }}">
-                    {{ translate('dashboard', 'memUsage', data['lang']) }}: <span id="mem_percent">{{
-                      data.get('hosts_data').get('mem_percent') }}%</span>
-                  </p>
-                </div>
+        <div class="card-body dash-overview">
+          <div class="dash-stat-grid">
+            <div class="dash-stat">
+              <div class="dash-stat-label"><i class="ph ph-hard-drives"></i>{{ translate('dashboard', 'servers', data['lang']) }}</div>
+              <div class="dash-stat-value" id="servers_total">{{ data['server_stats']['total'] }}</div>
+              <div class="dash-stat-sub">
+                <span class="dash-dot text-success"></span><span id="servers_online">{{ data['server_stats']['running'] }}</span> {{ translate('dashboard', 'online', data['lang']).lower() }}
+                <span class="dash-sep">·</span>
+                <span id="servers_offline">{{ data['server_stats']['stopped'] }}</span> {{ translate('dashboard', 'offline', data['lang']).lower() }}
               </div>
             </div>
-            <div class="col-xl-4 col-md-4 mt-md-0 mt-4">
-              <div class="d-flex">
-                <div class="wrapper">
-                  <h5 class="mb-1 font-weight-medium text-primary">{{ translate('dashboard', 'servers', data['lang']) }}
-                  </h5>
-                  <h3 class="mb-0 font-weight-semibold">{{ data['server_stats']['total'] }}</h3>
-
-                </div>
-                <div class="wrapper my-auto ml-auto ml-lg-4">
-                  <p class="mb-0 text-success">{{ data['server_stats']['running'] }} {{ translate('dashboard', 'online',
-                    data['lang']).lower() }}</p>
-                  <p class="mb-0 text-warning"> {{ data['server_stats']['stopped'] }} {{ translate('dashboard',
-                    'offline', data['lang']).lower() }}</p>
-                </div>
-              </div>
+            <div class="dash-stat">
+              <div class="dash-stat-label"><i class="ph ph-users"></i>{{ translate('dashboard', 'players', data['lang']) }}</div>
+              <div class="dash-stat-value" id="total_players">{{ data['num_players'] }}</div>
+              <div class="dash-stat-sub"><span id="max_players">0</span> {{ translate('dashboard', 'max', data['lang']).lower() }}</div>
             </div>
-            <div class="col-xl-4 col-md-3 mt-md-0 mt-4">
-              <div class="d-flex">
-                <div class="wrapper">
-                  <h5 class="mb-1 font-weight-medium text-primary">{{ translate('dashboard', 'players', data['lang']) }}
-                  </h5>
-                  <h3 class="mb-0 font-weight-semibold" id="total_players">{{ data['num_players'] }}</h3>
-                </div>
-                <div class="wrapper my-auto ml-auto ml-lg-4">
-                  <p class="mb-0 text-warning"><span id="max_players">0</span> {{ translate('dashboard', 'max',
-                    data['lang']) }}</p>
-                </div>
-              </div>
+            {% set cpu = host.get('cpu_usage') or 0 %}
+            <div id="cpu_data" class="dash-stat" data-toggle="tooltip" data-placement="top" data-html="true"
+              title="{% raw translate('dashboard', 'cpuCores', data['lang']) %}: {{ host.get('cpu_cores') }} <br /> {% raw translate('dashboard', 'cpuCurFreq', data['lang']) %}: {{ host.get('cpu_cur_freq') }} <br /> {% raw translate('dashboard', 'cpuMaxFreq', data['lang']) %}: {{ host.get('cpu_max_freq') }}">
+              <div class="dash-stat-label"><i class="ph ph-cpu"></i>{{ translate('dashboard', 'cpuUsage', data['lang']) }}</div>
+              <div class="dash-stat-value"><span id="cpu_usage">{{ '%.1f' % cpu }}</span>%</div>
+              <div class="dash-meter"><div id="cpu_bar" class="dash-meter-fill {{ 'bg-success' if cpu <= 70 else 'bg-warning' if cpu <= 90 else 'bg-danger' }}" style="width: {{ min(cpu, 100) }}%"></div></div>
+              <div class="dash-stat-sub">{{ translate('dashboard', 'host', data['lang']) }} · {{ host.get('cpu_cores') }} {{ translate('dashboard', 'cpuCores', data['lang']).lower() }}</div>
             </div>
-            {% if len(data['hosts_data']['disk_json']) > 0 %}
-            <div class="col-12 mt-4">
-              <div class="d-flex">
-                <div class="wrapper w-100">
-                  {% if len(data["monitored"]) > 0 %}
-                  <h5 class="mb-1 font-weight-medium text-primary">{{ translate('dashboard', 'storage',
-                    data['lang']) }}
-                  </h5>
-                  {% end %}
-                  <div id="storage_data">
-                    <div class="row">
-                      {% for item in data['hosts_data']['disk_json'] %}
-                      {% if item["mount"] in data["monitored"] %}
-                      <div id="{{item['device']}}" class="col-xl-3 col-lg-3 col-md-4 col-12">
-                        <h4 class="mb-0 w-100 font-weight-semibold d-inline-block text-truncate storage-heading"
-                          id="title_{{item['device']}}" data-toggle="tooltip" data-placement="bottom"
-                          title="{{item['mount']}}"><i class="ph-fill ph-hard-drive"></i>
-                          {{item["mount"]}}</h4>
-                        <div class="progress d-inline-block disk-usage">
-                          <div class="progress-bar
-                        {% if item['percent_used'] <= 58 %}
-                        bg-success
-                        {% elif item['percent_used'] <= 75 %}
-                        bg-warning
-                        {% else %}
-                        bg-danger
-                        {% end %}
-                        " role="progressbar" style="width: {{item['percent_used']}}%"
-                            aria-valuenow="{{item['percent_used']}}" aria-valuemin="0" aria-valuemax="100">
-                            {{item["used"]}} /
-                            {{item["total"]}}
-                          </div>
-                        </div>
-                      </div>
-                      {% end %}
-                      {% end %}
-                    </div>
-                  </div>
-                </div>
-              </div>
+            {% set mem = host.get('mem_percent') or 0 %}
+            <div id="mem_usage" class="dash-stat">
+              <div class="dash-stat-label"><i class="ph ph-memory"></i>{{ translate('dashboard', 'memUsage', data['lang']) }}</div>
+              <div class="dash-stat-value"><span id="mem_percent">{{ '%.1f' % mem }}%</span></div>
+              <div class="dash-meter"><div id="mem_bar" class="dash-meter-fill {{ 'bg-success' if mem <= 70 else 'bg-warning' if mem <= 90 else 'bg-danger' }}" style="width: {{ min(mem, 100) }}%"></div></div>
+              <div class="dash-stat-sub" id="mem_detail">{{ host.get('mem_usage') }} / {{ host.get('mem_total') }}</div>
             </div>
-            {% end %}
+            <!-- One tile per monitored disk; display: contents puts them in this grid -->
+            <div id="storage_data" class="dash-storage">
+              {% for item in host['disk_json'] %}
+              {% if item["mount"] in data["monitored"] %}
+              <div class="dash-stat">
+                <div class="dash-stat-label dash-disk-label storage-heading" data-toggle="tooltip" data-placement="bottom" title="{{ translate('dashboard', 'storage', data['lang']) }}: {{ item['mount'] }}"><i class="ph ph-hard-drive"></i><span>{{ item['mount'] }}</span></div>
+                <div class="dash-stat-value">{{ item['percent_used'] }}%</div>
+                <div class="dash-meter"><div class="dash-meter-fill {{ 'bg-success' if item['percent_used'] <= 75 else 'bg-warning' if item['percent_used'] <= 90 else 'bg-danger' }}" style="width: {{ item['percent_used'] }}%"></div></div>
+                <div class="dash-stat-sub">{{ item['used'] }} / {{ item['total'] }}</div>
+              </div>
+              {% end %}
+              {% end %}
+            </div>
           </div>
         </div>
       </div>
@@ -149,38 +100,34 @@
   </div>
 
   <div class="row">
-    <div class="col-md-12 col-lg-12 grid-margin stretch-card">
+    <div class="col-12 grid-margin stretch-card">
       <div class="card">
-        <div class="card-header header-sm d-flex justify-content-between align-items-center">
-          <h4 class="card-title"><i class="ph-fill ph-hard-drives"></i> &nbsp;{{ translate('dashboard', 'allServers',
-            data['lang']) }}</h4>
+        <div class="card-header dash-servers-head">
+          <h4 class="card-title"><i class="ph-fill ph-hard-drives"></i>{{ translate('dashboard', 'allServers', data['lang']) }}</h4>
           {% if len(data['servers']) > 0 %}
           {% if data['user_data']['hints'] %}
-          <span class="too_small" title="{{ translate('dashboard', 'cannotSeeOnMobile', data['lang']) }}" ,
-            data-content="{{ translate('dashboard', 'cannotSeeOnMobile2', data['lang']) }}" ,
-            data-placement="top"></span>
+          <span class="too_small" title="{{ translate('dashboard', 'cannotSeeOnMobile', data['lang']) }}"
+            data-content="{{ translate('dashboard', 'cannotSeeOnMobile2', data['lang']) }}" data-placement="top"></span>
           {% end %}
           {% end %}
-          <div class="d-flex align-items-center">
+          <div class="dash-tools" id="dash_tools">
             {% if data['superuser'] %}
-            <a id="stop_all_servers" class="nav-link text-danger" href="javascript:void(0)"
-                style="{% if data['server_stats']['running'] == 0 %}display:none{% end %}">
-                <i class="ph-fill ph-stop-circle"></i> &nbsp; {{ translate('dashboard', 'stopAllServers', data['lang']) }}</a>
+            <button type="button" id="stop_all_servers" class="btn btn-sm btn-outline-danger"
+              style="{% if data['server_stats']['running'] == 0 %}display:none{% end %}">
+              <i class="ph-fill ph-stop-circle"></i>{{ translate('dashboard', 'stopAllServers', data['lang']) }}</button>
             {% end %}
-            <a class="nav-link" href="/server/step1"><i class="ph-fill ph-plus-circle"></i> &nbsp; {{
-                translate('dashboard', 'newServer', data['lang']) }}</a>
+            <a class="btn btn-sm btn-primary" href="/server/step1"><i class="ph-bold ph-plus"></i>{{ translate('dashboard', 'newServer', data['lang']) }}</a>
           </div>
         </div>
-        <div class="card-body">
+        <div class="card-body dash-servers-body">
 
           {% if len(data['servers']) == 0 and len(data['failed_servers']) == 0 %}
-          <div class="text-align-center">
-            <h1>{{ translate('dashboard', 'welcome', data['lang']) }}</h1>
-            <br>
-            <h7>{{ translate('dashboard', 'no-servers', data['lang']) }} {{ translate('dashboard', 'newServer',
-              data['lang']) }}.</h7>
+          <div class="dash-empty">
+            <i class="ph ph-hard-drives"></i>
+            <h3>{{ translate('dashboard', 'welcome', data['lang']) }}</h3>
+            <p>{{ translate('dashboard', 'no-servers', data['lang']) }} {{ translate('dashboard', 'newServer', data['lang']) }}.</p>
+            <a class="btn btn-primary" href="/server/step1"><i class="ph-bold ph-plus"></i> {{ translate('dashboard', 'newServer', data['lang']) }}</a>
           </div>
-
           {% end %}
           {% if len(data['servers']) > 0 or len(data['failed_servers']) > 0 %}
           <!-- View for Large screen -->
@@ -193,9 +140,9 @@
                 {% end %}
               {% end %}
             </style>
-            <table id="servers_table" class="table table-hover">
+            <table id="servers_table" class="table table-hover dash-table">
               <thead>
-                <tr class="rounded" id="first" draggable="false">
+                <tr id="first" draggable="false">
                   <th class="col-server" draggable="false">{{ translate('dashboard', 'server', data['lang']) }}</th>
                   <th class="col-serverIcon" draggable="false">{{ translate('dashboard', 'serverIcon', data['lang']) }}</th>
                   <th class="col-actions" draggable="false">{{ translate('dashboard', 'actions', data['lang']) }}</th>
@@ -210,414 +157,159 @@
               </thead>
               <tbody>
                 {% for server in data['servers'] %}
-                <tr id="{{server['server_data']['server_id']}}" draggable="true">
+                {% set sid = server['server_data']['server_id'] %}
+                {% set stats = server['stats'] %}
+                <tr id="{{ sid }}" draggable="true">
                   <td class="col-server" draggable="false">
-                    <i class="ph-fill ph-hard-drives"></i>
-                    {% if server['alert'] %}
-                    <a class="server-alert" draggable="false"
-                      href="/panel/server_detail?id={{server['server_data']['server_id']}}">
-                      {{ server['server_data']['server_name'] }}&nbsp; <i class="ph-fill ph-warning"></i>
-                    </a>
-                    {% elif server['update'] %}
-                    <a draggable="false" href="/panel/server_detail?id={{server['server_data']['server_id']}}">
-                      {{ server['server_data']['server_name'] }}&nbsp;
-                    </a><a
-                      href="/panel/server_detail?id={{server['server_data']['server_id']}}&subpage=update_center"><i 
-                      class="ph ph-cloud-arrow-down"></i></a>
-                    {% else %} <a draggable="false"
-                      href="/panel/server_detail?id={{server['server_data']['server_id']}}">
-                      {{ server['server_data']['server_name'] }}
-                    </a>
-                    {% end %}
+                    <div class="dash-server">
+                      <i class="ph-bold ph-dots-six-vertical drag-handle"></i>
+                      <a class="dash-server-name {{ 'server-alert' if server['alert'] else '' }}" draggable="false" href="/panel/server_detail?id={{ sid }}">{{ server['server_data']['server_name'] }}</a>
+                      {% if server['alert'] %}<i class="ph-fill ph-warning server-alert"></i>{% end %}
+                      {% if server['update'] %}
+                      <a class="dash-server-update" href="/panel/server_detail?id={{ sid }}&subpage=update_center" title="{{ translate('serverUpdate', 'updateCtr', data['lang']) }}"><i class="ph-bold ph-cloud-arrow-down"></i></a>
+                      {% end %}
+                    </div>
                   </td>
-                  <td class="col-serverIcon" draggable="false" id="server_icon_{{server['server_data']['server_id']}}">
-                    {% if server['stats'].get('icon') and server['stats']['icon'] not in ('', 'False', 'None') %}
-                    <img src="data:image/png;base64,{{ server['stats']['icon'] }}" alt="Server Icon" style="width: 32px; height: 32px;" />
+                  <td class="col-serverIcon" draggable="false" id="server_icon_{{ sid }}">
+                    {% if stats.get('icon') and stats['icon'] not in ('', 'False', 'None') %}
+                    <img class="dash-server-icon" src="data:image/png;base64,{{ stats['icon'] }}" alt="Server Icon" />
                     {% else %}
-                    <img src="/static/assets/images/pack.png" alt="Server Icon" style="width: 32px; height: 32px;" />
+                    <img class="dash-server-icon" src="/static/assets/images/pack.png" alt="Server Icon" />
                     {% end %}
                   </td>
-                  <td draggable="false" id="controls{{server['server_data']['server_id']}}" class="col-actions actions_serverlist">
+                  <td draggable="false" id="controls{{ sid }}" class="col-actions actions_serverlist">
                     {% if server['user_command_permission'] %}
-                    {% if server['stats']['importing'] and server['stats']['running'] %}
-                    <!-- WHAT HAPPENED HERE -->
-                    <a data-id="{{server['server_data']['server_id']}}" class=""><i
-                        class="ph ph-spinner-gap ph-spin"></i>&nbsp;{{ translate('serverTerm', 'installing',
-                      data['lang']) }}</i></a>
-                    {% elif server['stats']['updating']%}
-                    <!-- WHAT HAPPENED HERE -->
-                    <a data-id="{{server['server_data']['server_id']}}" class=""><i
-                        class="ph ph-spinner-gap ph-spin"></i>&nbsp;{{ translate('serverTerm', 'updating',
-                      data['lang']) }}</i></a>
-                    {% elif server['stats']['waiting_start']%}
-                    <!-- WHAT HAPPENED HERE -->
-                    <a data-id="{{server['server_data']['server_id']}}" class="" title="{{
-                      translate('dashboard', 'delay-explained' , data['lang'])}}">{{ translate('dashboard', 'starting',
-                      data['lang']) }}</i></a>
-                    {% elif server['stats']['importing']%}
-                    <a data-id="{{server['server_data']['server_id']}}" class=""><i class="ph ph-spinner-gap ph-spin"></i>
-                      {{ translate('serverTerm', 'importing',
-                      data['lang']) }}</a>
-                    {% elif server['stats']['running'] %}
-                    <a data-id="{{server['server_data']['server_id']}}" class="stop_button" data-toggle="tooltip"
-                      title="{{ translate('dashboard', 'stop' , data['lang']) }}">
-                      <i class="ph-fill ph-stop"></i>
-                    </a> &nbsp;
-
-                    <a data-id="{{server['server_data']['server_id']}}" class="restart_button" data-toggle="tooltip"
-                      title="{{ translate('dashboard', 'restart' , data['lang']) }}">
-                      <i class="ph-fill ph-arrows-clockwise"></i>
-                    </a> &nbsp;
-
-                    <a data-id="{{server['server_data']['server_id']}}" class="kill_button" data-toggle="tooltip"
-                      title="{{ translate('dashboard', 'kill' , data['lang']) }}">
-                      <i class="ph-fill ph-skull"></i>
-                    </a> &nbsp;
-                    {% else %}
-                    <a data-id="{{server['server_data']['server_id']}}" class="play_button" data-toggle="tooltip"
-                      title="{{ translate('dashboard', 'start' , data['lang']) }}">
-                      <i class="ph-fill ph-play"></i>
-                    </a> &nbsp;
-                    <a data-id="{{server['server_data']['server_id']}}" class="clone_button" data-toggle="tooltip"
-                      title="{{ translate('dashboard', 'clone' , data['lang']) }}">
-                      <i class="ph-fill ph-copy-simple"></i>
-                    </a> &nbsp;
-                    <a data-id="{{server['server_data']['server_id']}}" class="kill_button" data-toggle="tooltip"
-                      title="{{ translate('dashboard', 'kill' , data['lang']) }}">
-                      <i class="ph-fill ph-skull"></i>
-                    </a> &nbsp;
-                    {% end %}
+                    {% include "parts/dashboard_actions.html" %}
                     {% end %}
                   </td>
-                  <td class="col-cpuUsage" draggable="false" id="server_cpu_{{server['server_data']['server_id']}}">
-                    <div class="progress mb-1" data-toggle="tooltip" data-placement="top"
-                      title="{{server['stats']['cpu']}}">
-                      <div class="progress-bar
-                      {% if server['stats']['cpu'] <= 33 %}
-                      bg-success
-                      {% elif server['stats']['cpu'] <= 66 %}
-                      bg-warning
-                      {% else %}
-                      bg-danger
-                      {% end %}
-                      " role="progressbar" style="width: {{server['stats']['cpu']}}%"
-                        aria-valuenow="{{server['stats']['cpu']}}" aria-valuemin="0" aria-valuemax="100"></div>
+                  <td class="col-cpuUsage" draggable="false" id="server_cpu_{{ sid }}">
+                    <div class="dash-usage">
+                      <div class="dash-meter"><div class="dash-meter-fill {{ 'bg-success' if stats['cpu'] <= 33 else 'bg-warning' if stats['cpu'] <= 66 else 'bg-danger' }}" style="width: {{ min(stats['cpu'], 100) }}%"></div></div>
+                      <span>{{ '%.1f' % stats['cpu'] }}%</span>
                     </div>
-                    {{server['stats']['cpu']}}%
                   </td>
-                  <td class="col-memUsage" draggable="false" id="server_mem_{{server['server_data']['server_id']}}">
-                    <div class="progress mb-1" data-toggle="tooltip" data-placement="top"
-                      title="{{server['stats']['mem']}}">
-                      <div class="progress-bar
-                      {% if server['stats']['mem_percent'] <= 33 %}
-                      bg-success
-                      {% elif server['stats']['mem_percent'] <= 66 %}
-                      bg-warning
-                      {% else %}
-                      bg-danger
-                      {% end %}
-                      " role="progressbar" style="width: {{server['stats']['mem_percent']}}%"
-                        aria-valuenow="{{server['stats']['mem_percent']}}" aria-valuemin="0" aria-valuemax="100"></div>
+                  <td class="col-memUsage" draggable="false" id="server_mem_{{ sid }}">
+                    <div class="dash-usage">
+                      <div class="dash-meter"><div class="dash-meter-fill {{ 'bg-success' if stats['mem_percent'] <= 33 else 'bg-warning' if stats['mem_percent'] <= 66 else 'bg-danger' }}" style="width: {{ min(stats['mem_percent'], 100) }}%"></div></div>
+                      <span>{{ '%.1f' % stats['mem_percent'] }}%<span class="dash-muted"> · {{ stats['mem'] or '0 MB' }}</span></span>
                     </div>
-                    {{server['stats']['mem_percent']}}% -
-
-                    {% if server['stats']['mem'] == 0 %}
-                    0 MB
-                    {% else %}
-                    {{server['stats']['mem']}}
-                    {% end %}
                   </td>
-                  <td class="col-size" draggable="false" id="server_world_{{server['server_data']['server_id']}}">
-                    {{ server['stats']['world_size'] }}
-                  </td>
+                  <td class="col-size" draggable="false" id="server_world_{{ sid }}">{{ stats['world_size'] }}</td>
                   <td class="col-players" draggable="false">
-                    <span id="server_desc_{{server['server_data']['server_id']}}">
-                      {% if server['stats']['int_ping_results'] %}
-                      {{ server['stats']['online'] }} / {{ server['stats']['max'] }} {{ translate('dashboard', 'max',
-                      data['lang']) }}
-                      {% end %}
-                    </span>
-                    <span class="server-player-totals" id="server_players_{{server['server_data']['server_id']}}"
-                      data-serverId="{{server['server_data']['server_id']}}"
-                      data-players="{{ server['stats']['online']}}" data-max="{{ server['stats']['max'] }}"
-                      data-count="{{server['server_data']['count_players']}}"></span>
+                    <span id="server_desc_{{ sid }}">{% if stats['int_ping_results'] %}{{ stats['online'] }} / {{ stats['max'] }}{% end %}</span>
+                    <span class="server-player-totals" id="server_players_{{ sid }}" data-serverId="{{ sid }}"
+                      data-players="{{ stats['online'] }}" data-max="{{ stats['max'] }}"
+                      data-count="{{ server['server_data']['count_players'] }}"></span>
                   </td>
-                  <td class="col-port" draggable="false" id="server_port_{{server['server_data']['server_id']}}">
-                    {{ server['stats'].get('game_port', server['stats']['server_port']) }}
-                  </td>
-                  <td class="col-version" draggable="false" id="server_version_{{server['server_data']['server_id']}}">
-                    {{ server['stats']['version'] }}
-                  </td>
+                  <td class="col-port" draggable="false" id="server_port_{{ sid }}">{{ stats.get('game_port', stats['server_port']) }}</td>
+                  <td class="col-version" draggable="false" id="server_version_{{ sid }}">{{ stats['version'] if stats['version'] and stats['version'] != 'False' else '—' }}</td>
                   <td class="col-status" draggable="false">
-                    <div id="server_running_status_{{server['server_data']['server_id']}}">
-                      {% if server['stats']['running'] %}
-                      <span class="text-success"><i class="ph ph-cell-signal-full"></i> {{ translate('dashboard', 'online',
-                        data['lang']) }}</span>
-                      {% elif server['stats']['crashed'] %}
-                      <span class="text-danger"><i class="ph-fill ph-warning"></i> {{ translate('dashboard',
-                        'crashed',
-                        data['lang']) }}</span>
-                      {% else %}
-                      <span class="text-warning"><i class="ph ph-cell-signal-slash"></i> {{ translate('dashboard', 'offline',
-                        data['lang']) }}</span>
-                      {% end %}
+                    <span id="server_running_status_{{ sid }}" class="dash-status" data-running="{{ 'true' if stats['running'] else 'false' }}">{% include "parts/dashboard_status.html" %}</span>
                   </td>
                 </tr>
                 {% end %}
+                {% for server in data['failed_servers'] %}
+                <tr id="{{ server['server_id'] }}" draggable="false">
+                  <td class="col-server">
+                    <div class="dash-server">
+                      <i class="ph-bold ph-dots-six-vertical drag-handle invisible"></i>
+                      <a class="dash-server-name text-warning" href="/panel/server_detail?id={{ server['server_id'] }}&subpage=config">{{ server['server_name'] }}</a>
+                    </div>
+                  </td>
+                  <td class="col-serverIcon"></td>
+                  <td class="col-actions"></td>
+                  <td class="col-cpuUsage"></td>
+                  <td class="col-memUsage"></td>
+                  <td class="col-size"></td>
+                  <td class="col-players"></td>
+                  <td class="col-port"></td>
+                  <td class="col-version"></td>
+                  <td class="col-status"><span class="server-state server-state-sm state-crashed"><i class="ph-bold ph-cloud-slash"></i>Unloaded</span></td>
+                </tr>
+                {% end %}
+              </tbody>
+            </table>
           </div>
-          {% for server in data['failed_servers'] %}
-          <tr id="{{server['server_id']}}" draggable="false">
-            <td class="col-server text-warning"><i class="ph-fill ph-hard-drives"></i>&nbsp;<a class="text-warning"
-                href="/panel/server_detail?id={{server['server_id']}}&subpage=config">{{server['server_name']}}</a>
-            </td>
-            <td class="col-serverIcon"></td>
-            <td class="col-actions"></td>
-            <td class="col-cpuUsage"></td>
-            <td class="col-memUsage"></td>
-            <td class="col-size"></td>
-            <td class="col-players"></td>
-            <td class="col-port"></td>
-            <td class="col-version"></td>
-            <td class="col-status"><i class="ph-fill ph-cloud"></i>&nbsp;Unloaded</td>
-          </tr>
-          {% end %}
-          </tbody>
-          </table>
-        </div>
-        {% end %}
-        {% if len(data['servers']) > 0 %}
-        <!-- View for Small screen -->
-        <div class="d-sm-none d-block">
-          <div class="accordion" id="accordionServers">
+
+          <!-- View for Small screen -->
+          <div class="d-sm-none dash-cards" id="accordionServers">
             {% for server in data['servers'] %}
-            <div class="card">
-              <div class="card-header" id="heading-{{server['server_data']['server_id']}}">
-                <h2 class="mb-0 container overflow-hidden">
-                  <div class="row">
-                    <div class="col-10 col-lg-3 mx-0 px-0">
-                      {% if server['alert'] %}
-                      <a class="btn btn-link d-flex justify-content-start server-alert" type="button"
-                        href="/panel/server_detail?id={{server['server_data']['server_id']}}">
-                        <i class="ph-fill ph-hard-drives"></i> {{ server['server_data']['server_name'] }}&nbsp; <i
-                          class="ph-fill ph-warning"></i>
-                      </a>
-                      {% elif server['update'] %}
-                      <a style="font-size: 16px;" draggable="false"
-                        href="/panel/server_detail?id={{server['server_data']['server_id']}}">
-                        {{ server['server_data']['server_name'] }}&nbsp;<i
-                          class="ph-bold ph-cloud-arrow-down text-warning"></i>
-                      </a>
-                      {% else %}
-                      <a class="btn btn-link d-flex justify-content-start" type="button"
-                        href="/panel/server_detail?id={{server['server_data']['server_id']}}">
-                        <i class="ph-fill ph-hard-drives"></i> {{ server['server_data']['server_name'] }}
-                      </a>
-                      {% end %}
-                    </div>
-                    <div class="col-2 col-lg-3 mx-0 px-0">
-                      <a class="btn btn-link d-flex justify-content-center" type="button" data-toggle="collapse"
-                        data-target="#collapse-{{server['server_data']['server_id']}}" aria-expanded="false"
-                        aria-controls="collapse-{{server['server_data']['server_id']}}">
-                        <i class="ph-fill ph-chart-bar-horizontal"></i>
-                      </a>
-                    </div>
-                    <div class="col-4 col-lg-3 mx-0 px-0">
-                      <a id="m_server_running_status_{{server['server_data']['server_id']}}"
-                        class="btn btn-link d-flex justify-content-start" type="button">
-                        {% if server['stats']['running'] %}
-                        <span class="text-success"><i class="ph ph-cell-signal-full"></i> {{ translate('dashboard', 'online',
-                          data['lang']) }}</span>
-                        {% elif server['stats']['crashed'] %}
-                        <span class="text-danger"><i class="ph-fill ph-warning"></i> {{
-                          translate('dashboard',
-                          'crashed',
-                          data['lang']) }}</span>
-                        {% else %}
-                        <span class="text-warning"><i class="ph ph-cell-signal-slash"></i> {{ translate('dashboard', 'offline',
-                          data['lang']) }}</span>
-                        {% end %}
-                      </a>
-                    </div>
-                    <div class="col-8 col-lg-3 mx-0 px-0">
-                      <div id="m_controls{{server['server_data']['server_id']}}" class="container overflow-hidden">
-                        {% if server['user_command_permission'] %}
-                        {% if server['stats']['running'] %}
-                        <div class="row">
-                          <div class="col-4 px-0">
-                            <a data-id="{{server['server_data']['server_id']}}"
-                              class="btn btn-link stop_button actions_serveritem" data-toggle="tooltip"
-                              title="{{ translate('dashboard', 'stop' , data['lang']) }}">
-                              <i class="ph-fill ph-stop"></i>
-                            </a>
-                          </div>
-                          <div class="col-4 px-0">
-                            <a data-id="{{server['server_data']['server_id']}}"
-                              class="btn btn-link restart_button actions_serveritem" data-toggle="tooltip"
-                              title="{{ translate('dashboard', 'restart' , data['lang']) }}">
-                              <i class="ph-fill ph-arrows-clockwise"></i>
-                            </a>
-                          </div>
-                          <div class="col-4 px-0">
-                            <a data-id="{{server['server_data']['server_id']}}"
-                              class="btn btn-link kill_button actions_serveritem" data-toggle="tooltip"
-                              title="{{ translate('dashboard', 'kill' , data['lang']) }}">
-                              <i class="ph-fill ph-skull"></i>
-                            </a>
-                          </div>
-                        </div>
-                        {% elif server['stats']['updating']%}
-                        <!-- WHAT HAPPENED HERE -->
-                        <div class="row">
-                          <div class="col-12 px-0">
-                            <a data-id="{{server['server_data']['server_id']}}" class="btn btn-link">{{
-                              translate('serverTerm', 'updating',
-                              data['lang']) }}</i></a>
-                          </div>
-                        </div>
-                        {% elif server['stats']['waiting_start']%}
-                        <!-- WHAT HAPPENED HERE -->
-                        <div class="row">
-                          <div class="col-12 px-0">
-                            <a data-id="{{server['server_data']['server_id']}}" class="btn btn-link" title="{{
-              translate('dashboard', 'delay-explained' , data['lang'])}}">{{ translate('dashboard', 'starting',
-                              data['lang']) }}</i></a>
-                          </div>
-                        </div>
-                        {% elif server['stats']['importing']%}
-                        <div class="row">
-                          <div class="col-12 px-0">
-                            <a data-id="{{server['server_data']['server_id']}}" class="btn btn-link"><i
-                                class="ph ph-spinner-gap ph-spin"></i>
-                              {{ translate('serverTerm', 'importing', data['lang']) }}</a>
-                          </div>
-                        </div>
-                        {% else %}
-                        <div class="row">
-                          <div class="col-4 px-0">
-                            <a data-id="{{server['server_data']['server_id']}}"
-                              class="btn play_button actions_serveritem" data-toggle="tooltip"
-                              title="{{ translate('dashboard', 'start' , data['lang']) }}">
-                              <i class="ph-fill ph-play"></i>
-                            </a>
-                          </div>
-                          <div class="col-4 px-0">
-                            <a data-id="{{server['server_data']['server_id']}}"
-                              class="btn clone_button actions_serveritem" data-toggle="tooltip"
-                              title="{{ translate('dashboard', 'clone' , data['lang']) }}">
-                              <i class="ph-fill ph-copy-simple"></i>
-                            </a>
-                          </div>
-                          <div class="col-4 px-0">
-                            <a data-id="{{server['server_data']['server_id']}}"
-                              class="btn kill_button actions_serveritem" data-toggle="tooltip"
-                              title="{{ translate('dashboard', 'kill' , data['lang']) }}">
-                              <i class="ph-fill ph-skull"></i></a>
-                          </div>
-                        </div>
-                        {% end %}
-                        {% end %}
-                      </div>
-                    </div>
-                  </div>
-                </h2>
+            {% set sid = server['server_data']['server_id'] %}
+            {% set stats = server['stats'] %}
+            <div class="dash-card">
+              <div class="dash-card-top">
+                <a class="dash-server-name {{ 'server-alert' if server['alert'] else '' }}" href="/panel/server_detail?id={{ sid }}">{{ server['server_data']['server_name'] }}</a>
+                {% if server['alert'] %}<i class="ph-fill ph-warning server-alert"></i>{% end %}
+                {% if server['update'] %}
+                <a class="dash-server-update" href="/panel/server_detail?id={{ sid }}&subpage=update_center" title="{{ translate('serverUpdate', 'updateCtr', data['lang']) }}"><i class="ph-bold ph-cloud-arrow-down"></i></a>
+                {% end %}
+                <span id="m_server_running_status_{{ sid }}" class="dash-status">{% include "parts/dashboard_status.html" %}</span>
               </div>
-
-              <div id="collapse-{{server['server_data']['server_id']}}" class="collapse"
-                aria-labelledby="heading-{{server['server_data']['server_id']}}" data-parent="#accordionServers">
-                <div class="card-body">
-                  <div class="row">
-                    <div class="col-6">
-                      <h6>{{ translate('dashboard', 'cpuUsage', data['lang']) }}</h6>
-                      <div id="m_server_cpu_{{server['server_data']['server_id']}}">
-                        <div class="progress mb-1" data-toggle="tooltip" data-placement="top"
-                          title="{{server['stats']['cpu']}}">
-                          <div class="progress-bar
-                    {% if server['stats']['cpu'] <= 33 %}
-                    bg-success
-                    {% elif server['stats']['cpu'] <= 66 %}
-                    bg-warning
-                    {% else %}
-                    bg-danger
-                    {% end %}
-                    " role="progressbar" style="width: {{server['stats']['cpu']}}%"
-                            aria-valuenow="{{server['stats']['cpu']}}" aria-valuemin="0" aria-valuemax="100"></div>
-                        </div>
-                        {{server['stats']['cpu']}}%
-                      </div>
-                    </div>
-                    <div class="col-6">
-                      <h6>{{ translate('dashboard', 'memUsage', data['lang']) }}</h6>
-                      <div draggable="false" id="m_server_mem_{{server['server_data']['server_id']}}">
-                        <div class="progress mb-1" data-toggle="tooltip" data-placement="top"
-                          title="{{server['stats']['mem']}}">
-                          <div class="progress-bar
-                    {% if server['stats']['mem_percent'] <= 33 %}
-                    bg-success
-                    {% elif server['stats']['mem_percent'] <= 66 %}
-                    bg-warning
-                    {% else %}
-                    bg-danger
-                    {% end %}
-                    " role="progressbar" style="width: {{server['stats']['mem_percent']}}%"
-                            aria-valuenow="{{server['stats']['mem_percent']}}" aria-valuemin="0" aria-valuemax="100">
-                          </div>
-                        </div>
-                        {{server['stats']['mem_percent']}}% -
-
-                        {% if server['stats']['mem'] == 0 %}
-                        0 MB
-                        {% else %}
-                        {{server['stats']['mem']}}
-                        {% end %}
-                      </div>
-                    </div>
-                  </div>
-                  <br />
-                  <div class="row">
-                    <div class="col-6">
-                      <h6>{{ translate('dashboard', 'size', data['lang']) }}</h6>
-                      <div draggable="false" id="m_server_world_{{server['server_data']['server_id']}}">
-                        {{ server['stats']['world_size'] }}
-                      </div>
-                    </div>
-                    <div class="col-6">
-                      <h6>{{ translate('dashboard', 'players', data['lang']) }}</h6>
-                      <div draggable="false" id="m_server_desc_{{server['server_data']['server_id']}}">
-                        {% if server['stats']['int_ping_results'] %}
-                        {{ server['stats']['online'] }} / {{ server['stats']['max'] }} {{ translate('dashboard', 'max',
-                        data['lang']) }}
-                        {% end %}
-                      </div>
-                    </div>
-                  </div>
-                  <br />
-                  <div class="row">
-                    <div class="col-6">
-                      <h6>{{ translate('dashboard', 'port', data['lang']) }}</h6>
-                      <div draggable="false" id="m_server_port_{{server['server_data']['server_id']}}">
-                        {{ server['stats'].get('game_port', server['stats']['server_port']) }}
-                      </div>
-                    </div>
-                    <div class="col-6">
-                      <h6>{{ translate('dashboard', 'version', data['lang']) }}</h6>
-                      <div draggable="false" id="m_server_version_{{server['server_data']['server_id']}}">
-                        {{ server['stats']['version'] }}
-                      </div>
-                    </div>
-                  </div>
+              <div class="dash-card-bottom">
+                <div id="m_controls{{ sid }}" class="actions_serverlist">
+                  {% if server['user_command_permission'] %}
+                  {% include "parts/dashboard_actions.html" %}
+                  {% end %}
                 </div>
+                <button type="button" class="dash-btn dash-expand collapsed" data-toggle="collapse" data-target="#collapse-{{ sid }}"
+                  aria-expanded="false" aria-controls="collapse-{{ sid }}" title="{{ translate('dashboard', 'status', data['lang']) }}">
+                  <i class="ph-bold ph-caret-down"></i>
+                </button>
+              </div>
+              <div id="collapse-{{ sid }}" class="collapse" data-parent="#accordionServers">
+                <dl class="dash-card-details">
+                  <div>
+                    <dt>{{ translate('dashboard', 'cpuUsage', data['lang']) }}</dt>
+                    <dd id="m_server_cpu_{{ sid }}">
+                      <div class="dash-usage">
+                        <div class="dash-meter"><div class="dash-meter-fill {{ 'bg-success' if stats['cpu'] <= 33 else 'bg-warning' if stats['cpu'] <= 66 else 'bg-danger' }}" style="width: {{ min(stats['cpu'], 100) }}%"></div></div>
+                        <span>{{ '%.1f' % stats['cpu'] }}%</span>
+                      </div>
+                    </dd>
+                  </div>
+                  <div>
+                    <dt>{{ translate('dashboard', 'memUsage', data['lang']) }}</dt>
+                    <dd id="m_server_mem_{{ sid }}">
+                      <div class="dash-usage">
+                        <div class="dash-meter"><div class="dash-meter-fill {{ 'bg-success' if stats['mem_percent'] <= 33 else 'bg-warning' if stats['mem_percent'] <= 66 else 'bg-danger' }}" style="width: {{ min(stats['mem_percent'], 100) }}%"></div></div>
+                        <span>{{ '%.1f' % stats['mem_percent'] }}%<span class="dash-muted"> · {{ stats['mem'] or '0 MB' }}</span></span>
+                      </div>
+                    </dd>
+                  </div>
+                  <div>
+                    <dt>{{ translate('dashboard', 'size', data['lang']) }}</dt>
+                    <dd id="m_server_world_{{ sid }}">{{ stats['world_size'] }}</dd>
+                  </div>
+                  <div>
+                    <dt>{{ translate('dashboard', 'players', data['lang']) }}</dt>
+                    <dd id="m_server_desc_{{ sid }}">{% if stats['int_ping_results'] %}{{ stats['online'] }} / {{ stats['max'] }}{% end %}</dd>
+                  </div>
+                  <div>
+                    <dt>{{ translate('dashboard', 'port', data['lang']) }}</dt>
+                    <dd id="m_server_port_{{ sid }}">{{ stats.get('game_port', stats['server_port']) }}</dd>
+                  </div>
+                  <div>
+                    <dt>{{ translate('dashboard', 'version', data['lang']) }}</dt>
+                    <dd id="m_server_version_{{ sid }}">{{ stats['version'] if stats['version'] and stats['version'] != 'False' else '—' }}</dd>
+                  </div>
+                </dl>
+              </div>
+            </div>
+            {% end %}
+            {% for server in data['failed_servers'] %}
+            <div class="dash-card">
+              <div class="dash-card-top">
+                <a class="dash-server-name text-warning" href="/panel/server_detail?id={{ server['server_id'] }}&subpage=config">{{ server['server_name'] }}</a>
+                <span class="dash-status"><span class="server-state server-state-sm state-crashed"><i class="ph-bold ph-cloud-slash"></i>Unloaded</span></span>
               </div>
             </div>
             {% end %}
           </div>
+          {% end %}
         </div>
-        {% end %}
       </div>
     </div>
   </div>
-</div>
-
-
 </div>
 <!-- content-wrapper ends -->
 <div id="mobile"></div>
@@ -771,87 +463,67 @@
     if (sync) sync.innerHTML = '';
   }
 
+  // Bar colour: green, then yellow from `warn`, red from `danger` (percent)
+  function usageLevel(percent, warn, danger) {
+    if (percent > danger) return 'bg-danger';
+    if (percent > warn) return 'bg-warning';
+    return 'bg-success';
+  }
+
+  function meterHtml(percent, warn, danger) {
+    const width = Math.max(0, Math.min(Number(percent) || 0, 100));
+    return `<div class="dash-meter"><div class="dash-meter-fill ${usageLevel(width, warn, danger)}" style="width: ${width}%"></div></div>`;
+  }
+
+  // Same markup as the CPU and memory cells in the template
+  function usageHtml(percent, detail) {
+    const extra = detail ? `<span class="dash-muted"> · ${escapeHtml(detail)}</span>` : '';
+    const value = Number(percent) || 0;
+    return `<div class="dash-usage">${meterHtml(value, 33, 66)}<span>${value.toFixed(1)}%${extra}</span></div>`;
+  }
+
+  // Same markup as parts/dashboard_status.html
+  function statusHtml(server) {
+    if (server.crashed) {
+      return `<span class="server-state server-state-sm state-crashed"><i class="ph-fill ph-warning"></i>{{ translate('dashboard', 'crashed', data['lang']) }}</span>`;
+    }
+    if (server.running) {
+      return `<span class="server-state server-state-sm state-online"><span class="state-dot"></span>{{ translate('dashboard', 'online', data['lang']) }}</span>`;
+    }
+    return `<span class="server-state server-state-sm state-offline"><span class="state-dot"></span>{{ translate('dashboard', 'offline', data['lang']) }}</span>`;
+  }
+
+  // Online and offline counts in the Servers tile, and the Stop All button
+  function update_server_counts() {
+    const states = document.querySelectorAll('#servers_table .dash-status[data-running]');
+    let running = 0;
+    states.forEach(function (el) { if (el.getAttribute('data-running') === 'true') running++; });
+    $('#servers_online').text(running);
+    $('#servers_offline').text(Math.max(0, (parseInt($('#servers_total').text(), 10) || 0) - running));
+    $('#stop_all_servers').toggle(running > 0);
+  }
+
+  function setHtml(ids, html) {
+    for (const id of ids) {
+      const el = document.getElementById(id);
+      if (el) el.innerHTML = html;
+    }
+  }
+
   function update_one_server_status(server) {
-    /* Mobile view update */
-    server_cpu = document.getElementById('server_cpu_' + server.id);
-    server_mem = document.getElementById('server_mem_' + server.id);
-    server_world = document.getElementById('server_world_' + server.id);
-    server_port = document.getElementById('server_port_' + server.id);
-    server_icon = document.getElementById('server_icon_' + server.id);
-    server_version = document.getElementById('server_version_' + server.id);
-    server_desc = document.getElementById('server_desc_' + server.id);
-    server_online_status = document.getElementById('server_running_status_' + server.id);
-    server_players = document.getElementById('server_players_' + server.id);
-    total_players = document.getElementById('total_players');
+    const id = server.id;
+    const mem = server.mem && server.mem !== 0 ? String(server.mem) : '0 MB';
+    setHtml(['server_cpu_' + id, 'm_server_cpu_' + id], usageHtml(server.cpu));
+    setHtml(['server_mem_' + id, 'm_server_mem_' + id], usageHtml(server.mem_percent, mem));
+    setHtml(['server_world_' + id, 'm_server_world_' + id], escapeHtml(String(server.world_size ?? '')));
+    setHtml(['server_port_' + id, 'm_server_port_' + id], escapeHtml(String(server.game_port || server.server_port || '')));
+    const version = server.version && String(server.version) !== 'False' ? String(server.version) : '—';
+    setHtml(['server_version_' + id, 'm_server_version_' + id], escapeHtml(version));
 
-    /* Mobile view update */
-    m_server_cpu = document.getElementById('m_server_cpu_' + server.id);
-    m_server_mem = document.getElementById('m_server_mem_' + server.id);
-    m_server_world = document.getElementById('m_server_world_' + server.id);
-    m_server_port = document.getElementById('m_server_port_' + server.id);
-    m_server_version = document.getElementById('m_server_version_' + server.id);
-    m_server_desc = document.getElementById('m_server_desc_' + server.id);
-    m_server_online_status = document.getElementById('m_server_running_status_' + server.id);
-
-    console.log("Received Data : " + server.id + ": " + server);
-    /* TODO Update each element */
-
-    /* Update CPU */
-    cpu_status = "bg-danger";
-    if (server.cpu <= 33) {
-      cpu_status = "bg-success";
-    } else if (server.cpu > 33 && server.cpu <= 66) {
-      cpu_status = "bg-warning";
-    }
-
-    server_cpu.innerHTML = `<div class="progress mb-1" data-toggle="tooltip" data-placement="top" title="` + server.cpu + `"><div class="progress-bar ` + cpu_status + `" role="progressbar" style="width: ` + server.cpu + `%" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100"></div></div>` + server.cpu + `%`;
-    m_server_cpu.innerHTML = `<div class="progress mb-1" data-toggle="tooltip" data-placement="top" title="` + server.cpu + `"><div class="progress-bar ` + cpu_status + `" role="progressbar" style="width: ` + server.cpu + `%" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100"></div></div>` + server.cpu + `%`;
-
-
-    /* Update Memory */
-    mem_status = "bg-danger";
-    total_mem = "0 MB";
-
-    if (server.mem_percent <= 33) {
-      mem_status = "bg-success";
-    } else if (server.mem_percent > 33 && server.mem_percent <= 66) {
-      mem_status = "bg-warning";
-    }
-
-    if (server.mem !== 0) {
-      total_mem = server.mem;
-    }
-
-    server_mem.innerHTML = `<div class="progress mb-1" data-toggle="tooltip" data-placement="top" title="` + total_mem + `"><div class="progress-bar ` + mem_status + `" role="progressbar" style="width: ` + server.mem_percent + `%" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100"></div></div>` + server.mem_percent + `% - ` + total_mem;
-    m_server_mem.innerHTML = `<div class="progress mb-1" data-toggle="tooltip" data-placement="top" title="` + total_mem + `"><div class="progress-bar ` + mem_status + `" role="progressbar" style="width: ` + server.mem_percent + `%" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100"></div></div>` + server.mem_percent + `% - ` + total_mem;
-
-    /* Update World Infos */
-    server_world.innerHTML = server.world_size
-    m_server_world.innerHTML = server.world_size
-
-    /* Update Port */
-    if (server_port) {
-      server_port.innerHTML = server.game_port || server.server_port;
-    }
-    if (m_server_port) {
-      m_server_port.innerHTML = server.game_port || server.server_port;
-    }
-
-    /* Update Version */
-    if (server_version) {
-      server_version.innerHTML = server.version;
-    }
-    if (m_server_version) {
-      m_server_version.innerHTML = server.version;
-    }
-
-    /* Update Players */
+    /* Players */
     const pinged = server.int_ping_results === true || server.int_ping_results === 'True';
-    const server_infos = pinged
-      ? server.online + " / " + server.max + " {{ translate('dashboard', 'max', data['lang']) }}"
-      : "";
-    if (server_desc) server_desc.innerHTML = server_infos;
-    if (m_server_desc) m_server_desc.innerHTML = server_infos;
+    setHtml(['server_desc_' + id, 'm_server_desc_' + id], pinged ? escapeHtml(server.online + ' / ' + server.max) : '');
+    const server_players = document.getElementById('server_players_' + id);
     if (server_players) {
       server_players.setAttribute('data-players', pinged ? server.online : 0);
       server_players.setAttribute('data-max', pinged ? server.max : 0);
@@ -859,27 +531,24 @@
     }
     update_player_totals();
 
-    /* Update Icon */
+    /* Icon */
+    const server_icon = document.getElementById('server_icon_' + id);
     if (server_icon) {
-      if (server.icon && server.icon !== 'False' && server.icon !== 'None') {
-        server_icon.innerHTML = '<img src="data:image/png;base64,' + server.icon + '" alt="Server Icon" style="width: 32px; height: 32px;" />';
-      } else {
-        server_icon.innerHTML = '<img src="/static/assets/images/pack.png" alt="Server Icon" style="width: 32px; height: 32px;" />';
-      }
+      const src = server.icon && server.icon !== 'False' && server.icon !== 'None'
+        ? 'data:image/png;base64,' + server.icon
+        : '/static/assets/images/pack.png';
+      const img = document.createElement('img');
+      img.className = 'dash-server-icon';
+      img.alt = 'Server Icon';
+      img.src = src;
+      server_icon.replaceChildren(img);
     }
 
-    /* Update Online Status */
-    let online_status = `<span class="text-warning"><i class="ph ph-cell-signal-slash"></i> {{ translate('dashboard', 'offline', data['lang'])}}</span>`;
-
-    if (server.running) {
-      online_status = `<span class="text-success"><i class="ph ph-cell-signal-full"></i> {{ translate('dashboard', 'online', data['lang'])}}</span>`;
-    }
-
-    if (server.crashed) {
-      online_status = `<span class="text-danger"><i class="ph-fill ph-warning"></i> {{ translate('dashboard', 'crashed', data['lang'])}}</span>`
-    }
-
-    server_online_status.innerHTML = online_status;
+    /* Online status */
+    setHtml(['server_running_status_' + id, 'm_server_running_status_' + id], statusHtml(server));
+    const status = document.getElementById('server_running_status_' + id);
+    if (status) status.setAttribute('data-running', server.running ? 'true' : 'false');
+    update_server_counts();
   }
 
   function update_servers_status(data) {
@@ -954,41 +623,32 @@
       });
     });
     if (webSocket) {
-      cpu_data = document.getElementById('cpu_data');
-      cpu_usage = document.getElementById('cpu_usage');
-      mem_usage = document.getElementById('mem_usage');
-      mem_percent = document.getElementById('mem_percent');
-
+      const cpu_data = document.getElementById('cpu_data');
+      const storageLabel = "{{ translate('dashboard', 'storage', data['lang']) }}";
 
       webSocket.on('update_host_stats', function (hostStats) {
-        let cpuDataTitle = `{% raw translate('dashboard', 'cpuCores', data['lang']) %}: ${hostStats.cpu_cores} <br /> {% raw translate("dashboard", "cpuCurFreq", data['lang']) %}: ${hostStats.cpu_cur_freq} <br /> {% raw translate("dashboard", "cpuMaxFreq", data['lang']) %}: ${hostStats.cpu_max_freq}`;
+        const cpuDataTitle = `{% raw translate('dashboard', 'cpuCores', data['lang']) %}: ${escapeHtml(String(hostStats.cpu_cores))} <br /> {% raw translate("dashboard", "cpuCurFreq", data['lang']) %}: ${escapeHtml(String(hostStats.cpu_cur_freq))} <br /> {% raw translate("dashboard", "cpuMaxFreq", data['lang']) %}: ${escapeHtml(String(hostStats.cpu_max_freq))}`;
         cpu_data.setAttribute('data-original-title', cpuDataTitle);
-        cpu_usage.textContent = hostStats.cpu_usage;
-        mem_usage.setAttribute('data-original-title', `{% raw translate("dashboard", "memUsage", data['lang']) %}: ${hostStats.mem_usage} / ${hostStats.mem_total}`);
-        mem_percent.textContent = hostStats.mem_percent + '%';
+        const cpu = Math.round((Number(hostStats.cpu_usage) || 0) * 10) / 10;
+        $('#cpu_usage').text(cpu.toFixed(1));
+        $('#cpu_bar').attr('class', 'dash-meter-fill ' + usageLevel(cpu, 70, 90)).css('width', Math.min(Math.max(cpu, 0), 100) + '%');
+        const mem = Number(hostStats.mem_percent) || 0;
+        $('#mem_percent').text(mem.toFixed(1) + '%');
+        $('#mem_bar').attr('class', 'dash-meter-fill ' + usageLevel(mem, 70, 90)).css('width', Math.min(mem, 100) + '%');
+        $('#mem_detail').text(`${hostStats.mem_usage} / ${hostStats.mem_total}`);
 
-        var storage_html = '<div class="row">';
-        for (i = 0; i < hostStats.disk_usage.length; i++) {
-          if (hostStats.mounts.includes(hostStats.disk_usage[i].mount)) {
-            storage_html += `<div id="host_storage" class="col-xl-3 col-lg-3 col-md-4 col-12">
-                        <h4 class="mb-0 font-weight-semibold d-inline-block text-truncate storage-heading mw-100" id="title_host_storage" data-toggle="tooltip" data-placement="bottom" title="${hostStats.disk_usage[i].mount}"><i class="ph-fill ph-hard-drive"></i> ${hostStats.disk_usage[i].mount}</h4>
-                        <div class="progress d-inline-block disk-usage">
-                          <div class="progress-bar`;
-            if (hostStats.disk_usage[i].percent_used <= 58) {
-              storage_html += ` bg-success`;
-            } else if (hostStats.disk_usage[i].percent_used <= 75) {
-              storage_html += ` bg-warning`;
-            } else {
-              storage_html += ` bg-danger`;
-            }
-            storage_html += `" role="progressbar" style="width: ${hostStats.disk_usage[i].percent_used}%;"
-                               aria-valuenow="0" aria-valuemin="0" aria-valuemax="100">${hostStats.disk_usage[i].used} / ${hostStats.disk_usage[i].total}
-                          </div>
-                        </div>
-                        </div>`;
-          }
+        // Same markup as the storage tiles in the template
+        let storage_html = '';
+        for (const disk of hostStats.disk_usage) {
+          if (!hostStats.mounts.includes(disk.mount)) continue;
+          const mount = escapeHtml(String(disk.mount));
+          storage_html += `<div class="dash-stat">
+            <div class="dash-stat-label dash-disk-label storage-heading" data-toggle="tooltip" data-placement="bottom" title="${escapeHtml(storageLabel)}: ${mount}"><i class="ph ph-hard-drive"></i><span>${mount}</span></div>
+            <div class="dash-stat-value">${escapeHtml(String(disk.percent_used))}%</div>
+            ${meterHtml(disk.percent_used, 75, 90)}
+            <div class="dash-stat-sub">${escapeHtml(String(disk.used))} / ${escapeHtml(String(disk.total))}</div>
+          </div>`;
         }
-        storage_html += `</div>`;
         $(".storage-heading").tooltip('hide');
         $("#storage_data").html(storage_html);
         $("#storage_data").tooltip({ selector: '.storage-heading' });
@@ -1071,7 +731,7 @@
             fetch('/api/v2/servers/stop_all', {
               method: 'POST',
               headers: {
-                'token': token,
+                'X-XSRFToken': token,
               },
             }).then(function (response) {
               return response.json();
@@ -1104,103 +764,6 @@
 <script src="/static/assets/vendors/js/jquery-ui.js"></script>
 <link rel="stylesheet" href="/static/assets/vendors/css/jquery-ui.css">
 <link rel="stylesheet" href="/static/assets/vendors/css/jquery-ui.structure.css">
-<style>
-  @media only screen and (max-width: 760px) {
-    #mobile {
-      display: none;
-    }
-  }
-
-  .ui-sortable-handle {
-    cursor: default;
-    padding: 2px;
-  }
-
-  .ui-sortable-handle:hover {
-    cursor: grab !important;
-    padding: 2px;
-  }
-
-  .table-responsive {
-    padding-bottom: 8px;
-  }
-
-  #servers_table {
-    min-width: 100%;
-  }
-
-  @media (max-width: 992px) {
-    #servers_table {
-      min-width: 750px;
-    }
-  }
-
-
-  .column-settings {
-    position: relative;
-    display: inline-block;
-    margin-left: 8px;
-  }
-
-  .column-settings-btn {
-    cursor: pointer;
-    padding: 4px 8px;
-    color: var(--base-text, #6c757d);
-    font-size: 1rem;
-    line-height: 1;
-    opacity: 0.7;
-    transition: opacity 0.15s;
-  }
-
-  .column-settings-btn:hover {
-    opacity: 1;
-  }
-
-  .column-settings-dropdown {
-    display: none;
-    position: absolute;
-    background: var(--dropdown-bg, #222437);
-    border: 1px solid var(--outline, #383e5d);
-    border-radius: 4px;
-    padding: 6px 0;
-    min-width: 190px;
-    max-height: 60vh;
-    overflow-y: auto;
-    z-index: 1050;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
-    font-size: 0.875rem;
-  }
-
-  .column-settings-dropdown.show {
-    display: block;
-  }
-
-  .column-settings-dropdown label {
-    display: flex;
-    align-items: center;
-    padding: 0.25rem 1rem;
-    margin: 0;
-    cursor: pointer;
-    white-space: nowrap;
-    font-weight: normal;
-    color: var(--base-text, #b9c0d3);
-    transition: background-color 0.1s;
-  }
-
-  .column-settings-dropdown label:hover {
-    background-color: var(--card-banner-bg, #282a40);
-  }
-
-  .column-settings-dropdown label.disabled {
-    opacity: 0.5;
-    cursor: default;
-  }
-
-  .column-settings-dropdown input[type="checkbox"] {
-    margin-right: 10px;
-    accent-color: var(--primary, #2196f3);
-  }
-</style>
 <script>
 
   /* Search Bar */
@@ -1208,8 +771,16 @@
     let servers_table = $('#servers_table').DataTable({
       "ordering": false, // false to disable sorting (or any other option)
       "paging": false,
-      "autoWidth": false
+      "info": false,
+      "autoWidth": false,
+      "language": {
+        "search": "",
+        "searchPlaceholder": "{{ translate('dashboard', 'searchServers', data['lang']) }}"
+      }
     });
+    // Search box (and the column settings added below) go in the card header
+    $('#servers_table_filter').addClass('dash-search d-none d-sm-flex').prependTo('#dash_tools');
+    $('#servers_table_filter label').prepend('<i class="ph ph-magnifying-glass"></i>');
     // DataTables sets overflow:hidden on the wrapper after init completes.
     // Defer override so table-responsive can provide horizontal scrolling.
     setTimeout(function() {
@@ -1217,7 +788,6 @@
     }, 0);
     const first = document.querySelector('#first')
     first !== null && first.setAttribute('draggable', false);
-    $('.dataTables_length').addClass('bs-select');
   });
   /* Search Bar End */
 
@@ -1373,7 +943,7 @@
         cursor: "grabbing",
         axis: "y",
         revert: true,
-        handle: "i.ph.ph-hard-drives,a",
+        handle: ".drag-handle, a",
         forcePlaceholderSize: true,
         placeholder: 'table-placeholder',
         deactivate: function (event, ui) {

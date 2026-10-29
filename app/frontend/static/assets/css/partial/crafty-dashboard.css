@@ -1,0 +1,555 @@
+/**************************************************************/
+/* Dashboard: host overview tiles and the servers list         */
+/* (status pills come from crafty-server-overview.css)         */
+/**************************************************************/
+@media only screen and (max-width: 760px) {
+    #mobile {
+        display: none;
+    }
+}
+
+.dash-header {
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.dash-sync {
+    opacity: 0.6;
+    font-size: 1.1rem;
+}
+
+/* Host overview */
+.card .dash-overview {
+    padding: 1.25rem 1.5rem;
+}
+
+.dash-stat-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+    gap: 0.75rem;
+}
+
+/* The disk tiles sit in the grid next to the others */
+.dash-storage {
+    display: contents;
+}
+
+.dash-stat {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    padding: 0.85rem 1rem;
+    border-radius: 0.5rem;
+    background: var(--deep-bg);
+    border: 1px solid var(--outline);
+    color: var(--base-text);
+}
+
+.dash-stat-label {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    min-width: 0;
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    opacity: 0.75;
+}
+
+.dash-stat-label i {
+    font-size: 1rem;
+    flex-shrink: 0;
+}
+
+.dash-disk-label {
+    text-transform: none;
+    letter-spacing: normal;
+}
+
+.dash-disk-label span {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.dash-stat-value {
+    margin-top: 0.35rem;
+    font-size: 1.6rem;
+    font-weight: 600;
+    line-height: 1.2;
+    font-variant-numeric: tabular-nums;
+}
+
+.dash-stat-sub {
+    margin-top: auto;
+    padding-top: 0.45rem;
+    font-size: 0.78rem;
+    opacity: 0.7;
+    font-variant-numeric: tabular-nums;
+}
+
+.dash-dot {
+    display: inline-block;
+    width: 0.5rem;
+    height: 0.5rem;
+    margin-right: 0.3rem;
+    border-radius: 50%;
+    background: currentColor;
+    vertical-align: 0.05rem;
+}
+
+.dash-sep {
+    margin: 0 0.25rem;
+    opacity: 0.6;
+}
+
+.dash-meter {
+    height: 6px;
+    margin-top: 0.5rem;
+    border-radius: 999px;
+    background: var(--outline);
+    overflow: hidden;
+}
+
+.dash-meter-fill {
+    height: 100%;
+    border-radius: inherit;
+    transition: width 0.4s ease;
+}
+
+/* Servers card header: title on the left, search and buttons on the right */
+.card .dash-servers-head {
+    padding: 1rem 1.5rem;
+}
+
+.dash-servers-head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem 1rem;
+}
+
+.dash-servers-head .card-title {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin: 0;
+}
+
+.dash-tools {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem;
+    margin-left: auto;
+}
+
+.dash-tools .btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+}
+
+.dash-search {
+    align-items: center;
+}
+
+.dash-search label {
+    position: relative;
+    display: flex;
+    align-items: center;
+    margin: 0;
+}
+
+.dash-search label > i {
+    position: absolute;
+    left: 0.65rem;
+    opacity: 0.6;
+    pointer-events: none;
+}
+
+#dash_tools .dash-search input {
+    width: 13rem;
+    margin: 0;
+    padding-left: 2rem;
+    height: calc(1.5em + 0.5rem + 2px);
+    border-radius: 0.3rem;
+}
+
+.card .dash-servers-body {
+    padding: 0.5rem 1.5rem 1rem;
+}
+
+/* Servers table */
+.table-responsive {
+    padding-bottom: 8px;
+}
+
+#servers_table {
+    min-width: 100%;
+}
+
+@media (max-width: 992px) {
+    #servers_table {
+        min-width: 750px;
+    }
+}
+
+.dash-table thead th {
+    height: auto;
+    padding-top: 0.75rem;
+    padding-bottom: 0.75rem;
+    line-height: 1.2;
+    font-size: 0.72rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    opacity: 0.7;
+    border-top: 0;
+    border-bottom: 1px solid var(--outline);
+}
+
+.dash-table td {
+    vertical-align: middle;
+    height: auto;
+    padding-top: 0.6rem;
+    padding-bottom: 0.6rem;
+}
+
+.dash-server {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+}
+
+.drag-handle {
+    margin-left: -0.5rem;
+    opacity: 0;
+    cursor: grab;
+    transition: opacity 0.15s;
+}
+
+.dash-table tbody tr:hover .drag-handle {
+    opacity: 0.5;
+}
+
+.ui-sortable-helper .drag-handle,
+.ui-sortable-helper {
+    cursor: grabbing;
+}
+
+.dash-server-name {
+    font-weight: 600;
+    color: var(--base-text);
+}
+
+.dash-server-name:hover {
+    color: var(--info);
+    text-decoration: none;
+}
+
+.dash-server-update {
+    color: var(--warning);
+}
+
+.dash-server-icon {
+    width: 32px;
+    height: 32px;
+    border-radius: 0.3rem;
+    image-rendering: pixelated;
+}
+
+.dash-usage {
+    display: flex;
+    flex-direction: column;
+    gap: 0.3rem;
+    min-width: 7rem;
+    font-size: 0.85rem;
+    font-variant-numeric: tabular-nums;
+}
+
+/* Number first, then the bar under it */
+.dash-usage .dash-meter {
+    order: 2;
+    margin-top: 0;
+    height: 5px;
+}
+
+.dash-muted {
+    opacity: 0.65;
+}
+
+.server-state.server-state-sm {
+    padding: 0.2rem 0.6rem;
+    font-size: 0.78rem;
+    gap: 0.35rem;
+}
+
+.server-state.server-state-sm .state-dot {
+    width: 0.45rem;
+    height: 0.45rem;
+}
+
+/* A table full of pulsing dots is too busy */
+.server-state.server-state-sm.state-online .state-dot {
+    animation: none;
+}
+
+/* Start / stop / restart / kill / clone buttons */
+.dash-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+}
+
+.dash-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 2rem;
+    height: 2rem;
+    padding: 0;
+    border-radius: 0.4rem;
+    border: 1px solid var(--outline);
+    background: transparent;
+    color: var(--base-text);
+    font-size: 1rem;
+    cursor: pointer;
+    transition: background-color 0.15s, color 0.15s, border-color 0.15s;
+}
+
+.dash-btn:hover,
+.dash-btn:focus-visible {
+    background: var(--deep-bg);
+    outline: none;
+}
+
+.dash-btn-start {
+    color: var(--success);
+    border-color: var(--success);
+}
+
+.dash-btn-start:hover {
+    background: var(--success);
+    color: #fff;
+}
+
+.dash-btn-stop:hover,
+.dash-btn-kill:hover {
+    color: var(--danger);
+    border-color: var(--danger);
+}
+
+.dash-btn-restart:hover {
+    color: var(--info);
+    border-color: var(--info);
+}
+
+.dash-busy {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    font-size: 0.85rem;
+    opacity: 0.8;
+}
+
+/* Column visibility (gear next to the search box) */
+.column-settings {
+    position: relative;
+    display: inline-block;
+    margin-left: 8px;
+}
+
+.column-settings-btn {
+    cursor: pointer;
+    padding: 4px 8px;
+    color: var(--base-text, #6c757d);
+    font-size: 1rem;
+    line-height: 1;
+    opacity: 0.7;
+    transition: opacity 0.15s;
+}
+
+.column-settings-btn:hover {
+    opacity: 1;
+}
+
+.column-settings-dropdown {
+    display: none;
+    position: absolute;
+    background: var(--dropdown-bg, #222437);
+    border: 1px solid var(--outline, #383e5d);
+    border-radius: 4px;
+    padding: 6px 0;
+    min-width: 190px;
+    max-height: 60vh;
+    overflow-y: auto;
+    z-index: 1050;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    font-size: 0.875rem;
+}
+
+.column-settings-dropdown.show {
+    display: block;
+}
+
+.column-settings-dropdown label {
+    display: flex;
+    align-items: center;
+    padding: 0.25rem 1rem;
+    margin: 0;
+    cursor: pointer;
+    white-space: nowrap;
+    font-weight: normal;
+    color: var(--base-text, #b9c0d3);
+    transition: background-color 0.1s;
+}
+
+.column-settings-dropdown label:hover {
+    background-color: var(--card-banner-bg, #282a40);
+}
+
+.column-settings-dropdown label.disabled {
+    opacity: 0.5;
+    cursor: default;
+}
+
+.column-settings-dropdown input[type="checkbox"] {
+    margin-right: 10px;
+    accent-color: var(--primary, #2196f3);
+}
+
+/* Phone: one card per server */
+.dash-cards {
+    display: flex;
+    flex-direction: column;
+    gap: 0.6rem;
+}
+
+.dash-card {
+    padding: 0.75rem 0.85rem;
+    border-radius: 0.5rem;
+    background: var(--deep-bg);
+    border: 1px solid var(--outline);
+}
+
+.dash-card-top {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    min-width: 0;
+}
+
+.dash-card-top .dash-server-name {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.dash-card-top .dash-status {
+    margin-left: auto;
+    flex-shrink: 0;
+}
+
+.dash-card-bottom {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+    margin-top: 0.6rem;
+}
+
+.dash-expand {
+    border-color: transparent;
+}
+
+.dash-expand i {
+    transition: transform 0.2s;
+}
+
+.dash-expand:not(.collapsed) i {
+    transform: rotate(180deg);
+}
+
+.dash-card-details {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.6rem 1rem;
+    margin: 0.75rem 0 0;
+    padding-top: 0.75rem;
+    border-top: 1px solid var(--outline);
+}
+
+.dash-card-details div {
+    min-width: 0;
+}
+
+.dash-card-details dt {
+    font-size: 0.7rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    opacity: 0.65;
+}
+
+.dash-card-details dd {
+    margin: 0.15rem 0 0;
+    font-size: 0.85rem;
+    overflow-wrap: anywhere;
+}
+
+.dash-card-details .dash-usage {
+    min-width: 0;
+}
+
+/* No servers yet */
+.dash-empty {
+    padding: 2.5rem 1rem;
+    text-align: center;
+}
+
+.dash-empty > i {
+    font-size: 3rem;
+    opacity: 0.5;
+}
+
+.dash-empty h3 {
+    margin: 0.75rem 0 0.5rem;
+    font-size: 1.3rem;
+}
+
+.dash-empty p {
+    opacity: 0.75;
+}
+
+@media (max-width: 575.98px) {
+    .card .dash-overview,
+    .card .dash-servers-head,
+    .card .dash-servers-body {
+        padding: 1rem;
+    }
+
+    .dash-stat-grid {
+        grid-template-columns: 1fr 1fr;
+        gap: 0.6rem;
+    }
+
+    .dash-stat {
+        padding: 0.7rem 0.8rem;
+    }
+
+    .dash-stat-value {
+        font-size: 1.25rem;
+    }
+
+    .dash-tools {
+        margin-left: 0;
+        width: 100%;
+    }
+
+    .dash-tools .btn {
+        flex: 1 1 auto;
+        justify-content: center;
+    }
+}

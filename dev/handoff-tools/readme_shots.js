@@ -12,7 +12,7 @@ const server = sub => `/panel/server_detail?id=${S1}&subpage=${sub}`;
 
 // Scroll so the server tab bar sits just under the top navbar
 const toTabs = async p => p.evaluate(() => {
-  const tabs = document.querySelector('.tab-simple-styled');
+  const tabs = document.querySelector('.server-tabs-wrap');
   if (!tabs) return;
   // The Files page scrolls an inner panel instead of the window
   const panel = document.querySelector('.main-panel');

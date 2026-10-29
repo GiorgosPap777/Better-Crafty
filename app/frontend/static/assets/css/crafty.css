@@ -206,30 +206,145 @@ td::-webkit-scrollbar {
     padding: 1%;
 }
 
+/* Server page tabs: one row that scrolls sideways when it doesn't fit */
+.server-tabs-wrap {
+    position: relative;
+    margin: 1.25rem 0 1.5rem;
+}
+
+.server-tabs {
+    position: relative;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    overflow-y: hidden;
+    scrollbar-width: none;
+    box-shadow: inset 0 -1px 0 var(--outline);
+}
+
+.server-tabs::-webkit-scrollbar {
+    display: none;
+}
+
+.server-tabs .nav-item {
+    flex: 0 0 auto;
+}
+
+.server-tabs .nav-link {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.7rem 0.65rem;
+    border-bottom: 2px solid transparent;
+    color: var(--base-text);
+    font-size: 0.875rem;
+    line-height: 1.2;
+    white-space: nowrap;
+    opacity: 0.75;
+    transition: opacity 0.15s, color 0.15s, border-color 0.15s;
+}
+
+.server-tabs .nav-link i {
+    font-size: 1rem;
+}
+
+.server-tabs .nav-link:hover,
+.server-tabs .nav-link:focus-visible {
+    color: var(--base-text);
+    opacity: 1;
+    border-bottom-color: var(--outline);
+}
+
+.server-tabs .nav-link.active {
+    color: var(--info);
+    font-weight: 600;
+    opacity: 1;
+    border-bottom-color: var(--info);
+}
+
+/* A failed backup, an update waiting */
+.server-tabs .nav-link.tab-alert {
+    color: var(--danger);
+    opacity: 1;
+}
+
+.server-tabs .nav-link.tab-warn {
+    color: var(--warning);
+    opacity: 1;
+}
+
+.server-tabs .tab-flag {
+    font-size: 0.9rem;
+}
+
+.server-tabs-scroll {
+    display: none;
+    position: absolute;
+    top: 0;
+    bottom: 1px;
+    z-index: 2;
+    width: 2rem;
+    padding: 0;
+    border: none;
+    background: transparent;
+    color: var(--base-text);
+    align-items: center;
+    cursor: pointer;
+}
+
+.server-tabs-scroll.prev {
+    left: 0;
+    justify-content: flex-start;
+}
+
+.server-tabs-scroll.next {
+    right: 0;
+    justify-content: flex-end;
+}
+
+.server-tabs-wrap.can-prev .server-tabs-scroll.prev,
+.server-tabs-wrap.can-next .server-tabs-scroll.next {
+    display: flex;
+}
+
+.server-tabs-wrap.can-prev .server-tabs {
+    -webkit-mask-image: linear-gradient(to right, transparent 1.5rem, #000 3.5rem);
+    mask-image: linear-gradient(to right, transparent 1.5rem, #000 3.5rem);
+}
+
+.server-tabs-wrap.can-next .server-tabs {
+    -webkit-mask-image: linear-gradient(to left, transparent 1.5rem, #000 3.5rem);
+    mask-image: linear-gradient(to left, transparent 1.5rem, #000 3.5rem);
+}
+
+.server-tabs-wrap.can-prev.can-next .server-tabs {
+    -webkit-mask-image: linear-gradient(to right, transparent 1.5rem, #000 3.5rem, #000 calc(100% - 3.5rem), transparent calc(100% - 1.5rem));
+    mask-image: linear-gradient(to right, transparent 1.5rem, #000 3.5rem, #000 calc(100% - 3.5rem), transparent calc(100% - 1.5rem));
+}
+
+/* Server name in the top bar: one line, cut short on phones */
+#server-name-nav {
+    display: inline-block;
+    max-width: 40vw;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    vertical-align: middle;
+}
+
+@media (max-width: 575.98px) {
+    .server-tabs-wrap {
+        margin: 1rem 0 1.25rem;
+    }
+
+    .server-tabs .nav-link {
+        padding: 0.65rem 0.7rem;
+    }
+}
+
 /* Fix body scrollbar color */
 body {
     background-color: var(--dark) !important;
     /* Firefox */
-}
-
-.actions_serverlist>a>i {
-    cursor: pointer;
-}
-
-.actions_serveritem {
-    cursor: pointer;
-}
-
-/* Mobile server list: icon-only buttons in narrow cells. Without this the
-   default button padding pushes the icon out and leaves an ellipsis. */
-.accordion .card .card-header a.actions_serveritem.btn {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 100%;
-    padding: 0.6rem 0.25rem;
-    font-size: 1.15rem;
-    text-overflow: clip;
 }
 
 .corner {
@@ -249,40 +364,10 @@ body {
 /**************************************************************/
 
 /**************************************************************/
-/* CSS for Dashboard */
+/* CSS for Dashboard (the rest is in partial/crafty-dashboard.css) */
 /**************************************************************/
-#desc_id {
-    -ms-overflow-style: none;
-    /* for Internet Explorer, Edge */
-    scrollbar-width: none;
-    /* for Firefox */
-    overflow-y: scroll;
-}
-
-#desc_id::-webkit-scrollbar {
-    display: none;
-    /* for Chrome, Safari, and Opera */
-}
-
 .gray {
     color: var(--gray) !important;
-}
-
-.disk-usage {
-    height: 20px;
-    width: 100%;
-    background-color: rgb(139, 139, 139) !important
-}
-
-.disk-usage>.progress-bar {
-    color: black;
-    height: 100%;
-}
-
-.server-desc {
-    overflow-wrap: break-word !important;
-    max-width: 85px !important;
-    overflow: scroll;
 }
 
 .server-alert {

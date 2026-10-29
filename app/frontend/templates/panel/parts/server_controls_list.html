@@ -1,82 +1,81 @@
-<ul class="nav nav-tabs col-md-12 tab-simple-styled " role="tablist">
-    {% if data['permissions']['Terminal'] in data['user_permissions'] %}
-    <li class="nav-item term-nav-item">
-        <a class="nav-link {% if data['active_link'] == 'term' %}active{% end %}" href="/panel/server_detail?id={{ data['server_stats']['server_id']['server_id'] }}&subpage=term" role="tab" aria-selected="false">
-            <i class="ph-bold ph-terminal"></i>{{ translate('serverDetails', 'terminal', data['lang']) }}</a>
-    </li>
-    {% end %}
-    <!--Bedrock servers don't have logs so we'll only show it if we know it's not a bedrock server.-->
-    {% if data['permissions']['Logs'] in data['user_permissions'] and data['server_data']['type'] != 'minecraft-bedrock'%}
-    <li class="nav-item term-nav-item">
-        <a class="nav-link {% if data['active_link'] == 'logs' %}active{% end %}" href="/panel/server_detail?id={{ data['server_stats']['server_id']['server_id'] }}&subpage=logs" role="tab" aria-selected="false">
-            <i class="ph-bold ph-book-open-user"></i>{{ translate('serverDetails', 'logs', data['lang']) }}</a>
-    </li>
-    {% end %}
-    {% if data['permissions']['Schedule'] in data['user_permissions'] %}
-    <li class="nav-item term-nav-item">
-        <a class="nav-link {% if data['active_link'] == 'schedules' %}active{% end %}" href="/panel/server_detail?id={{ data['server_stats']['server_id']['server_id'] }}&subpage=schedules" role="tab" aria-selected="false">
-            <i class="ph-fill ph-clock"></i>{{ translate('serverDetails', 'schedule', data['lang']) }}</a>
-    </li>
-    {% end %}
-    {% if data['permissions']['Backup'] in data['user_permissions'] %}
-    {% if data['backup_failed'] %}
-    <li class="nav-item term-nav-item">
-        <a class="nav-link text-danger {% if data['active_link'] == 'backup' %}active{% end %}" href="/panel/server_detail?id={{ data['server_stats']['server_id']['server_id'] }}&subpage=backup" role="tab" aria-selected="false">
-            <i class="ph-fill ph-floppy-disk"></i>{{ translate('serverDetails', 'backup', data['lang']) }}&nbsp; <i class="ph-bold ph-warning"> </i></a>
-    </li>
-    {% else %}
-    <li class="nav-item term-nav-item">
-        <a class="nav-link {% if data['active_link'] == 'backup' %}active{% end %}" href="/panel/server_detail?id={{ data['server_stats']['server_id']['server_id'] }}&subpage=backup" role="tab" aria-selected="false">
-            <i class="ph-fill ph-floppy-disk"></i>{{ translate('serverDetails', 'backup', data['lang']) }}</a>
-    </li>
-    {% end %}
-    {% end %}
-    {% if data['permissions']['Backup'] in data['user_permissions'] and data['server_data']['type'] in ('minecraft-java', 'minecraft-bedrock') %}
-    <li class="nav-item term-nav-item">
-        <a class="nav-link {% if data['active_link'] == 'world' %}active{% end %}" href="/panel/server_detail?id={{ data['server_stats']['server_id']['server_id'] }}&subpage=world" role="tab" aria-selected="false">
-            <i class="ph-fill ph-globe-hemisphere-west"></i>{{ translate('serverDetails', 'world', data['lang']) }}</a>
-    </li>
-    {% end %}
-    {% if data['permissions']['Files'] in data['user_permissions'] %}
-    <li class="nav-item term-nav-item">
-        <a class="nav-link {% if data['active_link'] == 'files' %}active{% end %}" href="/panel/server_detail?id={{ data['server_stats']['server_id']['server_id'] }}&subpage=files" role="tab" aria-selected="false">
-            <i class="ph-fill ph-tree-view"></i>{{ translate('serverDetails', 'files', data['lang']) }}</a>
-    </li>
-    {% end %}
-    {% if data['permissions']['Files'] in data['user_permissions'] and data['server_data']['type'] == 'minecraft-java' %}
-    <li class="nav-item term-nav-item">
-        <a class="nav-link {% if data['active_link'] == 'mods' %}active{% end %}" href="/panel/server_detail?id={{ data['server_stats']['server_id']['server_id'] }}&subpage=mods" role="tab" aria-selected="false">
-            <i class="ph-fill ph-puzzle-piece"></i>{{ translate('serverDetails', 'mods', data['lang']) }}</a>
-    </li>
-    {% end %}
-    {% if data['permissions']['Config'] in data['user_permissions'] %}
-    <li class="nav-item term-nav-item">
-        <a class="nav-link {% if data['active_link'] == 'config' %}active{% end %}" href="/panel/server_detail?id={{ data['server_stats']['server_id']['server_id'] }}&subpage=config" role="tab" aria-selected="true">
-            <i class="ph-fill ph-gear"></i>{{ translate('serverDetails', 'config', data['lang']) }}</a>
-    </li>
-    {% end %}
-    {% if data['permissions']['Players'] in data['user_permissions'] and data['server_data']['type'] != 'minecraft-bedrock' %}
-    <li class="nav-item term-nav-item">
-        <a class="nav-link {% if data['active_link'] == 'admin_controls' %}active{% end %}" href="/panel/server_detail?id={{ data['server_stats']['server_id']['server_id'] }}&subpage=admin_controls" role="tab" aria-selected="true">
-            <i class="ph-fill ph-users"></i>{{ translate('serverDetails', 'playerControls', data['lang']) }}</a>
-    </li>
-    {% end %}
-    <li class="nav-item term-nav-item">
-        <a class="nav-link {% if data['active_link'] == 'metrics' %}active{% end %}" href="/panel/server_detail?id={{ data['server_stats']['server_id']['server_id'] }}&subpage=metrics" role="tab" aria-selected="true">
-            <i class="ph ph-chart-line"></i>{{ translate('serverDetails', 'metrics', data['lang']) }}</a>
-    </li>
-    {% if data['permissions']['Config'] in data['user_permissions'] %}
-    <li class="nav-item term-nav-item">
-        <a class="nav-link {% if data['active_link'] == 'webhooks' %}active{% end %}" href="/panel/server_detail?id={{ data['server_stats']['server_id']['server_id'] }}&subpage=webhooks" role="tab" aria-selected="true">
-            <i class="ph-fill ph-bell"></i>{{ translate('webhooks', 'webhooks', data['lang']) }}</a>
-    </li>
-    {% end %}
-    {% if data['permissions']['Config'] in data['user_permissions'] and data['server_data']['type'] != 'steam_cmd' %}
-    <li class="nav-item term-nav-item update-control">
-        <a class="nav-link {% if data['active_link'] == 'update_center' %}active{% end %}"
-            href="/panel/server_detail?id={{ data['server_stats']['server_id']['server_id'] }}&subpage=update_center"
-            role="tab" aria-selected="true">
-            <span class="update-nav-text"><i class="ph ph-cloud-warning"></i>{{ translate('serverUpdate', 'updateCtr', data['lang']) }}</span>&nbsp;<span class="update-icon"></span></a>
-    </li>
-    {% end %}
-</ul>
+{% set tabs_url = '/panel/server_detail?id=' + data['server_stats']['server_id']['server_id'] + '&subpage=' %}
+{% set tabs_active = data['active_link'] %}
+{% set tabs_perms = data['user_permissions'] %}
+{% set tabs_server_type = data['server_data']['type'] %}
+<!-- One row of tabs; it scrolls sideways when it doesn't fit (phones too) -->
+<nav class="server-tabs-wrap" aria-label="{{ translate('serverDetails', 'serverDetails', data['lang']) }}">
+    <button type="button" class="server-tabs-scroll prev" tabindex="-1" aria-hidden="true"><i class="ph-bold ph-caret-left"></i></button>
+    <ul class="nav server-tabs">
+        {% if data['permissions']['Terminal'] in tabs_perms %}
+        <li class="nav-item"><a class="nav-link {{ 'active' if tabs_active == 'term' else '' }}" href="{{ tabs_url }}term"><i class="ph-bold ph-terminal"></i>{{ translate('serverDetails', 'terminal', data['lang']) }}</a></li>
+        {% end %}
+        <!-- Bedrock servers don't have logs -->
+        {% if data['permissions']['Logs'] in tabs_perms and tabs_server_type != 'minecraft-bedrock' %}
+        <li class="nav-item"><a class="nav-link {{ 'active' if tabs_active == 'logs' else '' }}" href="{{ tabs_url }}logs"><i class="ph-bold ph-book-open-user"></i>{{ translate('serverDetails', 'logs', data['lang']) }}</a></li>
+        {% end %}
+        {% if data['permissions']['Schedule'] in tabs_perms %}
+        <li class="nav-item"><a class="nav-link {{ 'active' if tabs_active == 'schedules' else '' }}" href="{{ tabs_url }}schedules"><i class="ph-bold ph-clock"></i>{{ translate('serverDetails', 'schedule', data['lang']) }}</a></li>
+        {% end %}
+        {% if data['permissions']['Backup'] in tabs_perms %}
+        <li class="nav-item"><a class="nav-link {{ 'active' if tabs_active == 'backup' else '' }} {{ 'tab-alert' if data['backup_failed'] else '' }}" href="{{ tabs_url }}backup"><i class="ph-bold ph-floppy-disk"></i>{{ translate('serverDetails', 'backup', data['lang']) }}{% if data['backup_failed'] %}<i class="ph-fill ph-warning-circle tab-flag"></i>{% end %}</a></li>
+        {% end %}
+        {% if data['permissions']['Backup'] in tabs_perms and tabs_server_type in ('minecraft-java', 'minecraft-bedrock') %}
+        <li class="nav-item"><a class="nav-link {{ 'active' if tabs_active == 'world' else '' }}" href="{{ tabs_url }}world"><i class="ph-bold ph-globe-hemisphere-west"></i>{{ translate('serverDetails', 'world', data['lang']) }}</a></li>
+        {% end %}
+        {% if data['permissions']['Files'] in tabs_perms %}
+        <li class="nav-item"><a class="nav-link {{ 'active' if tabs_active == 'files' else '' }}" href="{{ tabs_url }}files"><i class="ph-bold ph-folder-open"></i>{{ translate('serverDetails', 'files', data['lang']) }}</a></li>
+        {% end %}
+        {% if data['permissions']['Files'] in tabs_perms and tabs_server_type == 'minecraft-java' %}
+        <li class="nav-item"><a class="nav-link {{ 'active' if tabs_active == 'mods' else '' }}" href="{{ tabs_url }}mods"><i class="ph-bold ph-puzzle-piece"></i>{{ translate('serverDetails', 'mods', data['lang']) }}</a></li>
+        {% end %}
+        {% if data['permissions']['Config'] in tabs_perms %}
+        <li class="nav-item"><a class="nav-link {{ 'active' if tabs_active == 'config' else '' }}" href="{{ tabs_url }}config"><i class="ph-bold ph-gear"></i>{{ translate('serverDetails', 'config', data['lang']) }}</a></li>
+        {% end %}
+        {% if data['permissions']['Players'] in tabs_perms and tabs_server_type != 'minecraft-bedrock' %}
+        <li class="nav-item"><a class="nav-link {{ 'active' if tabs_active == 'admin_controls' else '' }}" href="{{ tabs_url }}admin_controls"><i class="ph-bold ph-users"></i>{{ translate('serverDetails', 'playerControls', data['lang']) }}</a></li>
+        {% end %}
+        <li class="nav-item"><a class="nav-link {{ 'active' if tabs_active == 'metrics' else '' }}" href="{{ tabs_url }}metrics"><i class="ph-bold ph-chart-line"></i>{{ translate('serverDetails', 'metrics', data['lang']) }}</a></li>
+        {% if data['permissions']['Config'] in tabs_perms %}
+        <li class="nav-item"><a class="nav-link {{ 'active' if tabs_active == 'webhooks' else '' }}" href="{{ tabs_url }}webhooks"><i class="ph-bold ph-bell"></i>{{ translate('webhooks', 'webhooks', data['lang']) }}</a></li>
+        {% end %}
+        {% if data['permissions']['Config'] in tabs_perms and tabs_server_type != 'steam_cmd' %}
+        <!-- details_stats.html marks this tab when an update is available -->
+        <li class="nav-item update-control"><a class="nav-link {{ 'active' if tabs_active == 'update_center' else '' }}" href="{{ tabs_url }}update_center"><i class="ph-bold ph-cloud-arrow-down"></i><span class="update-nav-text">{{ translate('serverUpdate', 'updateCtr', data['lang']) }}</span><span class="update-icon"></span></a></li>
+        {% end %}
+    </ul>
+    <button type="button" class="server-tabs-scroll next" tabindex="-1" aria-hidden="true"><i class="ph-bold ph-caret-right"></i></button>
+</nav>
+<script>
+    (function () {
+        const wrap = document.currentScript.previousElementSibling;
+        const list = wrap.querySelector('.server-tabs');
+        const active = list.querySelector('.nav-link.active');
+        if (active) active.setAttribute('aria-current', 'page');
+
+        // Fade and arrow on the side that has more tabs
+        function updateEdges() {
+            const end = list.scrollWidth - list.clientWidth;
+            wrap.classList.toggle('can-prev', list.scrollLeft > 2);
+            wrap.classList.toggle('can-next', list.scrollLeft < end - 2);
+        }
+
+        function showActive() {
+            if (!active) return;
+            const item = active.parentElement;
+            list.scrollLeft = item.offsetLeft - (list.clientWidth - item.offsetWidth) / 2;
+            updateEdges();
+        }
+
+        wrap.querySelectorAll('.server-tabs-scroll').forEach(function (button) {
+            button.addEventListener('click', function () {
+                const step = list.clientWidth * 0.7;
+                list.scrollBy({ left: button.classList.contains('prev') ? -step : step, behavior: 'smooth' });
+            });
+        });
+        list.addEventListener('scroll', updateEdges, { passive: true });
+        window.addEventListener('resize', updateEdges);
+        // Widths change once the web font has loaded
+        window.addEventListener('load', showActive);
+        showActive();
+    })();
+</script>

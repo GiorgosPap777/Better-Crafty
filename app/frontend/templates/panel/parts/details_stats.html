@@ -594,8 +594,8 @@
       $("#server-name-nav").text(`${responseData.data['server_name']}`).html()
       $("#server-name-nav").toggleClass("d-none");
       if (responseData.data['status']['update_available'] && responseData.data["update_watcher"]) {
-        $(".update-icon").html("⚠️");
-        $(".update-nav-text").addClass("text-warning");
+        $(".update-icon").html('<i class="ph-fill ph-warning-circle tab-flag"></i>');
+        $(".update-control .nav-link").addClass("tab-warn");
       }
     }
   }

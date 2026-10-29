@@ -1,0 +1,20 @@
+<!-- Start/stop buttons of one server on the dashboard (uses sid and stats) -->
+<div class="dash-actions">
+  {% if stats['importing'] and stats['running'] %}
+  <span class="dash-busy"><i class="ph ph-spinner-gap ph-spin"></i>{{ translate('serverTerm', 'installing', data['lang']) }}</span>
+  {% elif stats['updating'] %}
+  <span class="dash-busy"><i class="ph ph-spinner-gap ph-spin"></i>{{ translate('serverTerm', 'updating', data['lang']) }}</span>
+  {% elif stats['waiting_start'] %}
+  <span class="dash-busy" title="{{ translate('dashboard', 'delay-explained', data['lang']) }}"><i class="ph ph-hourglass-medium"></i>{{ translate('dashboard', 'starting', data['lang']) }}</span>
+  {% elif stats['importing'] %}
+  <span class="dash-busy"><i class="ph ph-spinner-gap ph-spin"></i>{{ translate('serverTerm', 'importing', data['lang']) }}</span>
+  {% elif stats['running'] %}
+  <button type="button" class="dash-btn dash-btn-stop stop_button" data-id="{{ sid }}" data-toggle="tooltip" title="{{ translate('dashboard', 'stop', data['lang']) }}" aria-label="{{ translate('dashboard', 'stop', data['lang']) }}"><i class="ph-fill ph-stop"></i></button>
+  <button type="button" class="dash-btn dash-btn-restart restart_button" data-id="{{ sid }}" data-toggle="tooltip" title="{{ translate('dashboard', 'restart', data['lang']) }}" aria-label="{{ translate('dashboard', 'restart', data['lang']) }}"><i class="ph-bold ph-arrows-clockwise"></i></button>
+  <button type="button" class="dash-btn dash-btn-kill kill_button" data-id="{{ sid }}" data-toggle="tooltip" title="{{ translate('dashboard', 'kill', data['lang']) }}" aria-label="{{ translate('dashboard', 'kill', data['lang']) }}"><i class="ph-fill ph-skull"></i></button>
+  {% else %}
+  <button type="button" class="dash-btn dash-btn-start play_button" data-id="{{ sid }}" data-toggle="tooltip" title="{{ translate('dashboard', 'start', data['lang']) }}" aria-label="{{ translate('dashboard', 'start', data['lang']) }}"><i class="ph-fill ph-play"></i></button>
+  <button type="button" class="dash-btn clone_button" data-id="{{ sid }}" data-toggle="tooltip" title="{{ translate('dashboard', 'clone', data['lang']) }}" aria-label="{{ translate('dashboard', 'clone', data['lang']) }}"><i class="ph-bold ph-copy-simple"></i></button>
+  <button type="button" class="dash-btn dash-btn-kill kill_button" data-id="{{ sid }}" data-toggle="tooltip" title="{{ translate('dashboard', 'kill', data['lang']) }}" aria-label="{{ translate('dashboard', 'kill', data['lang']) }}"><i class="ph-fill ph-skull"></i></button>
+  {% end %}
+</div>

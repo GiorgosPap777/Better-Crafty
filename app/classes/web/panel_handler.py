@@ -1611,7 +1611,7 @@ class PanelHandler(BaseHandler):
         elif page == "edit_backup":
             server_id = self.get_argument("id", None)
             backup_id = self.get_argument("backup_id", None)
-            page_data["active_link"] = "backups"
+            page_data["active_link"] = "backup"
             page_data["permissions"] = {
                 "Commands": EnumPermissionsServer.COMMANDS,
                 "Terminal": EnumPermissionsServer.TERMINAL,
@@ -1690,7 +1690,7 @@ class PanelHandler(BaseHandler):
         elif page == "add_backup":
             server_id = self.get_argument("id", None)
             backup_id = self.get_argument("backup_id", None)
-            page_data["active_link"] = "backups"
+            page_data["active_link"] = "backup"
             page_data["permissions"] = {
                 "Commands": EnumPermissionsServer.COMMANDS,
                 "Terminal": EnumPermissionsServer.TERMINAL,
