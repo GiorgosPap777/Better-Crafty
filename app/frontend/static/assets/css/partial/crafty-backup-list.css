@@ -11,9 +11,25 @@
 }
 
 .backup-head h3 {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
     font-size: 1.1rem;
     font-weight: 600;
-    margin-bottom: 0.25rem;
+    margin-bottom: 0.3rem;
+}
+
+.backup-head h3 i {
+    color: var(--info);
+    font-size: 1.25rem;
+}
+
+.backup-head .btn,
+.backup-plan-actions .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.4rem;
 }
 
 .backup-empty {
@@ -34,8 +50,9 @@
     justify-content: space-between;
     border: 1px solid var(--outline);
     border-radius: 0.5rem;
-    padding: 1rem 1.25rem;
+    padding: 1.15rem 1.35rem;
     margin-bottom: 1rem;
+    background-color: var(--deep-bg);
 }
 
 .backup-plan-main {
@@ -48,19 +65,25 @@
     flex-wrap: wrap;
     align-items: center;
     gap: 0.5rem;
-    margin-bottom: 0.75rem;
+    margin-bottom: 0.9rem;
 }
 
 .backup-plan-title h4 {
-    font-size: 1rem;
+    font-size: 1.05rem;
     font-weight: 600;
     margin: 0;
     overflow-wrap: anywhere;
 }
 
 .backup-plan-title .badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    padding: 0.2rem 0.6rem;
     border: 1px solid;
     background: transparent;
+    font-size: 0.75rem;
+    font-weight: 600;
     cursor: default;
 }
 
@@ -75,8 +98,8 @@
 
 .backup-facts {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr));
-    gap: 0.5rem 1.5rem;
+    grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr));
+    gap: 0.85rem 1.5rem;
     margin: 0;
     padding: 0;
 }
@@ -88,15 +111,16 @@
 }
 
 .backup-facts dt {
-    font-size: 0.75rem;
-    font-weight: 500;
+    font-size: 0.72rem;
+    font-weight: 600;
     text-transform: uppercase;
-    letter-spacing: 0.03em;
-    opacity: 0.7;
+    letter-spacing: 0.05em;
+    opacity: 0.65;
 }
 
 .backup-facts dd {
-    margin: 0;
+    margin: 0.2rem 0 0;
+    font-variant-numeric: tabular-nums;
 }
 
 .backup-facts .backup-facts-wide {
@@ -104,7 +128,7 @@
 }
 
 .backup-location {
-    font-family: monospace;
+    font-family: var(--font-family-monospace);
     font-size: 0.85rem;
     overflow-wrap: anywhere;
 }

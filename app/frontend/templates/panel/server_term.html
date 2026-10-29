@@ -23,7 +23,7 @@
 
           {% include "parts/server_controls_list.html" %}
 
-          <div class="col-md-12 console-panel">
+          <div class="col-md-12 console-panel{% if data['permissions']['Commands'] in data['user_permissions'] %} has-command{% end %}">
             <div class="console-toolbar">
               <span class="console-title"><i class="ph-bold ph-terminal-window" aria-hidden="true"></i>
                 {{ translate('serverDetails', 'terminal', data['lang']) }}</span>
@@ -76,9 +76,10 @@
                   aria-label="{{ translate('serverTerm', 'commandInput', data['lang']) }}" autocapitalize="none"
                   autocorrect="off" spellcheck="false">
               </div>
-              <button id="submit" class="btn btn-primary" type="submit">
+              <button id="submit" class="btn btn-primary" type="submit"
+                title="{{ translate('serverTerm', 'sendCommand', data['lang']) }}">
                 <i class="ph-fill ph-paper-plane-tilt" aria-hidden="true"></i>
-                <span>{{ translate('serverTerm', 'sendCommand', data['lang']) }}</span>
+                <span class="d-none d-sm-inline">{{ translate('serverTerm', 'sendCommand', data['lang']) }}</span>
               </button>
             </form>
             <small class="console-hint" id="console-hint">{{ translate('serverTerm', 'historyHint', data['lang']) }}</small>

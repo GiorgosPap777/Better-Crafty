@@ -59,6 +59,7 @@
                   <h3><i class="ph ph-identification-card" aria-hidden="true"></i>{{ translate('serverConfig',
                     'sectionGeneral', data['lang']) }}</h3>
                 </div>
+                <div class="config-grid">
                 <div class="form-group">
                   <label for="server_name">{{ translate('serverConfig', 'serverName', data['lang']) }}
                     <small class="text-muted">{{ translate('serverConfig', 'serverNameDesc', data['lang']) }}</small>
@@ -67,24 +68,26 @@
                     value="{{ srv['server_name'] }}"
                     placeholder="{{ translate('serverConfig', 'serverName', data['lang']) }}" required>
                 </div>
-                {% if data['super_user'] %}
+                {% if data['super_user'] and stype != "minecraft-bedrock" %}
                 <div class="form-group">
+                  <label for="log_path">{{ translate('serverConfig', 'serverLogLocation', data['lang']) }}
+                    <small class="text-muted">{{ translate('serverConfig', 'serverLogLocationDesc', data['lang'])
+                      }}</small></label>
+                  <input type="text" class="form-control config-mono" name="log_path" id="log_path"
+                    value="{{ srv['log_path'] }}"
+                    placeholder="{{ translate('serverConfig', 'serverLogLocation', data['lang']) }}">
+                </div>
+                {% end %}
+                {% if data['super_user'] %}
+                <div class="form-group config-span">
                   <label>{{ translate('serverConfig', 'serverPath', data['lang']) }}
                     <small class="text-muted">{{ translate('serverConfig', 'serverPathDesc', data['lang']) }}</small>
                   </label>
                   <div class="config-locked"><span>{{ srv['path'] }}</span><i class="ph ph-lock-simple"
                       aria-hidden="true"></i></div>
                 </div>
-                {% if stype != "minecraft-bedrock" %}
-                <div class="form-group">
-                  <label for="log_path">{{ translate('serverConfig', 'serverLogLocation', data['lang']) }}
-                    <small class="text-muted">{{ translate('serverConfig', 'serverLogLocationDesc', data['lang'])
-                      }}</small></label>
-                  <input type="text" class="form-control" name="log_path" id="log_path" value="{{ srv['log_path'] }}"
-                    placeholder="{{ translate('serverConfig', 'serverLogLocation', data['lang']) }}">
+                {% end %}
                 </div>
-                {% end %}
-                {% end %}
               </section>
 
               <section class="config-section">
@@ -92,12 +95,13 @@
                   <h3><i class="ph ph-rocket-launch" aria-hidden="true"></i>{{ translate('serverConfig',
                     'sectionStartup', data['lang']) }}</h3>
                 </div>
+                <div class="config-grid">
                 {% if data['memory']['mem_min'] is not None or data['memory']['mem_max'] is not None %}
                 <div class="form-group">
                   <label>{{ translate('serverConfig', 'memory', data['lang']) }}
                     <small class="text-muted">{{ translate('serverConfig', 'memoryDesc', data['lang']) }}</small>
                   </label>
-                  <div class="row">
+                  <div class="row config-memory">
                     {% if data['memory']['mem_min'] is not None %}
                     <div class="col-6">
                       <label for="mem_min" class="small mb-1">{{ translate('serverConfig', 'memMin', data['lang'])
@@ -133,13 +137,13 @@
                   </select>
                 </div>
                 {% end %}
-                <div class="form-group">
+                <div class="form-group config-span">
                   <label for="execution_command">{{ translate('serverConfig', 'serverExecutionCommand', data['lang'])
                     }}
                     <small class="text-muted">{{ translate('serverConfig', 'serverExecutionCommandDesc',
                       data['lang']) }}</small></label>
                   {% if data['super_user'] %}
-                  <input type="text" class="form-control" name="execution_command" id="execution_command"
+                  <input type="text" class="form-control config-mono" name="execution_command" id="execution_command"
                     value="{{ srv['execution_command'] }}"
                     placeholder="{{ translate('serverConfig', 'serverExecutionCommand', data['lang']) }}" required>
                   {% else %}
@@ -151,17 +155,9 @@
                   <label for="stop_command">{{ translate('serverConfig', 'serverStopCommand', data['lang']) }}
                     <small class="text-muted">{{ translate('serverConfig', 'serverStopCommandDesc', data['lang'])
                       }}</small></label>
-                  <input type="text" class="form-control" name="stop_command" id="stop_command"
+                  <input type="text" class="form-control config-mono" name="stop_command" id="stop_command"
                     value="{{ srv['stop_command'] }}"
                     placeholder="{{ translate('serverConfig', 'serverStopCommand', data['lang']) }}" required>
-                </div>
-                <div class="form-group">
-                  <div class="custom-control custom-switch">
-                    <input type="checkbox" class="custom-control-input" id="auto_start" name="auto_start" value="1"
-                      {% if srv['auto_start'] %}checked{% end %}>
-                    <label class="custom-control-label" for="auto_start">&nbsp;&nbsp;{{ translate('serverConfig',
-                      'serverAutoStart', data['lang']) }}</label>
-                  </div>
                 </div>
                 <div class="form-group">
                   <label for="auto_start_delay">{{ translate('serverConfig', 'serverAutostartDelay', data['lang']) }}
@@ -170,6 +166,15 @@
                   <input type="number" class="form-control" name="auto_start_delay" id="auto_start_delay"
                     value="{{ srv['auto_start_delay'] }}" step="1" max="999" min="10" required>
                 </div>
+                <div class="form-group config-span">
+                  <div class="custom-control custom-switch">
+                    <input type="checkbox" class="custom-control-input" id="auto_start" name="auto_start" value="1"
+                      {% if srv['auto_start'] %}checked{% end %}>
+                    <label class="custom-control-label" for="auto_start">&nbsp;&nbsp;{{ translate('serverConfig',
+                      'serverAutoStart', data['lang']) }}</label>
+                  </div>
+                </div>
+                </div>
               </section>
 
               <section class="config-section">
@@ -177,24 +182,23 @@
                   <h3><i class="ph ph-heartbeat" aria-hidden="true"></i>{{ translate('serverConfig',
                     'sectionMonitoring', data['lang']) }}</h3>
                 </div>
+                <div class="config-grid">
                 {% if data['super_user'] %}
-                <div class="row">
-                  <div class="form-group col-md-8">
+                  <div class="form-group">
                     <label for="server_ip">{{ translate('serverConfig', 'serverIP', data['lang']) }}
                       <small class="text-muted">{{ translate('serverConfig', 'serverIPDesc', data['lang']) }}</small>
                     </label>
                     <input type="text" class="form-control" name="server_ip" id="server_ip"
                       value="{{ srv['server_ip'] }}" required>
                   </div>
-                  <div class="form-group col-md-4">
+                  <div class="form-group">
                     <label for="server_port">{{ translate('serverConfig', 'serverPort', data['lang']) }}
                       <small class="text-muted">{{ translate('serverConfig', 'serverPortDesc', data['lang'])
                         }}</small></label>
                     <input type="number" class="form-control" name="server_port" id="server_port"
                       value="{{ srv['server_port'] }}" step="1" max="65535" min="1" required>
                   </div>
-                </div>
-                <p class="small text-muted"><i class="ph ph-info" aria-hidden="true"></i> {{
+                <p class="small text-muted config-span config-note"><i class="ph ph-info" aria-hidden="true"></i> {{
                   translate('serverConfig', 'statsHint2', data['lang']) }}</p>
                 {% end %}
                 <div class="form-group">
@@ -215,6 +219,7 @@
                   </div>
                 </div>
                 {% end %}
+                </div>
               </section>
 
               <section class="config-section">
@@ -222,7 +227,8 @@
                   <h3><i class="ph ph-first-aid-kit" aria-hidden="true"></i>{{ translate('serverConfig',
                     'sectionCrash', data['lang']) }}</h3>
                 </div>
-                <div class="form-group">
+                <div class="config-grid">
+                <div class="form-group config-span">
                   <div class="custom-control custom-switch">
                     <input type="checkbox" class="custom-control-input" id="crash_detection" name="crash_detection"
                       value="1" {% if srv['crash_detection'] %}checked{% end %}>
@@ -252,12 +258,13 @@
                   <input type="number" class="form-control" name="logs_delete_after" id="logs_delete_after"
                     value="{{ srv['logs_delete_after'] }}" step="1" max="365" min="0" required>
                 </div>
+                </div>
               </section>
 
               <div class="config-actions config-actions-sticky">
                 <span class="config-dirty small d-none" id="config_dirty"><i class="ph ph-warning-circle"
                     aria-hidden="true"></i> {{ translate('serverConfig', 'unsavedChanges', data['lang']) }}</span>
-                <button type="reset" class="btn btn-light"><i class="ph ph-arrow-counter-clockwise"
+                <button type="reset" class="btn btn-ghost"><i class="ph ph-arrow-counter-clockwise"
                     aria-hidden="true"></i> {{ translate('serverConfig', 'cancel', data['lang']) }}</button>
                 <button type="submit" class="btn btn-success" id="config_save"><i class="ph ph-floppy-disk"
                     aria-hidden="true"></i> {{ translate('serverConfig', 'save', data['lang']) }}</button>
@@ -292,22 +299,6 @@
   </div>
 </div>
 
-<style>
-  .custom-control-input:checked~.custom-control-label::before {
-    color: black !important;
-    background-color: blueviolet !important;
-    border-color: var(--outline) !important;
-  }
-
-  .custom-control-label::before {
-    background-color: white !important;
-    top: calc(-0.2rem);
-  }
-
-  .custom-switch .custom-control-label::after {
-    top: calc(-0.125rem + 1px);
-  }
-</style>
 <!-- content-wrapper ends -->
 
 {% end %}

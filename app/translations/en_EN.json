@@ -486,7 +486,7 @@
         "confirm": "Confirm",
         "confirmDelete": "Do you want to delete this backup? This cannot be undone.",
         "currentBackups": "Current Backups",
-        "default": "Default Backup",
+        "default": "Default",
         "defaultExplain": "The backup that Crafty will use before updates. This cannot be changed or deleted.",
         "delete": "Delete",
         "deletePlanDesc": "This removes the backup plan. Backup files it already made are not deleted and stay in:",

@@ -8,6 +8,14 @@ commits table.
 
 ## Start here
 
+**State (2026-10-29, session 15, in progress):** Terminal, Config and
+Backups cleaned up in the dashboard's style, and the Unraid template now
+uses our image (see "Session 15"). Next, in this order: items inside
+shulker boxes clickable for their details, the special items (banners,
+pots, heads, copper golem statues), then the bigger features in the order
+picked in "Session 15". **Do not** update the README screenshots or make a
+release until the owner says so.
+
 **State (2026-10-29, session 13):** the Mods tab was tried on real Forge
 and NeoForge servers made and run by Crafty, which found and fixed an
 upstream bug: Forge 1.17 to 1.20.2 and NeoForge servers lost the memory
@@ -184,12 +192,23 @@ on any machine.
     u start by doing a general cleanup and butification especialy on the
     screenshoted pages that re the most often visited". Started with those
     two pages; see "Session 14".
+32. Session 15, after asking for suggestions: "Yeah, because not a lot of
+    people are using it live right now, we will update the screenshot and
+    pull out a new release later after we do more features. I will tell
+    you when. Start with 3 and then we will move on to the bigger
+    features. Also here, point the Android template to the our craft
+    image, and also add the special items. Also found that when an item
+    is on a sulker box, for example enchanted sword, I cannot see the
+    enchantments of it because I cannot click it. Moreover, you can start
+    with the bigger features after you do this, or you can do them in
+    whatever order you want, you find best." ("3" was the Terminal,
+    Config and Backups pages; "Android template" is the Unraid template.)
 
 ### Questions still waiting on the owner
 
 - Should a PR to `main` be opened? (Explained what it means; not opened.)
-- Which special items (banners, pots, dragon/piglin heads, copper golem
-  statues) to draw (session 11).
+- (Answered in session 15: all of them.) Which special items (banners,
+  pots, dragon/piglin heads, copper golem statues) to draw (session 11).
 - (Answered in session 5.) The token cookie is now `SameSite=Lax`
   (`api/auth/login.py`, `api/auth/passkey.py`): the API turns XSRF checks
   off, so without it another site could call the API as the logged-in user.
@@ -197,9 +216,8 @@ on any machine.
   one thing this breaks.
 - `show_errors` defaults to true, so tracebacks reach the browser. Upstream
   choice.
-- `docker/unraid.xml` (the Unraid template) still names the original image
-  (`arcadiatechnology/crafty-4`), its Discord and its Ko-fi. Point it at
-  `giorgospap777/better-crafty` and the fork's GitHub? (session 12)
+- (Answered in session 15: yes, done.) `docker/unraid.xml` (the Unraid
+  template) named the original image, its Discord and its Ko-fi.
 
 ## Commits so far
 
@@ -256,7 +274,8 @@ on any machine.
 | `c6190f06` | Mods tab: fix the pylint failure on GitHub (`pick_version`'s argument clashed with the new `versions()`; GitHub's newer pylint flags it, the local one did not) (session 12) |
 | `c22b879a` | Mods tab: tried on a Paper server run by Crafty itself; the Turn on message names the jar without `.disabled` (session 12) |
 | `6beb7ce7` | Forge 1.17 to 1.20.2 and NeoForge servers keep the memory picked when creating them; 1 GB is 1024M; the Mods tab tried on Forge and NeoForge servers made by Crafty (session 13) |
-| (this commit) | Dashboard redone (stat tiles with bars, cleaner servers table and phone cards, live online/offline counts); server tabs in one row that scrolls; host CPU no longer divided by the cores; Backup tab lit on the add/edit backup pages (session 14) |
+| `8f64257b` | Dashboard redone (stat tiles with bars, cleaner servers table and phone cards, live online/offline counts); server tabs in one row that scrolls; host CPU no longer divided by the cores; Backup tab lit on the add/edit backup pages (session 14) |
+| (this commit) | Terminal, Config and Backups cleaned up; Unraid template uses our image (session 15) |
 
 ### 1. Login (`d3946c3f`)
 
@@ -2093,6 +2112,48 @@ general cleanup and a nicer look, starting with those.
 - `tests/classes/remote_stats/test_host_cpu.py` (new)
 - `dev/handoff-tools/test_world.js`, `readme_shots.js` (new tab selectors)
 - `CLAUDE.md` (test count), `handoff.md`
+
+## Session 15: Terminal, Config, Backups; Unraid (in progress)
+
+- **Terminal** (`server_term.html`, `partial/crafty-terminal.css`): the
+  command line is joined to the bottom of the output like a real
+  terminal, stays dark when typing in it (the theme turns focused boxes
+  light lavender), purple `>` prompt, the send button inside it (only the
+  icon on phones). The output is darker (`--deep-bg`), "No console output
+  yet" sits in the middle, and the panel lines up with the tab bar.
+- **Config** (`server_config.html`, `partial/crafty-config.css`): two
+  columns on wide screens (`.config-grid`, `.config-span` for a full row;
+  inputs line up at the bottom of each row), one on phones. Bigger boxes
+  (0.875rem text, 2.5rem high), bold labels with the help text under
+  them, commands and paths in the monospace font, the working directory
+  as a dashed locked box, section headers with a purple icon and a line
+  under them, sections on the darker background. The save bar is a
+  floating card that stays at the bottom while scrolling; Cancel is a
+  quiet button. The page's inline `<style>` for switches was the same as
+  `crafty.css` and is gone.
+- **Backups** (`partial/crafty-backup-list.css`): plan cards on the darker
+  background, smaller pills, labels like the dashboard's, wider fact
+  columns. The pill says "Default" (it said "Default Backup" next to a plan
+  usually called "Default Backup"; `serverBackups.default`).
+- **Unraid template** (`docker/unraid.xml`): image
+  `giorgospap777/better-crafty`, our GitHub for the project, support
+  (Issues), template and icon; new description; no Discord or Ko-fi;
+  folders under `/mnt/user/appdata/better-crafty/` so it does not share
+  folders with a Crafty 4 install by accident.
+- Checked: the three pages at 1540 and 390 px, the Terminal with a
+  running server's output; `test_config.js`, `test_backups.js`,
+  `test_server.js`, `test_complete.js`, `test_complete_phone.js` pass
+  (`test_complete_phone.js` failed once on "chat cannot change it" and
+  passed on the next two runs; a timing flake, the console code did not
+  change), the tab crawl and `crawl.js` show no errors.
+
+### Files (session 15)
+
+- `app/frontend/templates/panel/server_term.html`, `server_config.html`
+- `app/frontend/static/assets/css/partial/crafty-terminal.css`,
+  `crafty-config.css`, `crafty-backup-list.css`
+- `app/translations/en_EN.json` (`serverBackups.default`)
+- `docker/unraid.xml`, `handoff.md`
 
 ## Development setup (any machine)
 
