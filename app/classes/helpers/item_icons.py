@@ -9,12 +9,13 @@ app/config/item_icons/. The jar is deleted afterwards.
 The drawing follows the game's rules for items in an inventory slot. Flat items
 are their texture layers on top of each other. Blocks and other 3D models are
 turned by the model's "gui" display settings and lit like in the game. Chests,
-shulker boxes, mob heads and shields, which the game draws with entity models,
-are built from their entity textures. Items drawn in other special ways
-(banners, decorated pots...) get no picture; the page shows their name.
+shulker boxes, mob heads, shields, banners, decorated pots and copper golem
+statues, which the game draws with entity models, are built from the same boxes
+and entity textures.
 """
 
 import datetime
+import functools
 import hashlib
 import io
 import json
@@ -29,7 +30,7 @@ import zipfile
 from pathlib import Path
 
 import requests
-from PIL import Image, ImageDraw
+from PIL import Image, ImageChops, ImageDraw, ImageMath
 
 logger = logging.getLogger(__name__)
 
@@ -535,17 +536,41 @@ def _model_faces(assets: Assets, model: dict, tints: list, matrix: Matrix) -> li
     return faces
 
 
-def _box(origin, size, tex_offset, inflate: float = 0.0):
-    """The six faces of an entity model cube, like the game's ModelPart.Cube.
+class Cube(t.NamedTuple):
+    """One box of an entity model, like the game's ModelPart.Cube (in pixels)."""
+
+    origin: Point
+    size: Point
+    uv: t.Tuple[int, int]  # top left of the box's area in the texture
+    inflate: float = 0.0
+    pose: t.Optional[Matrix] = None  # where its model part sits
+    mirror: bool = False
+    face: str = ""  # only this face, for flat parts
+
+
+def _pose(offset: Point, rotation: Point = (0, 0, 0), scale: float = 1.0) -> Matrix:
+    """A model part's place, like ModelPart.translateAndRotate (radians)."""
+    matrix = _translate(*offset)
+    for axis, angle in zip("zyx", reversed(rotation)):
+        if angle:
+            matrix = _mul(matrix, _rotate(axis, math.degrees(angle)))
+    return _mul(matrix, _scale(scale, scale, scale))
+
+
+def _box(cube: Cube):
+    """The faces of an entity model cube, like the game's ModelPart.Cube.
 
     Gives (top left, top right, bottom left) corners in model pixels and the
     texture pixels at those corners, for a texture of the model's own size.
     """
-    x, y, z = origin
-    dx, dy, dz = size
-    u, v = tex_offset
-    lo = (x - inflate, y - inflate, z - inflate)
-    hi = (x + dx + inflate, y + dy + inflate, z + dz + inflate)
+    x, y, z = cube.origin
+    dx, dy, dz = cube.size
+    u, v = cube.uv
+    grow = cube.inflate
+    lo = [x - grow, y - grow, z - grow]
+    hi = [x + dx + grow, y + dy + grow, z + dz + grow]
+    if cube.mirror:
+        lo[0], hi[0] = hi[0], lo[0]
     p = [
         (lo[0], lo[1], lo[2]),
         (hi[0], lo[1], lo[2]),
@@ -558,89 +583,200 @@ def _box(origin, size, tex_offset, inflate: float = 0.0):
     ]
     us = (u, u + dz, u + dz + dx, u + dz + 2 * dx, u + 2 * dz + dx, u + 2 * dz + 2 * dx)
     vs = (v, v + dz, v + dz + dy)
-    polygons = (
-        ((5, 4, 0, 1), us[1], vs[0], us[2], vs[1]),
-        ((2, 3, 7, 6), us[2], vs[1], us[3], vs[0]),
-        ((0, 4, 7, 3), us[0], vs[1], us[1], vs[2]),
-        ((1, 0, 3, 2), us[1], vs[1], us[2], vs[2]),
-        ((5, 1, 2, 6), us[2], vs[1], us[4], vs[2]),
-        ((4, 5, 6, 7), us[4], vs[1], us[5], vs[2]),
-    )
-    for corners, u1, v1, u2, v2 in polygons:
+    # Each face: its first three corners as the game lists them, and its area
+    # of the texture
+    polygons = {
+        "down": ((5, 4, 0), (us[1], vs[0], us[2], vs[1])),
+        "up": ((2, 3, 7), (us[2], vs[1], us[3], vs[0])),
+        "west": ((0, 4, 7), (us[0], vs[1], us[1], vs[2])),
+        "north": ((1, 0, 3), (us[1], vs[1], us[2], vs[2])),
+        "east": ((5, 1, 2), (us[2], vs[1], us[4], vs[2])),
+        "south": ((4, 5, 6), (us[4], vs[1], us[5], vs[2])),
+    }
+    for name, ((a, b, c), (u1, v1, u2, v2)) in polygons.items():
+        if cube.face and name != cube.face:
+            continue
         # The game gives the second vertex the top left of the texture area
-        yield (p[corners[1]], p[corners[0]], p[corners[2]]), (
-            (u1, v1),
-            (u2, v1),
-            (u1, v2),
-        )
+        first, second, third = p[b], p[a], p[c]
+        uv = ((u1, v1), (u2, v1), (u1, v2))
+        if cube.mirror:
+            # A mirrored box keeps each corner's texture point, which turns
+            # its faces inside out; turn them back
+            yield (first, third, second), (uv[0], uv[2], uv[1])
+        else:
+            yield (first, second, third), uv
 
 
-# Entity models: (texture, texture size, [(origin, size, texture offset, inflate)])
+# Entity models: their cubes, for a texture of the size given with them
 CHEST = [
-    ((1, 0, 1), (14, 10, 14), (0, 19), 0.0),
-    ((1, 9, 1), (14, 5, 14), (0, 0), 0.0),
-    ((7, 7, 15), (2, 4, 1), (0, 0), 0.0),
+    Cube((1, 0, 1), (14, 10, 14), (0, 19)),
+    Cube((1, 9, 1), (14, 5, 14), (0, 0)),
+    Cube((7, 7, 15), (2, 4, 1), (0, 0)),
 ]
 SHULKER = [
-    ((-8, 8, -8), (16, 12, 16), (0, 0), 0.0),
-    ((-8, 16, -8), (16, 8, 16), (0, 28), 0.0),
+    Cube((-8, 8, -8), (16, 12, 16), (0, 0)),
+    Cube((-8, 16, -8), (16, 8, 16), (0, 28)),
 ]
-HEAD = [((-4, -8, -4), (8, 8, 8), (0, 0), 0.0)]
-HEAD_WITH_HAT = HEAD + [((-4, -8, -4), (8, 8, 8), (32, 0), 0.25)]
+HEAD = [Cube((-4, -8, -4), (8, 8, 8), (0, 0))]
+HEAD_WITH_HAT = HEAD + [Cube((-4, -8, -4), (8, 8, 8), (32, 0), 0.25)]
 SHIELD = [
-    ((-6, -11, -2), (12, 22, 1), (0, 0), 0.0),
-    ((-1, -3, -1), (2, 6, 6), (26, 0), 0.0),
+    Cube((-6, -11, -2), (12, 22, 1), (0, 0)),
+    Cube((-1, -3, -1), (2, 6, 6), (26, 0)),
 ]
-CONDUIT = [((-3, -3, -3), (6, 6, 6), (0, 0), 0.0)]
+CONDUIT = [Cube((-3, -3, -3), (6, 6, 6), (0, 0))]
+# The dragon's head, its jaw a little open like in the game
+_DRAGON = _pose((0, -7.986666 * 0.75, 0), scale=0.75)
+_DRAGON_JAW = _mul(_DRAGON, _pose((0, 4, -8), (0.2, 0, 0)))
+DRAGON_HEAD = [
+    Cube((-6, -1, -24), (12, 5, 16), (176, 44), pose=_DRAGON),
+    Cube((-8, -8, -10), (16, 16, 16), (112, 30), pose=_DRAGON),
+    Cube((-5, -12, -4), (2, 4, 6), (0, 0), pose=_DRAGON, mirror=True),
+    Cube((-5, -3, -22), (2, 2, 4), (112, 0), pose=_DRAGON, mirror=True),
+    Cube((3, -12, -4), (2, 4, 6), (0, 0), pose=_DRAGON),
+    Cube((3, -3, -22), (2, 2, 4), (112, 0), pose=_DRAGON),
+    Cube((-6, 0, -16), (12, 4, 16), (176, 65), pose=_DRAGON_JAW),
+]
+# The piglin's head, its ears hanging out to the sides
+PIGLIN_HEAD = [
+    Cube((-5, -8, -4), (10, 8, 8), (0, 0)),
+    Cube((-2, -4, -5), (4, 4, 1), (31, 1)),
+    Cube((2, -2, -5), (1, 2, 1), (2, 4)),
+    Cube((-3, -2, -5), (1, 2, 1), (2, 0)),
+    Cube((0, 0, -2), (1, 5, 4), (51, 6), pose=_pose((4.5, -6, 0), (0, 0, -0.7))),
+    Cube((-1, 0, -2), (1, 5, 4), (39, 6), pose=_pose((-4.5, -6, 0), (0, 0, 0.7))),
+]
 HEADS = {
     "skeleton": ("entity/skeleton/skeleton", (64, 32), HEAD),
     "wither_skeleton": ("entity/skeleton/wither_skeleton", (64, 32), HEAD),
     "zombie": ("entity/zombie/zombie", (64, 64), HEAD_WITH_HAT),
     "creeper": ("entity/creeper/creeper", (64, 32), HEAD),
+    "dragon": ("entity/enderdragon/dragon", (256, 256), DRAGON_HEAD),
+    "piglin": ("entity/piglin/piglin", (64, 64), PIGLIN_HEAD),
 }
+# A standing banner: pole, bar, and the flag hanging from the bar
+BANNER = [
+    Cube((-1, -42, -1), (2, 42, 2), (44, 0)),
+    Cube((-10, -44, -1), (20, 2, 2), (0, 42)),
+]
+_FLAG = _pose((0, -44, 0), (-0.0025 * math.pi, 0, 0))
+BANNER_FLAG = [Cube((-10, 0, -2), (20, 40, 1), (0, 0), pose=_FLAG)]
+# The colour the game gives a banner's flag for each dye
+DYES = {
+    "white": (0xF9, 0xFF, 0xFE),
+    "orange": (0xF9, 0x80, 0x1D),
+    "magenta": (0xC7, 0x4E, 0xBD),
+    "light_blue": (0x3A, 0xB3, 0xDA),
+    "yellow": (0xFE, 0xD8, 0x3D),
+    "lime": (0x80, 0xC7, 0x1F),
+    "pink": (0xF3, 0x8B, 0xAA),
+    "gray": (0x47, 0x4F, 0x52),
+    "light_gray": (0x9D, 0x9D, 0x97),
+    "cyan": (0x16, 0x9C, 0x9C),
+    "purple": (0x89, 0x32, 0xB8),
+    "blue": (0x3C, 0x44, 0xAA),
+    "brown": (0x83, 0x54, 0x32),
+    "green": (0x5E, 0x7C, 0x16),
+    "red": (0xB0, 0x2E, 0x26),
+    "black": (0x1D, 0x1D, 0x21),
+}
+# A decorated pot: neck, top and bottom, then its four flat sides
+_POT_NECK = _pose((0, 37, 16), (math.pi, 0, 0))
+POT_BASE = [
+    Cube((4, 17, 4), (8, 3, 8), (0, 0), -0.1, pose=_POT_NECK),
+    Cube((5, 20, 5), (6, 1, 6), (0, 5), 0.2, pose=_POT_NECK),
+    Cube((0, 0, 0), (14, 0, 14), (-14, 13), pose=_pose((1, 16, 1))),
+    Cube((0, 0, 0), (14, 0, 14), (-14, 13), pose=_pose((1, 0, 1))),
+]
+POT_SIDES = [
+    Cube((0, 0, 0), (14, 16, 0), (1, 0), pose=pose, face="north")
+    for pose in (
+        _pose((15, 16, 1), (0, 0, math.pi)),
+        _pose((1, 16, 1), (0, -math.pi / 2, math.pi)),
+        _pose((15, 16, 15), (0, math.pi / 2, math.pi)),
+        _pose((1, 16, 15), (math.pi, 0, 0)),
+    )
+]
+# A copper golem statue, standing
+_GOLEM = _pose((0, 0, 0), (0, 0, math.pi))
+_GOLEM_BODY = _mul(_GOLEM, _pose((0, -5, 0)))
+_GOLEM_HEAD = _mul(_GOLEM_BODY, _pose((0, -6, 0)))
+_GOLEM_RIGHT_ARM = _mul(_GOLEM_BODY, _pose((-4, -6, 0)))
+_GOLEM_LEFT_ARM = _mul(_GOLEM_BODY, _pose((4, -6, 0)))
+_GOLEM_LEGS = _mul(_GOLEM, _pose((0, -5, 0)))
+COPPER_GOLEM = [
+    Cube((-4, -6, -3), (8, 6, 6), (0, 15), pose=_GOLEM_BODY),
+    Cube((-4, -5, -5), (8, 5, 10), (0, 0), 0.015, pose=_GOLEM_HEAD),
+    Cube((-1, -2, -6), (2, 3, 2), (56, 0), pose=_GOLEM_HEAD),
+    Cube((-1, -9, -1), (2, 4, 2), (37, 8), -0.015, pose=_GOLEM_HEAD),
+    Cube((-2, -13, -2), (4, 4, 4), (37, 0), -0.015, pose=_GOLEM_HEAD),
+    Cube((-3, -1, -2), (3, 10, 4), (36, 16), pose=_GOLEM_RIGHT_ARM),
+    Cube((0, -1, -2), (3, 10, 4), (50, 16), pose=_GOLEM_LEFT_ARM),
+    Cube((-4, 0, -2), (4, 5, 4), (0, 27), pose=_GOLEM_LEGS),
+    Cube((0, 0, -2), (4, 5, 4), (16, 27), pose=_GOLEM_LEGS),
+]
+# Statues name their texture by its whole path
+GOLEM_TEXTURE_RE = re.compile(r"^textures/(entity/copper_golem/[a-z0-9_]{1,64})\.png$")
 
 
-def _special_model(spec: dict):
-    """Texture and boxes for the entity-drawn items this can draw."""
+def _special_model(spec: dict) -> t.Optional[list]:
+    """The entity-drawn items this can draw, as layers drawn one after another:
+    (texture, texture size, cubes, tint colour)."""
     kind = _strip(spec.get("type"))
     texture = _strip(spec.get("texture"))
+    if kind == "copper_golem_statue":
+        found = GOLEM_TEXTURE_RE.match(texture)
+        return [(found.group(1), (64, 64), COPPER_GOLEM, None)] if found else None
     if texture and not NAME_RE.match(texture):
         return None
     if kind == "chest" and texture:
-        return f"entity/chest/{texture}", (64, 64), CHEST
+        return [(f"entity/chest/{texture}", (64, 64), CHEST, None)]
     if kind == "shulker_box" and texture:
-        return f"entity/shulker/{texture}", (64, 64), SHULKER
-    if kind == "head":
-        return HEADS.get(_strip(spec.get("kind")))
+        return [(f"entity/shulker/{texture}", (64, 64), SHULKER, None)]
+    if kind == "head" and _strip(spec.get("kind")) in HEADS:
+        return [HEADS[_strip(spec.get("kind"))] + (None,)]
     if kind == "player_head":
-        return "entity/player/wide/steve", (64, 64), HEAD_WITH_HAT
+        return [("entity/player/wide/steve", (64, 64), HEAD_WITH_HAT, None)]
     if kind == "shield":
-        return "entity/shield/shield_base_nopattern", (64, 64), SHIELD
+        return [("entity/shield/shield_base_nopattern", (64, 64), SHIELD, None)]
     if kind == "conduit":
-        return "entity/conduit/base", (32, 16), CONDUIT
+        return [("entity/conduit/base", (32, 16), CONDUIT, None)]
+    if kind == "banner" and _strip(spec.get("color")) in DYES:
+        # The dye colour is a tinted layer over the plain flag
+        color = DYES[_strip(spec.get("color"))]
+        return [
+            ("entity/banner/banner_base", (64, 64), BANNER + BANNER_FLAG, None),
+            ("entity/banner/base", (64, 64), BANNER_FLAG, color),
+        ]
+    if kind == "decorated_pot":
+        return [
+            ("entity/decorated_pot/decorated_pot_base", (32, 32), POT_BASE, None),
+            ("entity/decorated_pot/decorated_pot_side", (16, 16), POT_SIDES, None),
+        ]
     return None
 
 
 def _special_faces(assets: Assets, spec: dict, matrix: Matrix) -> t.Optional[list]:
-    found = _special_model(spec)
-    if found is None:
+    layers = _special_model(spec)
+    if layers is None:
         return None
-    name, (width, height), boxes = found
-    texture = assets.texture(name)
-    if texture is None:
-        return None
-    sx, sy = texture.width / width, texture.height / height
     faces = []
-    for origin, size, offset, inflate in boxes:
-        for corners, uv in _box(origin, size, offset, inflate):
-            faces.append(
-                Face(
-                    tuple(_apply(matrix, c) for c in corners),  # type: ignore[arg-type]
-                    texture,
-                    tuple((u * sx, v * sy) for u, v in uv),
-                    True,
+    for name, (width, height), cubes, tint in layers:
+        texture = assets.texture(name)
+        if texture is None:
+            return None
+        texture = _colored(texture, tint)
+        sx, sy = texture.width / width, texture.height / height
+        for cube in cubes:
+            place = matrix if cube.pose is None else _mul(matrix, cube.pose)
+            for corners, uv in _box(cube):
+                faces.append(
+                    Face(
+                        tuple(_apply(place, c) for c in corners),  # type: ignore[arg-type]
+                        texture,
+                        tuple((u * sx, v * sy) for u, v in uv),
+                        True,
+                    )
                 )
-            )
     return faces
 
 
@@ -675,6 +811,8 @@ def _padded_crop(texture: Image.Image, uv) -> t.Tuple[Image.Image, float, float]
 def _draw_faces(faces: t.List[Face], light: bool) -> t.Optional[Image.Image]:
     size = SIZE * OVERSAMPLE
     canvas = Image.new("RGBA", (size, size))
+    # How near the nearest thing drawn so far is, at each pixel
+    nearest = Image.new("F", (size, size), -1e9)
     drawn = []
     for face in faces:
         top_left, top_right, bottom_left = face.corners
@@ -694,14 +832,24 @@ def _draw_faces(faces: t.List[Face], light: bool) -> t.Optional[Image.Image]:
     drawn.sort(key=lambda item: item[0])
     for _, face, normal in drawn:
         level = _light(normal) if light and face.shade else 1.0
-        _draw_face(canvas, face, level)
+        _draw_face(canvas, nearest, face, level)
     if not drawn:
         return None
     small = canvas.convert("RGBa").reduce(OVERSAMPLE).convert("RGBA")
     return small if small.getbbox() else None
 
 
-def _draw_face(canvas: Image.Image, face: Face, level: float) -> None:
+@functools.lru_cache(maxsize=2)
+def _pixel_centres(size: int) -> t.Tuple[Image.Image, Image.Image]:
+    """Images whose pixels hold their own x and y."""
+    across = Image.new("F", (size, size))
+    across.putdata([x + 0.5 for _ in range(size) for x in range(size)])
+    return across, across.transpose(Image.Transpose.TRANSPOSE)
+
+
+def _draw_face(
+    canvas: Image.Image, nearest: Image.Image, face: Face, level: float
+) -> None:
     size = canvas.width
     screen = [((x + 0.5) * size, (0.5 - y) * size) for x, y, _ in face.corners]
     (x0, y0), (x1, y1), (x2, y2) = screen
@@ -746,9 +894,31 @@ def _draw_face(canvas: Image.Image, face: Face, level: float) -> None:
     )
     mask = Image.new("L", box)
     ImageDraw.Draw(mask).polygon([(x - left, y - top) for x, y in corners], fill=255)
+
+    # Faces are drawn back to front, but a small box standing on a big face
+    # can come before it; keep what is nearer than this face on top
+    z0 = face.corners[0][2]
+    dz = (face.corners[1][2] - z0, face.corners[2][2] - z0)
+    xs, ys = (image.crop((0, 0) + box) for image in _pixel_centres(size))
+    depth = ImageMath.lambda_eval(
+        lambda v: v["x"] * (dz[0] * a_x + dz[1] * b_x)
+        + v["y"] * (dz[0] * a_y + dz[1] * b_y)
+        + (z0 + dz[0] * a_o + dz[1] * b_o),
+        x=xs,
+        y=ys,
+    )
+    in_front = ImageMath.lambda_eval(
+        lambda v: (v["depth"] >= v["nearest"] - 1e-3) * 255,
+        depth=depth,
+        nearest=nearest.crop((left, top, right, bottom)),
+    )
+    mask = ImageChops.multiply(mask, in_front.convert("L"))
+
     alpha = piece.getchannel("A")
-    piece.putalpha(Image.composite(alpha, mask, mask))
+    alpha = Image.composite(alpha, mask, mask)
+    piece.putalpha(alpha)
     canvas.alpha_composite(piece, (left, top))
+    nearest.paste(depth, (left, top), alpha.point(lambda a: 255 if a else 0))
 
 
 def render_item(assets: Assets, name: str) -> t.Optional[Image.Image]:

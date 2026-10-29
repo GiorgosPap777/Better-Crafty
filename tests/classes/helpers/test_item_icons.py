@@ -19,12 +19,24 @@ def _png(color, size=(16, 16)):
     return data.getvalue()
 
 
-def _cube(texture="#all"):
+def _cube(texture="#all", low=(0, 0, 0), high=(16, 16, 16)):
     faces = {
         side: {"texture": texture}
         for side in ("down", "up", "north", "south", "west", "east")
     }
-    return [{"from": [0, 0, 0], "to": [16, 16, 16], "faces": faces}]
+    return [{"from": list(low), "to": list(high), "faces": faces}]
+
+
+# A small box standing on the back of a slab
+SMALL_BOX = _cube("#red", (0, 4, 12), (4, 8, 16))
+GOLEM = "minecraft:textures/entity/copper_golem/copper_golem.png"
+
+
+def _special(model, transformation=None):
+    node = {"type": "special", "base": "item/entity", "model": model}
+    if transformation:
+        node["transformation"] = transformation
+    return {"model": node}
 
 
 # A tiny stand-in for the client jar: path under assets/minecraft -> content
@@ -109,6 +121,43 @@ FILES = {
     "items/no_model.json": {"model": {"type": "model", "model": "item/nothing"}},
     "items/loop.json": {"model": {"type": "model", "model": "item/loop"}},
     "models/item/loop.json": {"parent": "item/loop"},
+    "models/block/box_on_slab.json": {
+        "parent": "block/block",
+        "textures": {"white": "block/white", "red": "item/apple"},
+        "elements": _cube("#white", high=(16, 4, 16)) + SMALL_BOX,
+    },
+    "models/block/box_alone.json": {
+        "parent": "block/block",
+        "textures": {"red": "item/apple"},
+        "elements": SMALL_BOX,
+    },
+    "items/box_on_slab.json": {
+        "model": {"type": "model", "model": "block/box_on_slab"}
+    },
+    "items/box_alone.json": {"model": {"type": "model", "model": "block/box_alone"}},
+    # Items the game draws with entity models
+    "models/item/entity.json": {
+        "gui_light": "front",
+        "display": {"gui": {"rotation": [30, 45, 0], "scale": [0.6] * 3}},
+    },
+    "items/red_banner.json": _special(
+        {"type": "banner", "color": "red"},
+        {"translation": [0.5, 0, 0.5], "scale": [0.66, -0.66, -0.66]},
+    ),
+    "items/plaid_banner.json": _special({"type": "banner", "color": "plaid"}),
+    "items/decorated_pot.json": _special({"type": "minecraft:decorated_pot"}),
+    "items/statue.json": _special({"type": "copper_golem_statue", "texture": GOLEM}),
+    "items/bad_statue.json": _special(
+        {
+            "type": "copper_golem_statue",
+            "texture": GOLEM.replace("copper_golem.", "../x."),
+        }
+    ),
+    "textures/entity/banner/banner_base.png": _png(WHITE, (64, 64)),
+    "textures/entity/banner/base.png": _png(WHITE, (64, 64)),
+    "textures/entity/decorated_pot/decorated_pot_base.png": _png(WHITE, (32, 32)),
+    "textures/entity/decorated_pot/decorated_pot_side.png": _png(RED),
+    "textures/entity/copper_golem/copper_golem.png": _png(RED, (64, 64)),
     "items/Bad Name.json": {"model": {"type": "model", "model": "item/apple"}},
     "items/broken.json": "{not json",
     "textures/item/apple.png": _png(RED),
@@ -174,6 +223,52 @@ def test_select_condition_and_composite(assets):
     assert both.getpixel((32, 32)) == RED
 
 
+def _red_pixels(picture):
+    """Opaque pixels of the red texture, however they are lit."""
+    return sum(
+        1 for r, g, _, a in picture.get_flattened_data() if a > 200 and r > g + 40
+    )
+
+
+def test_small_box_on_a_big_face_stays_in_front(assets):
+    alone = _red_pixels(render_item(assets, "box_alone"))
+    assert alone > 50
+    # Sorting faces by their middles alone draws the slab's top over the box
+    assert _red_pixels(render_item(assets, "box_on_slab")) >= alone * 0.95
+
+
+def test_box_faces_point_outwards():
+    for mirror in (False, True):
+        cube = item_icons.Cube((0, 0, 0), (2, 2, 2), (0, 0), mirror=mirror)
+        faces = list(item_icons._box(cube))  # pylint: disable=protected-access
+        assert len(faces) == 6
+        for (top_left, top_right, bottom_left), uv in faces:
+            across = [b - a for a, b in zip(top_left, top_right)]
+            down = [b - a for a, b in zip(top_left, bottom_left)]
+            normal = (
+                down[1] * across[2] - down[2] * across[1],
+                down[2] * across[0] - down[0] * across[2],
+                down[0] * across[1] - down[1] * across[0],
+            )
+            middle = [(a + b) / 2 for a, b in zip(top_right, bottom_left)]
+            assert sum(n * (m - 1) for n, m in zip(normal, middle)) > 0
+            if middle[0] == 2:
+                # A mirrored box has its west texture on its east side
+                assert {u for u, _ in uv} == ({0, 2} if mirror else {4, 6})
+
+
+def test_entity_drawn_items(assets):
+    banner = render_item(assets, "red_banner")
+    # The flag takes the dye's colour
+    colors = [(count, c) for count, c in banner.getcolors(4096) if c[3] == 255]
+    assert max(colors)[1] == (0xB0, 0x2E, 0x26, 255)
+    pot = render_item(assets, "decorated_pot")
+    assert _red_pixels(pot) > 100 and WHITE in {c for _, c in pot.getcolors(4096)}
+    assert _red_pixels(render_item(assets, "statue")) > 100
+    assert render_item(assets, "plaid_banner") is None
+    assert render_item(assets, "bad_statue") is None
+
+
 def test_missing_parts_give_no_picture(assets):
     assert render_item(assets, "no_texture") is None
     assert render_item(assets, "no_model") is None
@@ -186,7 +281,7 @@ def test_render_all(assets, tmp_path):
     seen = []
     count = render_all(assets, tmp_path, lambda done, total: seen.append(total))
     names = {path.name for path in tmp_path.iterdir()}
-    assert count == 7
+    assert count == 12
     assert "apple.png" in names and "both.png" in names
     assert "Bad Name.png" not in names and "broken.png" not in names
     # Sprites in the jar are kept as they are
@@ -227,7 +322,7 @@ def test_make_replaces_the_pictures(tmp_path):
     icons._make(jar, "9.9")  # pylint: disable=protected-access
     status = icons.status()
     assert status["state"] == "ready" and status["version"] == "9.9"
-    assert status["count"] == 7
+    assert status["count"] == 12
     assert icons.path("apple") and not icons.path("gone")
     assert not (tmp_path / "config" / "item_icons.new").exists()
     assert not (tmp_path / "config" / "item_icons.old").exists()

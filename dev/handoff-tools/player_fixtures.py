@@ -53,7 +53,7 @@ modern = {
         "feet": {"id": "minecraft:diamond_boots", "count": 1, "components": {"minecraft:enchantments": {"minecraft:feather_falling": 4}}},
         "offhand": {"id": "minecraft:totem_of_undying", "count": 1},
     },
-    "EnderItems": [item(0, "shulker_box"), item(1, "netherite_ingot", 4), item(13, "nether_star"), item(26, "beacon")],
+    "EnderItems": [item(0, "shulker_box"), item(1, "netherite_ingot", 4), item(2, "red_banner"), item(3, "dragon_head"), item(4, "piglin_head"), item(5, "decorated_pot"), item(6, "copper_golem_statue"), item(13, "nether_star"), item(26, "beacon")],
 }
 
 old = {

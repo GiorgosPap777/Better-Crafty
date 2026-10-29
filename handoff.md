@@ -56,7 +56,7 @@ on any machine.
    repo default, so a fresh clone is already on it. In an existing clone:
    `git fetch origin && git checkout claude/login-server-admin-improvements-ctbqdu && git pull`.
 2. **Set up and check** with "Development setup" below (about 10 minutes).
-   You should see 303 passing pytest tests before changing anything.
+   You should see 306 passing pytest tests before changing anything.
 3. **Finish the Modrinth installer's follow-ups** ("Modrinth installer
    (first version)" in Session 12), unless the owner asks for something else.
 4. Before you finish, update this file, commit and push (see "The project").
@@ -276,7 +276,8 @@ on any machine.
 | `6beb7ce7` | Forge 1.17 to 1.20.2 and NeoForge servers keep the memory picked when creating them; 1 GB is 1024M; the Mods tab tried on Forge and NeoForge servers made by Crafty (session 13) |
 | `8f64257b` | Dashboard redone (stat tiles with bars, cleaner servers table and phone cards, live online/offline counts); server tabs in one row that scrolls; host CPU no longer divided by the cores; Backup tab lit on the add/edit backup pages (session 14) |
 | `2c9763ce` | Terminal, Config and Backups cleaned up; Unraid template uses our image (session 15) |
-| (this commit) | Items inside shulker boxes and bundles can be clicked for their details (session 15) |
+| `3dc8470d` | Items inside shulker boxes and bundles can be clicked for their details (session 15) |
+| (this commit) | Pictures for banners, decorated pots, dragon and piglin heads, copper golem statues; faces drawn with a depth buffer (session 15) |
 
 ### 1. Login (`d3946c3f`)
 
@@ -1009,7 +1010,7 @@ pictures are opt-in and made on the owner's machine:
   have the `items/` definitions it reads. Ids from older worlds mostly still
   match.
 - Checked end to end against Mojang's real servers in session 10: 26.3
-  drew 1630 of 1658 items.
+  drew 1630 of 1658 items (1657 since session 15).
 
 ### How items are drawn (`app/classes/helpers/item_icons.py`, Pillow only)
 
@@ -1234,29 +1235,12 @@ In the game these items have no normal model in the game files. Their item
 definition says `"type": "minecraft:special"`, and the game draws them with
 Java code that holds their shape (the same code that draws the block or
 mob). The picture maker reads only the game's data files, so for each such
-item its shape has to be written by hand in `item_icons.py`
-(`_special_model`, boxes like `CHEST`, `SHULKER`, `HEADS`). Done so far:
-chests, shulker boxes, skeleton/wither skeleton/zombie/creeper heads,
-player heads, shield, conduit. Not done:
-
-- **Banners**: the cloth and pole are easy (one texture, dyed base
-  colour). The patterns on each banner come from that item's data in the
-  save, so a per-banner picture would be drawn in the page, not ahead of
-  time. A plain banner of each colour is a small job.
-- **Decorated pots**: a simple box shape; sides from the pot texture (the
-  sherds on each side are per item, like banners). Small job for a plain
-  pot.
-- **Dragon head and piglin head**: different head shapes (dragon has a
-  snout and jaw, piglin has ears and a snout). Medium job, boxes copied
-  from the game's model code.
-- **Copper golem statues**: the whole golem in a pose, four copper ageing
-  stages. Biggest job.
-- Others may be in the same group (session 10 drew 1630 of 1658 items).
-  To list them, find the `special` types that `_special_model` returns
-  None for.
-
-Ask the owner which ones they want; plain banners, decorated pots and the
-two heads are the best value.
+item its shape is written by hand in `item_icons.py` (`_special_model`,
+boxes copied from the game's model code: `CHEST`, `SHULKER`, `HEADS`,
+`BANNER`, `POT_BASE`, `COPPER_GOLEM`...). Since session 15 every item of
+Minecraft 26.3 has a picture except air (1657 of 1658). Banners are drawn
+plain in their colour and decorated pots plain; the patterns and sherds
+are per item in the save, so they would have to be drawn in the page.
 
 ### Files (session 11)
 
@@ -2157,6 +2141,24 @@ general cleanup and a nicer look, starting with those.
   The test player's shulker box now holds an enchanted diamond sword
   (`player_fixtures.py`); `test_item_icons.js` and `test_player_details.js`
   click it and check its enchantments.
+- **Special items** (`item_icons.py`): the last items with no picture are
+  drawn: banners (pole, bar and cloth in each of the 16 colours), the
+  decorated pot, the dragon head, the piglin head and the four copper golem
+  statues. Boxes and poses copied from the game's model code (`Cube` with
+  the part's pose, mirroring and single flat faces, like `ModelPart`). Now
+  1657 of 1658 items have a picture (all but air).
+- **Drawing fix**: faces were drawn back to front by their middle, which
+  goes wrong when a small box stands on a big face (a scale of the dragon
+  head vanished). Each picture now keeps how near every pixel is and a
+  face only covers what is behind it. This also fixed the ledge of
+  shelves, the posts of walls, the piglin's snout and the banner's bar.
+  Drawing every picture takes about 4.6 s instead of 3.2 s. Glass, ice,
+  slime and honey look the same as before.
+- Tests: `test_item_icons.py` checks a small box on a slab stays in front,
+  that mirrored boxes still face outwards with their texture flipped, and
+  that a banner, a pot and a statue are drawn (306 pass). The test player's
+  ender chest holds a banner, the two heads, a pot and a statue
+  (`player_fixtures.py`); the pictures were checked in the page.
 
 ### Files (session 15)
 
@@ -2169,6 +2171,8 @@ general cleanup and a nicer look, starting with those.
   `partial/crafty-players.css` (items in a box)
 - `dev/handoff-tools/player_fixtures.py`, `test_item_icons.js`,
   `test_player_details.js`
+- `app/classes/helpers/item_icons.py`,
+  `tests/classes/helpers/test_item_icons.py` (special items, drawing fix)
 - `docker/unraid.xml`, `handoff.md`
 
 ## Development setup (any machine)
@@ -2191,7 +2195,7 @@ section. Commands are for a terminal in the repo root. On Windows use
 python3 -m venv .venv
 . .venv/bin/activate            # Windows: .venv\Scripts\activate
 pip install -r requirements.txt pytest black pylint
-pytest -q tests                 # 303 pass
+pytest -q tests                 # 306 pass
 black --check app tests
 node dev/command-data/test_complete.js   # command suggestions engine, no browser
 ```
