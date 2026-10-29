@@ -41,7 +41,15 @@ const OUT = __dirname + '/shots/';
     if (name === 'inventory') await p.locator('#player_tab_inventory button.inv-slot').first().click();
     await p.screenshot({ path: OUT + name + '.png' });
   }
-  console.log('item info:', await p.locator('#player_tab_inventory .item-info').innerText());
+  console.log('item info:', await p.locator('#player_tab_inventory .item-info').first().innerText());
+  // Items in a shulker box can be picked for their own details
+  await p.click('a[href="#player_tab_inventory"]'); await p.waitForTimeout(300);
+  await p.click('#player_tab_inventory button.inv-slot[aria-label*="Shulker"]');
+  await p.click('#player_tab_inventory .item-contents button.inv-slot[aria-label*="Diamond Sword"]');
+  const inner = await p.locator('#player_tab_inventory .item-info-inner').innerText();
+  console.log('item in the box:', /Sharpness V/.test(inner) ? 'OK' : 'MISSING ENCHANTMENTS', inner.replace(/\n/g, ' | '));
+  console.log('box stays selected:', await p.$$eval('#player_tab_inventory .inv-slot.active', s => s.length) === 2 ? 'OK' : 'NO');
+  await p.screenshot({ path: OUT + 'inventory_box.png' });
   await p.click('a[href="#player_tab_stats"]'); await p.waitForTimeout(300);
   await p.fill('.player-stats-search', 'zombie');
   console.log('stats rows (zombie):', await p.$$eval('#player_tab_stats tbody tr', rows => rows.map(r => r.innerText.replace(/\s+/g, ' '))));

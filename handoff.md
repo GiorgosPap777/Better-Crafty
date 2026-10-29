@@ -10,8 +10,8 @@ commits table.
 
 **State (2026-10-29, session 15, in progress):** Terminal, Config and
 Backups cleaned up in the dashboard's style, and the Unraid template now
-uses our image (see "Session 15"). Next, in this order: items inside
-shulker boxes clickable for their details, the special items (banners,
+uses our image, and items inside shulker boxes can be clicked for their
+details (see "Session 15"). Next, in this order: the special items (banners,
 pots, heads, copper golem statues), then the bigger features in the order
 picked in "Session 15". **Do not** update the README screenshots or make a
 release until the owner says so.
@@ -275,7 +275,8 @@ on any machine.
 | `c22b879a` | Mods tab: tried on a Paper server run by Crafty itself; the Turn on message names the jar without `.disabled` (session 12) |
 | `6beb7ce7` | Forge 1.17 to 1.20.2 and NeoForge servers keep the memory picked when creating them; 1 GB is 1024M; the Mods tab tried on Forge and NeoForge servers made by Crafty (session 13) |
 | `8f64257b` | Dashboard redone (stat tiles with bars, cleaner servers table and phone cards, live online/offline counts); server tabs in one row that scrolls; host CPU no longer divided by the cores; Backup tab lit on the add/edit backup pages (session 14) |
-| (this commit) | Terminal, Config and Backups cleaned up; Unraid template uses our image (session 15) |
+| `2c9763ce` | Terminal, Config and Backups cleaned up; Unraid template uses our image (session 15) |
+| (this commit) | Items inside shulker boxes and bundles can be clicked for their details (session 15) |
 
 ### 1. Login (`d3946c3f`)
 
@@ -2146,13 +2147,28 @@ general cleanup and a nicer look, starting with those.
   (`test_complete_phone.js` failed once on "chat cannot change it" and
   passed on the next two runs; a timing flake, the console code did not
   change), the tab crawl and `crawl.js` show no errors.
+- **Items in a shulker box or bundle** (`server_admin_controls.html`,
+  `crafty-players.css`): the owner could not see an enchanted sword's
+  enchantments inside a shulker box. Each item in the box is now a button;
+  its details (enchantments, durability, potion...) show in a second box
+  under the contents, and the shulker box stays selected. Works with and
+  without item pictures. Also fixed: the yellow outline of the selected
+  slot disappeared on the slot just clicked (the focus rule removed it).
+  The test player's shulker box now holds an enchanted diamond sword
+  (`player_fixtures.py`); `test_item_icons.js` and `test_player_details.js`
+  click it and check its enchantments.
 
 ### Files (session 15)
 
 - `app/frontend/templates/panel/server_term.html`, `server_config.html`
 - `app/frontend/static/assets/css/partial/crafty-terminal.css`,
   `crafty-config.css`, `crafty-backup-list.css`
-- `app/translations/en_EN.json` (`serverBackups.default`)
+- `app/translations/en_EN.json` (`serverBackups.default`,
+  `serverPlayerManagement.contentsHint`)
+- `app/frontend/templates/panel/server_admin_controls.html`,
+  `partial/crafty-players.css` (items in a box)
+- `dev/handoff-tools/player_fixtures.py`, `test_item_icons.js`,
+  `test_player_details.js`
 - `docker/unraid.xml`, `handoff.md`
 
 ## Development setup (any machine)

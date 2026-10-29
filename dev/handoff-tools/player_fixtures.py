@@ -37,7 +37,9 @@ modern = {
         item(9, "cobblestone", 64), item(10, "cobblestone", 64), item(11, "iron_ingot", 23),
         item(12, "diamond", 9), item(13, "redstone", 41), item(14, "shulker_box",
             container=[{"slot": 0, "item": {"id": "minecraft:diamond_block", "count": 12}},
-                       {"slot": 1, "item": {"id": "minecraft:emerald", "count": 30}}]),
+                       {"slot": 1, "item": {"id": "minecraft:emerald", "count": 30}},
+                       {"slot": 2, "item": {"id": "minecraft:diamond_sword", "count": 1, "components": {
+                           "minecraft:enchantments": {"minecraft:sharpness": 5, "minecraft:unbreaking": 3}, "minecraft:damage": 200}}}]),
         item(15, "enchanted_book", stored_enchantments={"minecraft:protection": 4}),
         item(16, "potion", potion_contents={"potion": "minecraft:long_night_vision"}),
         item(18, "name_tag", custom_name="<b>Sir Fluffy</b>" if os.environ.get("XSS") else "Sir Fluffy"),

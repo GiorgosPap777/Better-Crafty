@@ -116,6 +116,12 @@ async function pictures(p, pane) {
   const contents = await p.$$eval('#player_tab_inventory .item-info .mc-contents .mc-slot', s => s.map(e => e.getAttribute('aria-label')));
   ok(contents.length === 27 && contents[0] && contents[1], 'shulker contents placed by slot: ' + contents.filter(Boolean));
   ok(await p.isVisible('#player_tab_inventory .item-info .item-info-icon'), 'details show the picture');
+  // An item in the box can be picked for its own details
+  await p.click('#player_tab_inventory .mc-contents button.mc-slot[aria-label*="Diamond Sword"]');
+  await p.waitForTimeout(200);
+  const inner = await p.locator('#player_tab_inventory .item-info-inner').innerText();
+  ok(/Sharpness V/.test(inner) && /Unbreaking III/.test(inner), 'item in the box shows its enchantments: ' + inner.replace(/\n/g, ' | '));
+  ok(await p.$$eval('#player_tab_inventory .mc-slot.active', s => s.length) === 2, 'box and the item in it both stay selected');
   await p.locator('#player_tab_inventory .mc-wrap').screenshot({ path: OUT + 'icons_shulker.png' });
 
   // Ender chest

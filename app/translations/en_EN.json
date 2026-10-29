@@ -892,7 +892,8 @@
         "whitelistOn": "On",
         "whitelistRemove": "Remove from whitelist",
         "worldSpawn": "World spawn",
-        "crafting": "Crafting"
+        "crafting": "Crafting",
+        "contentsHint": "Select an item in the box to see its details."
     },
     "serverProperties": {
         "allow-cheats": "Allow cheats",

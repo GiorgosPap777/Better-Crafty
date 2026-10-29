@@ -58,7 +58,8 @@
     'topUsed', 'allStats', 'searchStats', 'category', 'statistic', 'value', 'general', 'searchToSeeMore',
     'noAdvancements', 'advancementsDone', 'advancement', 'completed', 'tabEnderChest', 'itemPicturesOffer',
     'itemPicturesButton', 'itemPicturesAskAdmin', 'itemPicturesDownloading', 'itemPicturesDrawing',
-    'itemPicturesFailed', 'itemPicturesRetry', 'itemPicturesFrom', 'itemPicturesUpdate', 'moreItems', 'crafting']}) %};
+    'itemPicturesFailed', 'itemPicturesRetry', 'itemPicturesFrom', 'itemPicturesUpdate', 'moreItems', 'crafting',
+    'contentsHint']}) %};
   const playerSuperUser = {% raw json_encode(bool(data['superuser'])) %};
   let overview = {% raw json_encode(data['player_overview']) %};
   let refreshTimer = null;
@@ -860,15 +861,16 @@
     return grid;
   }
 
-  // What is inside a shulker box or bundle, placed as the game places it
-  function contentsGrid(contents) {
+  // What is inside a shulker box or bundle, placed as the game places it;
+  // info is the box a click on one of them fills
+  function contentsGrid(contents, info) {
     const grid = $('<div class="mc-grid"></div>');
     if (contents.every(stack => Number.isInteger(stack.slot))) {
       const bySlot = new Map(contents.map(stack => [stack.slot, stack]));
       const rows = Math.ceil((Math.max(26, ...contents.map(stack => stack.slot)) + 1) / 9);
-      for (let slot = 0; slot < rows * 9; slot++) grid.append(mcSlot(bySlot.get(slot), null));
+      for (let slot = 0; slot < rows * 9; slot++) grid.append(mcSlot(bySlot.get(slot), info));
     } else {
-      for (const stack of contents) grid.append(mcSlot(stack, null));
+      for (const stack of contents) grid.append(mcSlot(stack, info));
     }
     return mcPanel("mc-contents").append(grid);
   }
@@ -1136,7 +1138,8 @@
   }
 
   function showItem(button, item, info) {
-    button.closest(".tab-pane").find(".inv-slot.active, .mc-slot.active").removeClass("active");
+    // An item inside a box keeps the box selected
+    button.closest(".item-contents, .tab-pane").find(".inv-slot.active, .mc-slot.active").removeClass("active");
     button.addClass("active");
     const title = $("<h6></h6>").toggleClass("custom-name", Boolean(item.name)).text(item.name || prettyId(item.id));
     const icon = iconName(item.id);
@@ -1161,7 +1164,13 @@
       add(playerText.contents, item.contents.map(stack => `${stack.count} × ${stack.name || prettyId(stack.id)}`).join(", "));
     }
     info.append(list);
-    if (item.contents && iconsReady()) info.append(contentsGrid(item.contents));
+    if (item.contents) {
+      // Each item in the box can be selected for its own details (enchantments...)
+      const inner = $('<div class="item-info item-info-inner"></div>').text(playerText.contentsHint);
+      const slots = iconsReady() ? contentsGrid(item.contents, inner)
+        : $('<div class="inv-grid"></div>').append(item.contents.map(stack => itemSlot(stack, inner)));
+      info.append($('<div class="item-contents"></div>').append(slots, inner));
+    }
     // On narrow screens the details are under the items
     info[0].scrollIntoView({ block: "nearest", behavior: "smooth" });
   }
