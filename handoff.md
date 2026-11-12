@@ -8,7 +8,16 @@ commits table.
 
 ## Start here
 
-**State (2026-10-29, session 15, in progress):** Terminal, Config and
+**State (2026-11-12, session 16, in progress):** a new server can be made
+from a Modrinth modpack (a Modpack tab in the new server pages; see
+"Session 16"). Forge, NeoForge and Quilt packs could not be tried here (the
+cloud container may not run downloaded installers); the owner should try
+one of each. Next: the other bigger features from "Suggestions for later"
+in "Session 13" (data packs, mod update notices, Bedrock players, server
+software updates, crash explainer). **Do not** update the README
+screenshots or make a release until the owner says so.
+
+**State (2026-10-29, session 15):** Terminal, Config and
 Backups cleaned up in the dashboard's style, and the Unraid template now
 uses our image, and items inside shulker boxes can be clicked for their
 details (see "Session 15"). Next, in this order: the special items (banners,
@@ -56,7 +65,7 @@ on any machine.
    repo default, so a fresh clone is already on it. In an existing clone:
    `git fetch origin && git checkout claude/login-server-admin-improvements-ctbqdu && git pull`.
 2. **Set up and check** with "Development setup" below (about 10 minutes).
-   You should see 306 passing pytest tests before changing anything.
+   You should see 362 passing pytest tests before changing anything.
 3. **Finish the Modrinth installer's follow-ups** ("Modrinth installer
    (first version)" in Session 12), unless the owner asks for something else.
 4. Before you finish, update this file, commit and push (see "The project").
@@ -203,6 +212,9 @@ on any machine.
     with the bigger features after you do this, or you can do them in
     whatever order you want, you find best." ("3" was the Terminal,
     Config and Backups pages; "Android template" is the Unraid template.)
+33. Session 16 (2026-11-12), after stopping a test run: "You can continue
+    until my weekly limit hits 100% or it resets." Carried on with the
+    modpacks.
 
 ### Questions still waiting on the owner
 
@@ -277,7 +289,8 @@ on any machine.
 | `8f64257b` | Dashboard redone (stat tiles with bars, cleaner servers table and phone cards, live online/offline counts); server tabs in one row that scrolls; host CPU no longer divided by the cores; Backup tab lit on the add/edit backup pages (session 14) |
 | `2c9763ce` | Terminal, Config and Backups cleaned up; Unraid template uses our image (session 15) |
 | `3dc8470d` | Items inside shulker boxes and bundles can be clicked for their details (session 15) |
-| (this commit) | Pictures for banners, decorated pots, dragon and piglin heads, copper golem statues; faces drawn with a depth buffer (session 15) |
+| `f3fb5a78` | Pictures for banners, decorated pots, dragon and piglin heads, copper golem statues; faces drawn with a depth buffer (session 15) |
+| (this commit) | New server from a Modrinth modpack (.mrpack): a Modpack tab that searches Modrinth or takes an upload; sets up Fabric, Quilt, Forge, NeoForge or vanilla with the right Java (session 16) |
 
 ### 1. Login (`d3946c3f`)
 
@@ -2098,7 +2111,7 @@ general cleanup and a nicer look, starting with those.
 - `dev/handoff-tools/test_world.js`, `readme_shots.js` (new tab selectors)
 - `CLAUDE.md` (test count), `handoff.md`
 
-## Session 15: Terminal, Config, Backups; Unraid (in progress)
+## Session 15: Terminal, Config, Backups; Unraid; special items (done)
 
 - **Terminal** (`server_term.html`, `partial/crafty-terminal.css`): the
   command line is joined to the bottom of the output like a real
@@ -2175,6 +2188,123 @@ general cleanup and a nicer look, starting with those.
   `tests/classes/helpers/test_item_icons.py` (special items, drawing fix)
 - `docker/unraid.xml`, `handoff.md`
 
+## Session 16: new server from a modpack (in progress)
+
+The first of the bigger features (number 1 in "Suggestions for later",
+session 13). Picked first because it is the one most asked for in modded
+server panels and it reuses the Modrinth and Forge code already here.
+
+### What the owner sees
+
+- A **Modpack** tab in the new server pages (after Minecraft-Java, on all
+  five pages). It lists Modrinth's most downloaded modpacks that can run on
+  a server (packs Modrinth marks as client only are left out), with a
+  search and "Show more". Each row has the icon, author, description,
+  downloads, newest Minecraft versions and loaders.
+- **Choose** loads the pack's versions into "Modpack version" (newest
+  release picked; each shows its number, Minecraft version, loader, date)
+  and fills in the server name. Or **upload a `.mrpack`**: the page reads
+  it and shows its Minecraft version, loader, file count and size, and how
+  many files are only for players.
+- Memory (2 and 6 GB to start, the minimum never above the maximum), port,
+  roles, **Build Server!**. The browser goes to the new server's Terminal,
+  which shows each step ("Java 21 will run the server", "Downloaded 9 of
+  18 files", "The modpack is installed"). The lines are kept, so the
+  Terminal shows them when opened later too, until the server's first
+  start. The EULA is asked on the first start, like any new server.
+
+### How a pack is built (`app/classes/helpers/modpacks.py`)
+
+1. Read `modrinth.index.json` (format 1, game minecraft) and check every
+   file: a safe path inside the server folder, an `https` link on
+   `cdn.modrinth.com`, `github.com`, `raw.githubusercontent.com` or
+   `gitlab.com`, a sha512, at most 256 MB. Files marked
+   `env.server: unsupported` and `resourcepacks/`, `shaderpacks/` are left
+   out. Limits: pack 1 GB, 2000 files, 16 GB in all; overrides 50000 files,
+   4 GB.
+2. Ask Mojang for the Minecraft version (it also says which Java it
+   needs). Pick the oldest installed Java that is new enough
+   (`helper.find_java_installs()`; the Docker image has 8, 11, 17, 21 and
+   25); with none, `java`.
+3. Check the free disk space (pack size plus 1 GB), download the files 6 at
+   a time (sha512 and size checked, a hidden `.part` file renamed when
+   done, one retry), then copy `overrides/` and `server-overrides/`
+   (server wins; `client-overrides/` ignored).
+4. Set `server-port` and `eula.txt` from the wizard (a pack's own
+   `eula=true` does not count), write `crafty-modpack.json` (where the pack
+   came from, its version, loader and files, for a later "update the
+   pack").
+5. Set up the loader: **vanilla** (Mojang's `server.jar`, sha1 checked),
+   **Fabric** (the server launcher from `meta.fabricmc.net`), **Quilt**
+   (the installer from `maven.quiltmc.org`, sha512 checked, run with
+   `install server ... --download-server`, then deleted), **Forge** and
+   **NeoForge** (the installer from their maven, sha1 checked when the
+   maven has one, then run by the same code as the Java wizard's Forge
+   servers; `modded.py` now keeps the chosen Java instead of `java`).
+6. The command is `"<java>" -Xms…M -Xmx…M -jar <jar> nogui`.
+
+Errors (a bad pack, a download that fails, no space, an unknown Minecraft
+version, an installer that fails) end the install with "The modpack could
+not be installed: …" in the Terminal and a pop-up; the server stays so its
+files can be looked at, and can be deleted.
+
+### API
+
+- `GET /api/v2/crafty/modpacks/?query=&offset=`: one page of packs.
+- `GET /api/v2/crafty/modpacks/versions/?project_id=`: a pack's versions.
+- `GET /api/v2/crafty/modpacks/file/?name=`: what is in an uploaded
+  `.mrpack` (name inside `import/upload`; `.mrpack` only, no paths).
+- `POST /api/v2/servers/` with `minecraft_java_create_data.create_type`
+  `"modpack"` and `modpack_create_data` (`project_id` and `version_id`, or
+  `archive_name`; `mem_min`, `mem_max`, `server_properties_port`).
+- All need superuser or "create server". Uploads use the import upload
+  route, which now takes `.mrpack`.
+
+### Tested
+
+- `tests/classes/helpers/test_modpacks.py` (51), `test_modpack.py` (4) and
+  a new `test_modded.py` case, all with fake downloads; 362 pass.
+- `dev/handoff-tools/test_modpack.js` (needs the internet): the tab, the
+  list, search, choosing, versions, refused requests, an upload (a small
+  pack made by the script), phone width, then a real build of "Server
+  Optimized" (Fabric, Minecraft 1.21.1, 18 mods, 15 MB): mods, launcher,
+  Java 21, memory, port, EULA, record, no leftover files; deletes the
+  server at the end.
+- **Not tried here:** running the Quilt, Forge or NeoForge installers and
+  starting a built server. The cloud container may not run downloaded
+  jars. The installers are run the same way as the Java wizard's Forge
+  servers, which were tried in session 13. The owner should build one
+  Forge, one NeoForge and one Quilt pack, and start one.
+
+### Ideas for later
+
+- "Update the pack" from `crafty-modpack.json` (keep the world and
+  configs the owner changed).
+- CurseForge packs (needs an API key from CurseForge).
+- Show the pack's name and version on the Mods tab.
+
+### Files (session 16)
+
+- New: `app/classes/helpers/modpacks.py`, `app/classes/installers/modpack.py`,
+  `app/classes/web/routes/api/crafty/modpacks.py`,
+  `app/frontend/templates/server/modpack_wizard.html`,
+  `tests/classes/helpers/test_modpacks.py`,
+  `tests/classes/installers/test_modpack.py`,
+  `dev/handoff-tools/test_modpack.js`
+- Changed: `app/classes/helpers/modrinth.py` (modpack search, versions,
+  a shared `download()`), `app/classes/installers/modded.py` (keeps the
+  Java), `app/classes/shared/import_helper.py`,
+  `app/classes/shared/main_controller.py`,
+  `app/classes/web/routes/api/servers/index.py` (schema),
+  `app/classes/web/routes/api/api_handlers.py`,
+  `app/classes/web/server_handler.py` (`modpack_step1`),
+  `app/classes/helpers/file_helpers.py` and
+  `app/classes/web/routes/api/crafty/imports/upload.py` (`.mrpack`),
+  `app/frontend/static/assets/js/shared/upload.js` (a `modpack` upload;
+  the uploaded name is escaped), `partial/crafty-mods.css`, the four other
+  wizard pages (tab), `app/translations/en_EN.json` (`modpackWizard`),
+  `tests/classes/installers/test_modded.py`, `CLAUDE.md`, `handoff.md`
+
 ## Development setup (any machine)
 
 Written for Linux, macOS and Windows, but so far only run on Linux (the
@@ -2195,7 +2325,7 @@ section. Commands are for a terminal in the repo root. On Windows use
 python3 -m venv .venv
 . .venv/bin/activate            # Windows: .venv\Scripts\activate
 pip install -r requirements.txt pytest black pylint
-pytest -q tests                 # 306 pass
+pytest -q tests                 # 362 pass
 black --check app tests
 node dev/command-data/test_complete.js   # command suggestions engine, no browser
 ```
@@ -2294,6 +2424,7 @@ Settings come from `local.json`; the environment variables `CRAFTY_URL`,
 | `test_restart_warned.js` | Restart with in-game warnings: dialog, countdown, Cancel, schedules, phone (about 2 minutes; leaves server 1 running) |
 | `test_world.js` | World tab: download (stopped and running), reset of the End and the Nether, phone; writes the test world again at the end |
 | `test_mods.js` | Mods tab: choose the server type, most downloaded, search, install LuckPerms from Modrinth, turn it off and on, remove it, refused requests, phone; needs the internet, deletes the `plugins` folder it made |
+| `test_modpack.js` | Modpack tab: list, search, choose a version, refused requests, upload a `.mrpack`, phone, then builds a small Fabric pack and checks its files; needs the internet, deletes the server it made |
 | `test_offsite.js` | Off-site storage page and a backup's off-site copy: folder place always; S3 too when `S3_ENDPOINT`, `S3_BUCKET`, `S3_KEY`, `S3_SECRET` are set (see Session 12) |
 | `crawl.js` | Opens every panel page (desktop and phone), reports page errors; `node crawl.js [substring]` |
 | `chk_metrics.js` | Metrics chart zoom |

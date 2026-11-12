@@ -92,6 +92,11 @@ class ModdedInstaller:
         match = re.search(r"-Xms([A-Z0-9\.]+) -Xmx([A-Z0-9\.]+)", command)
         return match.groups() if match else ("1G", "1G")
 
+    def _get_java(self, command: str):
+        # The installer's java (a modpack picks one by Minecraft version)
+        match = re.match(r'\s*("[^"]+"|\S+)', command)
+        return match.group(1) if match else "java"
+
     def _handle_old(self, server_obj, loader, version):
         file_path = glob.glob(f"{server_obj.path}/{loader}-{version}*.jar")[0]
         file_name = re.search(r"(forge[-0-9.]+\.jar)", file_path).group(1)
@@ -99,9 +104,10 @@ class ModdedInstaller:
         server_obj.executable = file_name
 
         xms, xmx = self._get_memory(server_obj.execution_command)
+        java = self._get_java(server_obj.execution_command)
 
         server_obj.execution_command = (
-            f'java -Xms{xms} -Xmx{xmx} -jar "{file_name}" nogui'
+            f'{java} -Xms{xms} -Xmx{xmx} -jar "{file_name}" nogui'
         )
         self.servers_controller.update_server(server_obj)
 
@@ -135,11 +141,12 @@ class ModdedInstaller:
         server_obj.executable = f"{exec_path}{loader}-{version}-server.jar"
 
         xms, xmx = self._get_memory(server_obj.execution_command)
+        java = self._get_java(server_obj.execution_command)
 
         # Keep the memory chosen in the wizard (after user_jvm_args.txt, so it
         # wins); run.sh's "$@" and run.bat's %* are for the shell, not Java
         server_obj.execution_command = (
-            f"java @{arg1} -Xms{xms} -Xmx{xmx} @{exec_path}{txt} nogui"
+            f"{java} @{arg1} -Xms{xms} -Xmx{xmx} @{exec_path}{txt} nogui"
         )
         self.servers_controller.update_server(server_obj)
 
@@ -152,8 +159,9 @@ class ModdedInstaller:
         server_obj.executable = file_name
 
         xms, xmx = self._get_memory(server_obj.execution_command)
+        java = self._get_java(server_obj.execution_command)
 
         server_obj.execution_command = (
-            f'java -Xms{xms} -Xmx{xmx} -jar "{file_name}" nogui'
+            f'{java} -Xms{xms} -Xmx{xmx} -jar "{file_name}" nogui'
         )
         self.servers_controller.update_server(server_obj)

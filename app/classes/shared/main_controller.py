@@ -478,6 +478,19 @@ class Controller:
                         )
             elif root_create_data["create_type"] == "import_server":
                 server_file = create_data["jarfile"]
+            elif root_create_data["create_type"] == "modpack":
+                # Until the modpack installer sets the loader's jar and command
+                server_file = "server.jar"
+                if create_data.get("archive_name"):
+                    modpack_path = Helpers.validate_traversal(
+                        IMPORT_PATH, create_data["archive_name"]
+                    )
+                    if not modpack_path.is_file():
+                        raise FileNotFoundError("The uploaded modpack is gone")
+                elif not (
+                    create_data.get("project_id") and create_data.get("version_id")
+                ):
+                    raise ValueError("Choose a modpack, or upload one")
             _create_server_properties_if_needed(
                 create_data["server_properties_port"],
             )
@@ -663,6 +676,14 @@ class Controller:
                     monitoring_port,
                     new_server_id,
                     data["create_type"],
+                )
+            elif root_create_data["create_type"] == "modpack":
+                ServersController.set_import(new_server_id)
+                self.import_helper.install_threaded_modpack(
+                    new_server_id,
+                    new_server_path,
+                    create_data,
+                    modpack_path if create_data.get("archive_name") else None,
                 )
 
         elif data["create_type"] == "minecraft_bedrock":

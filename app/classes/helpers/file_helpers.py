@@ -36,6 +36,7 @@ ERROR_BACKING_UP_FILE_STR = "Error backing up file"
 FILE_PATH = "file path"
 SERVER_DETAIL = "/panel/server_detail"
 PLAIN_TEXT = "text/plain"
+MODPACK_TYPE = "application/x-modrinth-modpack+zip"
 BLAKE3_HASH_LENGTH_BYTES = 128
 
 
@@ -114,6 +115,7 @@ class FileHelpers:
         mimetypes.add_type(PLAIN_TEXT, ".env")
         mimetypes.add_type("application/x-bat", ".ps1")
         mimetypes.add_type("text/x-log", ".log")
+        mimetypes.add_type(MODPACK_TYPE, ".mrpack")
 
     def can_unicode_decode(
         self,

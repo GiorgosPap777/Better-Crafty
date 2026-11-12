@@ -1,0 +1,449 @@
+{% extends ../base.html %}
+
+{% block title %}Crafty Controller - {{ translate('serverWizard', 'newServer', data['lang']) }}{% end %}
+
+{% block meta %}
+<link rel="stylesheet" href="/static/assets/css/partial/crafty-mods.css">
+{% end %}
+
+{% block content %}
+<link rel="stylesheet" href="../../static/assets/css/vendors/bootstrap-select-1.13.18.css">
+<div class="content-wrapper" id="creation-wrapper"
+  data-bePatient="{{ translate('serverWizard', 'bePatient', data['lang']) }}">
+  <ul class="nav nav-pills tab-simple-styled" role="tablist">
+    <li class="nav-item term-nav-item">
+      <a class="nav-link" href="/server/step1" role="tab" aria-selected="false">
+        <i class="ph-fill ph-file-text"></i>Minecraft-Java</a>
+    </li>
+    <li class="nav-item term-nav-item">
+      <a class="nav-link active" href="/server/modpack_step1" role="tab" aria-selected="true">
+        <i class="ph-fill ph-package"></i>{{ translate('modpackWizard', 'tab', data['lang']) }}</a>
+    </li>
+    <li class="nav-item term-nav-item">
+      <a class="nav-link" href="/server/bedrock_step1" role="tab" aria-selected="false">
+        <i class="ph-fill ph-file-text"></i>Minecraft-Bedrock</a>
+    </li>
+    <li class="nav-item term-nav-item">
+      <a class="nav-link" href="/server/hytale_step1" role="tab" aria-selected="false">
+        <i class="ph-fill ph-file-text"></i>Hytale</a>
+    </li>
+    {% if data.get("experimental") %}
+    <li class="nav-item term-nav-item">
+      <a class="nav-link" href="/server/steam_cmd_step1" role="tab" aria-selected="false">
+        <i class="ph-fill ph-file-text"></i>Steam-CMD&nbsp;<span id="steam-badge" title="{{ translate('serverWizard', 'experimentalFeature', data['lang']) }}" class="text-primary"><i class="ph ph-flask"></i></span></a>
+    </li>
+    {% end %}
+  </ul>
+
+  {% if not data["online"] %}
+  <div class="api-alert">
+    <p><i class="ph-fill ph-warning"></i>&nbsp;{{ translate('error', 'noInternet', data['lang']) }}</p>
+  </div>
+  {% end %}
+
+  <div class="row">
+    <div class="col-lg-7 grid-margin">
+      <div class="card">
+        <div class="card-body">
+          <h4>{{ translate('modpackWizard', 'title', data['lang']) }}</h4>
+          <p class="mods-note">{{ translate('modpackWizard', 'intro', data['lang']) }}</p>
+          <div id="modpack_status" class="alert d-none" role="status"></div>
+
+          <h5 class="mods-section-title">{{ translate('modpackWizard', 'findTitle', data['lang']) }}</h5>
+          <form id="modpack_search_form" class="mods-search">
+            <input id="modpack_query" type="search" class="form-control" maxlength="100" placeholder="{{ translate('modpackWizard', 'searchPlaceholder', data['lang']) }}">
+            <button type="submit" class="btn btn-primary"><i class="ph-bold ph-magnifying-glass"></i> {{ translate('modpackWizard', 'search', data['lang']) }}</button>
+          </form>
+          <p id="modpack_results_title" class="mods-results-title"></p>
+          <div id="modpack_results" class="mods-list"></div>
+          <div id="modpack_loading" class="text-center py-3 d-none">
+            <span class="spinner-border" aria-hidden="true"></span>
+          </div>
+          <div class="text-center">
+            <button type="button" id="modpack_more" class="btn btn-outline-primary btn-sm d-none">{{ translate('modpackWizard', 'more', data['lang']) }}</button>
+          </div>
+          <p class="mods-note mt-3">{{ translate('modpackWizard', 'modrinthNote', data['lang']) }}</p>
+
+          <h5 class="mods-section-title">{{ translate('modpackWizard', 'uploadTitle', data['lang']) }}</h5>
+          <div id="modpack_upload_input" class="input-group">
+            <div class="custom-file">
+              <input type="file" class="custom-file-input" id="modpack_file" accept=".mrpack">
+              <label id="modpack_file_label" class="custom-file-label" for="modpack_file">{{ translate('modpackWizard', 'uploadLabel', data['lang']) }}</label>
+            </div>
+            <div class="input-group-append">
+              <button type="button" class="btn btn-info" id="modpack_upload_button" disabled>{{ translate('modpackWizard', 'uploadButton', data['lang']) }}</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-lg-5 grid-margin">
+      <div class="card modpack-settings" id="modpack_settings">
+        <div class="card-body">
+          <h4>{{ translate('modpackWizard', 'settingsTitle', data['lang']) }}</h4>
+          <p id="modpack_none" class="mods-empty">{{ translate('modpackWizard', 'noPack', data['lang']) }}</p>
+          <div id="modpack_chosen" class="mods-row d-none"></div>
+
+          <form id="modpack_form" class="server-wizard mt-3">
+            {% if data["online"] %}
+            <fieldset id="modpack_fields" disabled>
+            {% else %}
+            <fieldset disabled>
+            {% end %}
+              <div class="form-group d-none" id="modpack_version_group">
+                <label for="modpack_version">{{ translate('modpackWizard', 'version', data['lang']) }}</label>
+                <select id="modpack_version" class="form-control"></select>
+              </div>
+              <div class="form-group">
+                <label for="modpack_name">{{ translate('serverWizard', 'serverName', data['lang']) }}</label>
+                <input type="text" class="form-control" id="modpack_name" maxlength="100" placeholder="{{ translate('serverWizard', 'myNewServer', data['lang']) }}" required>
+              </div>
+              <div class="row align-items-end">
+                <div class="col-sm-4">
+                  <div class="form-group">
+                    <label for="modpack_mem_min">{{ translate('serverWizard', 'minMem', data['lang']) }} <small>- {{ translate('serverWizard', 'sizeInGB', data['lang']) }}</small></label>
+                    <input type="number" class="form-control" id="modpack_mem_min" value="2" step="0.5" min="0.5" required>
+                  </div>
+                </div>
+                <div class="col-sm-4">
+                  <div class="form-group">
+                    <label for="modpack_mem_max">{{ translate('serverWizard', 'maxMem', data['lang']) }} <small>- {{ translate('serverWizard', 'sizeInGB', data['lang']) }}</small></label>
+                    <input type="number" class="form-control" id="modpack_mem_max" value="6" step="0.5" min="0.5" required>
+                  </div>
+                </div>
+                <div class="col-sm-4">
+                  <div class="form-group">
+                    <label for="modpack_port">{{ translate('serverWizard', 'serverPort', data['lang']) }}</label>
+                    <input type="number" class="form-control" id="modpack_port" value="25565" step="1" min="1" max="65535" required>
+                  </div>
+                </div>
+              </div>
+              <p class="mods-note">{{ translate('modpackWizard', 'memoryNote', data['lang']) }}</p>
+              <div class="form-group">
+                <p class="mb-0 p-0">{{ translate('serverWizard', 'addRole', data['lang']) }} <small class="text-none">- {{ translate('serverWizard', 'autoCreate', data['lang']) }}</small></p>
+                <select data-container="body" data-none-selected-text="{{ translate('serverWizard', 'noneRoles', data['lang']) }}" data-none-results-text="{{ translate('serverWizard', 'noRole', data['lang']) }} {0}" class="selectpicker form-control form-control-lg select-css roles_select" data-styleBase="form-control" data-style="form-control" data-live-search="true" name="server_roles" multiple>
+                  {% for r in data['roles'] %}
+                  <option class="roles" value="{{ r['role_id'] }}">&nbsp; {{ r['role_name'].capitalize() }}</option>
+                  {% end %}
+                </select>
+              </div>
+              <button type="submit" id="modpack_build" class="btn btn-primary mr-2">{{ translate('serverWizard', 'buildServer', data['lang']) }}</button>
+              <p class="mods-note mt-3 mb-0">{{ translate('modpackWizard', 'buildNote', data['lang']) }}</p>
+            </fieldset>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+<link rel="stylesheet" href="/static/assets/css/partial/crafty-wizard.css">
+{% end %}
+
+{% block js %}
+<script src="../../static/assets/js/shared/upload.js"></script>
+<script>
+  const modpackText = {% raw json_encode(data['modpack_text']) %};
+  const LOADER_NAMES = { fabric: "Fabric", quilt: "Quilt", forge: "Forge", neoforge: "NeoForge" };
+  let modpackQuery = "";
+  let modpackOffset = 0;
+  let modpackSearchId = 0;
+  // The pack the server is made from: a Modrinth project or an uploaded file
+  let chosenPack = null;
+  let nameTyped = false;
+  let creatingServer = false;
+
+  function fill(text, values) {
+    return String(text).replace(/\{(\w+)\}/g, (match, key) => (key in values ? values[key] : match));
+  }
+
+  function showStatus(kind, text) {
+    $("#modpack_status").removeClass("d-none alert-success alert-danger alert-warning alert-info").addClass("alert-" + kind).text(text);
+  }
+
+  function hideStatus() {
+    $("#modpack_status").addClass("d-none");
+  }
+
+  async function modpackApi(path) {
+    const res = await fetch(`/api/v2/crafty/modpacks${path}`, {
+      headers: { "X-XSRFToken": getCookie("_xsrf") },
+    });
+    let data = {};
+    try { data = await res.json(); } catch (e) { /* not JSON */ }
+    if (!res.ok || data.status !== "ok") {
+      throw new Error(data.error_data || data.error || res.statusText || res.status);
+    }
+    return data.data;
+  }
+
+  function packIcon(url) {
+    const icon = $('<div class="mods-icon"></div>');
+    if (/^https:\/\//.test(url || "")) {
+      icon.append($('<img alt="" loading="lazy" referrerpolicy="no-referrer">').attr("src", url));
+    } else {
+      icon.append('<i class="ph-fill ph-package"></i>');
+    }
+    return icon;
+  }
+
+  function loaderName(loader) {
+    return LOADER_NAMES[loader] || loader;
+  }
+
+  function fileSize(bytes) {
+    const units = ["B", "KB", "MB", "GB"];
+    let size = Number(bytes || 0);
+    let unit = 0;
+    while (size >= 1024 && unit < units.length - 1) {
+      size /= 1024;
+      unit += 1;
+    }
+    return `${size.toFixed(unit ? 1 : 0)} ${units[unit]}`;
+  }
+
+  async function searchPacks(more) {
+    const searchId = ++modpackSearchId;
+    if (!more) {
+      modpackOffset = 0;
+      $("#modpack_results").empty();
+    }
+    $("#modpack_more").addClass("d-none");
+    $("#modpack_loading").removeClass("d-none");
+    $("#modpack_results_title").text(modpackQuery ? "" : modpackText.popular);
+    let page;
+    try {
+      const params = new URLSearchParams({ query: modpackQuery, offset: modpackOffset });
+      page = await modpackApi(`/?${params}`);
+    } catch (e) {
+      if (searchId === modpackSearchId) {
+        $("#modpack_loading").addClass("d-none");
+        showStatus("danger", `${modpackText.searchFailed}: ${e.message}`);
+      }
+      return;
+    }
+    // A newer search started while this one was loading
+    if (searchId !== modpackSearchId) return;
+    $("#modpack_loading").addClass("d-none");
+    const box = $("#modpack_results");
+    if (!page.hits.length && !more) {
+      box.append($('<p class="mods-empty"></p>').text(modpackText.noResults));
+    }
+    page.hits.forEach((hit) => {
+      const row = $('<div class="mods-row"></div>').append(packIcon(hit.icon_url));
+      const text = $('<div class="mods-text"></div>');
+      const link = $('<a target="_blank" rel="noopener noreferrer"></a>')
+        .attr("href", `https://modrinth.com/modpack/${encodeURIComponent(hit.slug || hit.project_id)}`)
+        .text(hit.title);
+      text.append($('<div class="mods-name"></div>').append(link, " ", $('<span class="mods-author"></span>').text(fill(modpackText.by, { author: hit.author }))));
+      text.append($('<div class="mods-description"></div>').text(hit.description || ""));
+      const details = [fill(modpackText.downloads, { count: Number(hit.downloads || 0).toLocaleString() })];
+      const versions = (hit.game_versions || []).slice(-3).reverse();
+      if (versions.length) details.push(fill(modpackText.minecraft, { versions: versions.join(", ") }));
+      const loaders = (hit.categories || []).filter((name) => name in LOADER_NAMES).map(loaderName);
+      if (loaders.length) details.push(loaders.join(", "));
+      text.append($('<div class="mods-details"></div>').text(details.join(" · ")));
+      row.append(text);
+      const button = $('<button type="button" class="btn btn-primary btn-sm mods-action modpack-choose"></button>')
+        .text(modpackText.choose)
+        .attr("data-project", hit.project_id)
+        .on("click", () => chooseModrinth(hit, button));
+      if (chosenPack && chosenPack.project_id === hit.project_id) markChosen(button);
+      row.append($('<div class="mods-buttons"></div>').append(button));
+      box.append(row);
+    });
+    modpackOffset = page.next_offset;
+    $("#modpack_more").toggleClass("d-none", modpackOffset >= page.total || !page.hits.length);
+  }
+
+  function markChosen(button) {
+    $(".modpack-choose").removeClass("btn-success").addClass("btn-primary").text(modpackText.choose);
+    if (button) button.removeClass("btn-primary").addClass("btn-success").text(modpackText.chosen);
+  }
+
+  function showChosen(icon, title, facts) {
+    const text = $('<div class="mods-text"></div>')
+      .append($('<div class="mods-name"></div>').text(title))
+      .append($('<div class="mods-details"></div>').text(facts));
+    $("#modpack_chosen").empty().append(packIcon(icon), text).removeClass("d-none");
+    $("#modpack_none").addClass("d-none");
+    if (!nameTyped) $("#modpack_name").val(title.slice(0, 100));
+    $("#modpack_fields").prop("disabled", false);
+    $(".roles_select").selectpicker("refresh");
+    // The settings are below the list on a phone, and above it after a long scroll
+    const settings = document.getElementById("modpack_settings");
+    const top = settings.getBoundingClientRect().top;
+    if (top < 0 || top > window.innerHeight / 2) {
+      settings.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+  }
+
+  async function chooseModrinth(hit, button) {
+    hideStatus();
+    let list;
+    button.prop("disabled", true);
+    try {
+      list = await modpackApi(`/versions/?${new URLSearchParams({ project_id: hit.project_id })}`);
+    } catch (e) {
+      showStatus("danger", `${modpackText.versionsFailed}: ${e.message}`);
+      return;
+    } finally {
+      button.prop("disabled", false);
+    }
+    if (!list.length) {
+      showStatus("warning", fill(modpackText.noVersions, { title: hit.title }));
+      return;
+    }
+    const select = $("#modpack_version").empty();
+    list.forEach((version) => {
+      const date = version.date_published ? new Date(version.date_published).toLocaleDateString() : "";
+      const label = [
+        version.version_number,
+        fill(modpackText.minecraft, { versions: (version.game_versions || []).join(", ") }),
+        (version.loaders || []).map(loaderName).join(", "),
+        version.version_type === "release" ? "" : version.version_type,
+        date,
+      ].filter(Boolean).join(" · ");
+      select.append($("<option></option>").val(version.id).text(label));
+    });
+    // The newest release, else the newest version
+    const release = list.find((version) => version.version_type === "release");
+    select.val((release || list[0]).id);
+    $("#modpack_version_group").removeClass("d-none");
+    chosenPack = { kind: "modrinth", project_id: hit.project_id, title: hit.title };
+    markChosen(button);
+    showChosen(hit.icon_url, hit.title, fill(modpackText.by, { author: hit.author }));
+  }
+
+  async function uploadPack() {
+    const file = $("#modpack_file")[0].files[0];
+    if (!file) return;
+    hideStatus();
+    if (!await uploadFile("modpack", file, null, 0, null, null, "modpack_upload_input")) return;
+    let pack;
+    try {
+      pack = await modpackApi(`/file/?${new URLSearchParams({ name: file.name })}`);
+    } catch (e) {
+      showStatus("danger", `${modpackText.readFailed}: ${e.message}`);
+      return;
+    }
+    const facts = fill(modpackText.packFacts, {
+      minecraft: pack.minecraft,
+      loader: [pack.loader_name, pack.loader_version].filter(Boolean).join(" "),
+      count: Number(pack.file_count).toLocaleString(),
+      size: fileSize(pack.size),
+    });
+    const title = [pack.name, pack.version].filter(Boolean).join(" ");
+    chosenPack = { kind: "upload", archive_name: file.name, title: title };
+    markChosen(null);
+    $("#modpack_version_group").addClass("d-none");
+    showChosen(null, title, facts);
+    if (pack.skipped) {
+      showStatus("info", fill(modpackText.skipped, { count: pack.skipped }));
+    }
+  }
+
+  function calcRoles() {
+    let roles = [];
+    $(".roles_select").each(function () {
+      roles = roles.concat($(this).val() || []);
+    });
+    return roles.map(Number);
+  }
+
+  async function buildServer() {
+    if (creatingServer) return;
+    if (!chosenPack) {
+      showStatus("warning", modpackText.chooseFirst);
+      return;
+    }
+    const port = Number($("#modpack_port").val());
+    const createData = {
+      mem_min: Number($("#modpack_mem_min").val()),
+      mem_max: Number($("#modpack_mem_max").val()),
+      server_properties_port: port,
+    };
+    if (chosenPack.kind === "modrinth") {
+      createData.project_id = chosenPack.project_id;
+      createData.version_id = $("#modpack_version").val();
+    } else {
+      createData.archive_name = chosenPack.archive_name;
+    }
+    const body = {
+      name: $("#modpack_name").val(),
+      roles: calcRoles(),
+      monitoring_type: "minecraft_java",
+      minecraft_java_monitoring_data: { host: "127.0.0.1", port: port },
+      create_type: "minecraft_java",
+      minecraft_java_create_data: { create_type: "modpack", modpack_create_data: createData },
+    };
+    creatingServer = true;
+    $("#modpack_build").prop("disabled", true);
+    let answer;
+    try {
+      const res = await fetch("/api/v2/servers/", {
+        method: "POST",
+        headers: { "X-XSRFToken": getCookie("_xsrf"), "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      answer = await res.json();
+    } catch (e) {
+      answer = { status: "error", error: "Error", error_data: String(e) };
+    }
+    if (answer.status === "ok") {
+      // The server's Terminal shows the install as it happens
+      globalThis.location.href = `/panel/server_detail?id=${encodeURIComponent(answer.data.new_server_id)}&subpage=term`;
+      return;
+    }
+    creatingServer = false;
+    $("#modpack_build").prop("disabled", false);
+    bootbox.alert({
+      title: escapeHtml(modpackText.buildFailed),
+      message: escapeHtml(answer.error_data || answer.error),
+    });
+  }
+
+  $("#modpack_search_form").on("submit", (event) => {
+    event.preventDefault();
+    hideStatus();
+    modpackQuery = $("#modpack_query").val().trim();
+    searchPacks(false);
+  });
+
+  $("#modpack_more").on("click", () => searchPacks(true));
+
+  $("#modpack_file").on("change", function () {
+    const file = this.files[0];
+    $("#modpack_upload_button").prop("disabled", !file);
+    if (file) $("#modpack_file_label").text(file.name);
+  });
+
+  $("#modpack_upload_button").on("click", uploadPack);
+
+  $("#modpack_name").on("input", () => { nameTyped = true; });
+
+  // Keep the minimum memory at or below the maximum
+  $("#modpack_mem_min").on("change", () => {
+    if (Number($("#modpack_mem_max").val()) < Number($("#modpack_mem_min").val())) {
+      $("#modpack_mem_max").val($("#modpack_mem_min").val());
+    }
+  });
+  $("#modpack_mem_max").on("change", () => {
+    if (Number($("#modpack_mem_max").val()) < Number($("#modpack_mem_min").val())) {
+      $("#modpack_mem_min").val($("#modpack_mem_max").val());
+    }
+  });
+
+  $("#modpack_form").on("submit", (event) => {
+    event.preventDefault();
+    buildServer();
+  });
+
+  $(function () {
+    {% if data["online"] %}
+    searchPacks(false);
+    {% end %}
+  });
+</script>
+<script src="../../static/assets/js/shared/bootstrap-select-1.13.18.js"></script>
+{% end %}

@@ -71,7 +71,7 @@ async function uploadFile(type, file = null, path = null, file_num = 0, fileId =
     let url = '';
     if (type === "server_upload") {
         url = `/api/v2/servers/${serverId}/files/upload/`;
-    } else if (type === "import") {
+    } else if (type === "import" || type === "modpack") {
         url = `/api/v2/servers/import/upload/`;
     } else {
         url = ADMIN_UPLOAD_URLS[type] || '';
@@ -174,7 +174,7 @@ async function uploadFile(type, file = null, path = null, file_num = 0, fileId =
         });
     } else if (type !== "server_upload") {
         // All promises resolved successfully
-        $("#" + progressTargetId).html(`<div class="card-header header-sm d-flex justify-content-between align-items-center" style="width: 100%;"><input value="${file.name}" type="text" id="file-uploaded" disabled></input> 🔒</div>`);
+        $("#" + progressTargetId).html(`<div class="card-header header-sm d-flex justify-content-between align-items-center" style="width: 100%;"><input value="${escapeHtml(file.name)}" type="text" id="file-uploaded" disabled></input> 🔒</div>`);
         if (type === "import") {
             document.getElementById("lower_half").classList.remove("d-none");
             document.getElementById("lower_half").hidden = false;

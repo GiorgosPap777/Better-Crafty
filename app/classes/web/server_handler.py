@@ -16,6 +16,25 @@ SERVER_CREATOR_ERROR = (
     "not a server creator or server limit reached"
 )
 
+# Words the modpack page's script puts on the page
+MODPACK_TEXT = (
+    "popular",
+    "noResults",
+    "searchFailed",
+    "by",
+    "downloads",
+    "minecraft",
+    "choose",
+    "chosen",
+    "versionsFailed",
+    "noVersions",
+    "readFailed",
+    "packFacts",
+    "skipped",
+    "chooseFirst",
+    "buildFailed",
+)
+
 
 class ServerHandler(BaseHandler):
     def get_user_roles(self):
@@ -211,6 +230,22 @@ class ServerHandler(BaseHandler):
                 return
             page_data["server_api"] = True
             template = "server/hytale_wizard.html"
+
+        if page == "modpack_step1":
+            if not superuser and not self.controller.crafty_perms.can_create_server(
+                exec_user["user_id"]
+            ):
+                self.redirect(SERVER_CREATOR_ERROR)
+                return
+            # Modrinth is reached directly, not through Crafty's server list
+            page_data["server_api"] = True
+            page_data["modpack_text"] = {
+                key: self.translator.translate(
+                    "modpackWizard", key, page_data["lang"], False
+                )
+                for key in MODPACK_TEXT
+            }
+            template = "server/modpack_wizard.html"
 
         self.render(
             template,

@@ -242,10 +242,26 @@ def search_facets(platform: str, game_version):
 def search(platform: str, game_version, query: str = "", offset: int = 0):
     """One page (20) of matching projects, most relevant first, or most
     downloaded when there is no search text."""
+    return _search(search_facets(platform, game_version), query, offset)
+
+
+def search_modpacks(query: str = "", offset: int = 0):
+    """One page of modpacks that can run on a server."""
+    page = _search(
+        [["project_type:modpack"], ["server_side!=unsupported"]], query, offset
+    )
+    # Modrinth's filter lets a few client-only packs through
+    page["hits"] = [
+        hit for hit in page["hits"] if hit.get("server_side") != "unsupported"
+    ]
+    return page
+
+
+def _search(facets: list, query: str, offset: int):
     data = _get(
         f"{API}/search",
         query=query[:100],
-        facets=json.dumps(search_facets(platform, game_version)),
+        facets=json.dumps(facets),
         index="relevance" if query.strip() else "downloads",
         offset=max(0, min(int(offset), 10000)),
         limit=20,
@@ -261,12 +277,16 @@ def search(platform: str, game_version, query: str = "", offset: int = 0):
             "downloads": hit.get("downloads", 0),
             "categories": hit.get("display_categories") or hit.get("categories", []),
             "date_modified": hit.get("date_modified"),
+            "game_versions": hit.get("versions") or [],
+            "server_side": hit.get("server_side"),
         }
         for hit in data.get("hits", [])
     ]
     return {
         "hits": hits,
         "offset": data.get("offset", 0),
+        # Where the next page starts, also when hits were left out
+        "next_offset": data.get("offset", 0) + len(hits),
         "total": data.get("total_hits", 0),
     }
 
@@ -317,22 +337,40 @@ def chosen_version(project_id: str, platform: str, game_version, version_id: str
     )
 
 
+def _version_summary(version: dict) -> dict:
+    return {
+        "id": version.get("id"),
+        "version_number": version.get("version_number"),
+        "name": version.get("name"),
+        "version_type": version.get("version_type"),
+        "date_published": version.get("date_published"),
+        "game_versions": version.get("game_versions") or [],
+        "loaders": version.get("loaders") or [],
+    }
+
+
 def versions(project_id: str, platform: str, game_version):
     """The versions of a project this server can load, newest first."""
     return [
-        {
-            "id": version.get("id"),
-            "version_number": version.get("version_number"),
-            "name": version.get("name"),
-            "version_type": version.get("version_type"),
-            "date_published": version.get("date_published"),
-            "game_versions": version.get("game_versions") or [],
-            "loaders": version.get("loaders") or [],
-        }
+        _version_summary(version)
         for version in project_versions(project_id, platform, game_version)[
             :MAX_VERSIONS
         ]
     ]
+
+
+def modpack_versions(project_id: str):
+    """A modpack's versions, newest first."""
+    if not PROJECT_ID.match(project_id or ""):
+        raise ModrinthError("INVALID_PROJECT", "Not a Modrinth project")
+    found = _get(f"{API}/project/{quote(project_id, safe='')}/version")
+    return [_version_summary(version) for version in found[:MAX_VERSIONS]]
+
+
+def get_version(version_id: str) -> dict:
+    if not PROJECT_ID.match(version_id or ""):
+        raise ModrinthError("INVALID_VERSION_ID", "Not a Modrinth version")
+    return _get(f"{API}/version/{quote(version_id, safe='')}")
 
 
 def primary_file(version: dict) -> dict:
@@ -477,12 +515,23 @@ def installed(server_path, platform: str, game_version=None):
     return jars
 
 
-def _download(url: str, target: Path, sha512: str) -> None:
+def download(
+    url: str,
+    target: Path,
+    sha512=None,
+    max_size: int = MAX_FILE_SIZE,
+    sha1=None,
+) -> None:
     """Download to a hidden file next to the target, check the size and the
-    checksum, then move it into place."""
+    checksum (when there is one), then move it into place."""
     part = target.with_name(f".{target.name}.part")
-    digest = hashlib.sha512()
+    digests = {
+        name: (hashlib.new(name), expected.lower())
+        for name, expected in (("sha512", sha512), ("sha1", sha1))
+        if expected
+    }
     size = 0
+    too_big = f"The file is bigger than {max_size // (1024 * 1024)} MB"
     try:
         with requests.get(
             url, stream=True, headers={"User-Agent": USER_AGENT}, timeout=TIMEOUT
@@ -496,13 +545,12 @@ def _download(url: str, target: Path, sha512: str) -> None:
             with open(part, "xb") as f:
                 for chunk in response.iter_content(1024 * 1024):
                     size += len(chunk)
-                    if size > MAX_FILE_SIZE:
-                        raise ModrinthError(
-                            "FILE_TOO_BIG", "The file is bigger than 256 MB"
-                        )
-                    digest.update(chunk)
+                    if size > max_size:
+                        raise ModrinthError("FILE_TOO_BIG", too_big)
+                    for digest, _ in digests.values():
+                        digest.update(chunk)
                     f.write(chunk)
-        if digest.hexdigest() != sha512.lower():
+        if any(digest.hexdigest() != want for digest, want in digests.values()):
             raise ModrinthError("BAD_CHECKSUM", "The downloaded file is damaged")
         os.replace(part, target)
     except OSError as ex:  # requests' errors are OSErrors too
@@ -580,7 +628,7 @@ def install(
             file = primary_file(version)
             folder.mkdir(exist_ok=True)
             target = folder / file["filename"]
-            _download(file["url"], target, file["hashes"]["sha512"])
+            download(file["url"], target, file["hashes"]["sha512"])
             if old and old["file"] != target.name:
                 (folder / old["file"]).unlink(missing_ok=True)
             done.append(

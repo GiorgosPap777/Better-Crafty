@@ -1,12 +1,14 @@
 import os
 from pathlib import Path
 
+from app.classes.helpers.file_helpers import MODPACK_TYPE
 from app.classes.web.routes.api.crafty.upload.index import ApiFilesUploadHandler
 
 ARCHIVE_MIME_TYPES = [
     "application/zip",
     "application/x-zip-compressed",
     "application/octet-stream",
+    MODPACK_TYPE,  # a Modrinth modpack (.mrpack) for a new server
 ]
 
 

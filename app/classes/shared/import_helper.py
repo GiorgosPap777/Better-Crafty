@@ -14,6 +14,7 @@ from app.classes.shared.websocket_manager import WebSocketManager
 from app.classes.steamcmd.steamcmd import SteamCMD
 from app.classes.installers.modded import ModdedInstaller
 from app.classes.installers.hytale import HytaleInstaller
+from app.classes.installers.modpack import ModpackInstaller
 
 logger = logging.getLogger(__name__)
 
@@ -32,6 +33,9 @@ class ImportHelpers:
         )
         self.hytale_installer = HytaleInstaller(
             self.helper, self.file_helper, WebSocketManager
+        )
+        self.modpack_installer = ModpackInstaller(
+            self.helper, ServersController, WebSocketManager, self.modded_installer
         )
 
     def import_zipped_server(
@@ -256,6 +260,15 @@ class ImportHelpers:
 
         ServersController.finish_import(new_id)
         WebSocketManager().broadcast_to_server_users(new_id, "send_start_reload", {})
+
+    def install_threaded_modpack(self, server_id, path, create_data, pack_path=None):
+        install_thread = threading.Thread(
+            target=self.modpack_installer.install,
+            daemon=True,
+            args=(server_id, path, create_data, pack_path),
+            name=f"{server_id}_modpack",
+        )
+        install_thread.start()
 
     def download_threaded_exe(self, jar, server, version, path, server_id):
         update_thread = threading.Thread(

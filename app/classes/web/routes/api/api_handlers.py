@@ -145,6 +145,11 @@ from app.classes.web.routes.api.crafty.exe_cache import (
     ApiCraftySteamCacheIndexHandler,
 )
 from app.classes.web.routes.api.crafty.antilockout.index import ApiCraftyLockoutHandler
+from app.classes.web.routes.api.crafty.modpacks import (
+    ApiCraftyModpackFileHandler,
+    ApiCraftyModpacksHandler,
+    ApiCraftyModpackVersionsHandler,
+)
 from app.classes.web.routes.api.crafty.item_icons import (
     ApiCraftyItemIconHandler,
     ApiCraftyItemIconsHandler,
@@ -243,6 +248,21 @@ def api_handlers(handler_args):
         (
             r"/api/v2/crafty/offsite/([0-9a-f-]{36})/?",
             ApiCraftyOffsiteTargetHandler,
+            handler_args,
+        ),
+        (
+            r"/api/v2/crafty/modpacks/?",
+            ApiCraftyModpacksHandler,
+            handler_args,
+        ),
+        (
+            r"/api/v2/crafty/modpacks/versions/?",
+            ApiCraftyModpackVersionsHandler,
+            handler_args,
+        ),
+        (
+            r"/api/v2/crafty/modpacks/file/?",
+            ApiCraftyModpackFileHandler,
             handler_args,
         ),
         (

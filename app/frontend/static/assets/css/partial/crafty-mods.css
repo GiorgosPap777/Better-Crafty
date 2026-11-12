@@ -183,3 +183,8 @@
         flex: 0 0 auto;
     }
 }
+
+/* New server from a modpack */
+.modpack-choose.btn-success {
+    cursor: default;
+}
