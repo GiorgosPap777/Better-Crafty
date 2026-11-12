@@ -299,7 +299,7 @@ on any machine.
 | `619abe09` | New server from a Modrinth modpack (.mrpack): a Modpack tab that searches Modrinth or takes an upload; sets up Fabric, Quilt, Forge, NeoForge or vanilla with the right Java (session 16) |
 | `f97d5356` | Remove an unused test argument (GitHub's pylint failed on it) (session 16) |
 | `96a59763` | Data packs on the Mods tab: search, install, update, turn off and remove Modrinth data packs in the world's `datapacks` folder; vanilla servers open on it (session 16) |
-| (this commit) | Mod update notices: a badge on the dashboard and the Mods tab when mods, plugins or data packs have updates; a scheduled "Update mods and plugins" task that backs up first (session 16) |
+| `ccc727a5` | Mod update notices: a badge on the dashboard and the Mods tab when mods, plugins or data packs have updates; a scheduled "Update mods and plugins" task that backs up first (session 16) |
 
 ### 1. Login (`d3946c3f`)
 
