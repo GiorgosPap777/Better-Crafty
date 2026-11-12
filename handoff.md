@@ -8,15 +8,17 @@ commits table.
 
 ## Start here
 
-**State (2026-11-12, session 16, in progress):** a new server can be made
-from a Modrinth modpack (a Modpack tab in the new server pages), and the
-Mods tab installs Modrinth data packs into the world, vanilla servers too
-(see "Session 16"). Forge, NeoForge and Quilt packs could not be tried here
-(the cloud container may not run downloaded installers); the owner should
-try one of each. Next: the other bigger features from "Suggestions for
-later" in "Session 13" (mod update notices, Bedrock players, server
-software updates, crash explainer). **Do not** update the README
-screenshots or make a release until the owner says so.
+**State (2026-11-12, session 16, done):** three of the bigger features are
+in: a new server from a Modrinth modpack (a Modpack tab in the new server
+pages), Modrinth data packs on the Mods tab (vanilla servers too), and mod
+update notices (a badge on the dashboard and the Mods tab, and a scheduled
+"Update mods and plugins" task that backs up first). See "Session 16".
+Forge, NeoForge and Quilt packs could not be tried here (the cloud
+container may not run downloaded installers); the owner should try one of
+each. Next: the other bigger features from "Suggestions for later" in
+"Session 13" (Bedrock players, server software updates, crash explainer).
+**Do not** update the README screenshots or make a release until the owner
+says so.
 
 **State (2026-10-29, session 15):** Terminal, Config and
 Backups cleaned up in the dashboard's style, and the Unraid template now
@@ -66,7 +68,7 @@ on any machine.
    repo default, so a fresh clone is already on it. In an existing clone:
    `git fetch origin && git checkout claude/login-server-admin-improvements-ctbqdu && git pull`.
 2. **Set up and check** with "Development setup" below (about 10 minutes).
-   You should see 377 passing pytest tests before changing anything.
+   You should see 396 passing pytest tests before changing anything.
 3. **Finish the Modrinth installer's follow-ups** ("Modrinth installer
    (first version)" in Session 12), unless the owner asks for something else.
 4. Before you finish, update this file, commit and push (see "The project").
@@ -216,6 +218,9 @@ on any machine.
 33. Session 16 (2026-11-12), after stopping a test run: "You can continue
     until my weekly limit hits 100% or it resets." Carried on with the
     modpacks.
+34. Session 16, later: "The limit reset so pack thinks up" (voice typing
+    for "pack things up"). Committed and pushed the mod update notices,
+    updated these notes and stopped.
 
 ### Questions still waiting on the owner
 
@@ -293,7 +298,8 @@ on any machine.
 | `f3fb5a78` | Pictures for banners, decorated pots, dragon and piglin heads, copper golem statues; faces drawn with a depth buffer (session 15) |
 | `619abe09` | New server from a Modrinth modpack (.mrpack): a Modpack tab that searches Modrinth or takes an upload; sets up Fabric, Quilt, Forge, NeoForge or vanilla with the right Java (session 16) |
 | `f97d5356` | Remove an unused test argument (GitHub's pylint failed on it) (session 16) |
-| (this commit) | Data packs on the Mods tab: search, install, update, turn off and remove Modrinth data packs in the world's `datapacks` folder; vanilla servers open on it (session 16) |
+| `96a59763` | Data packs on the Mods tab: search, install, update, turn off and remove Modrinth data packs in the world's `datapacks` folder; vanilla servers open on it (session 16) |
+| (this commit) | Mod update notices: a badge on the dashboard and the Mods tab when mods, plugins or data packs have updates; a scheduled "Update mods and plugins" task that backs up first (session 16) |
 
 ### 1. Login (`d3946c3f`)
 
@@ -2191,7 +2197,7 @@ general cleanup and a nicer look, starting with those.
   `tests/classes/helpers/test_item_icons.py` (special items, drawing fix)
 - `docker/unraid.xml`, `handoff.md`
 
-## Session 16: new server from a modpack; data packs (in progress)
+## Session 16: new server from a modpack; data packs; mod update notices
 
 The first of the bigger features (number 1 in "Suggestions for later",
 session 13). Picked first because it is the one most asked for in modded
@@ -2365,6 +2371,68 @@ pieces), `api_handlers.py` (routes), `panel_handler.py` (`MODS_TEXT`),
 `server_mods.html`, `crafty-mods.css`, `en_EN.json` (`serverMods`),
 `test_mods.js`, `CLAUDE.md`, `handoff.md`.
 
+### Mod update notices (the third bigger feature)
+
+What the owner sees:
+
+- On the **dashboard**, a purple puzzle badge with a number next to a
+  server's name (table and phone cards) when its mods, plugins or data
+  packs have updates on Modrinth. Hovering lists them ("Updates on
+  Modrinth: Chunky (1.4.28 → 1.4.40)"); clicking opens the Mods tab. Only
+  users with the Files permission on the server see it.
+- The same number on the server's **Mods** tab in the tab bar. It goes
+  away as soon as the updates are installed on the Mods tab.
+- A new schedule action, **Update mods and plugins** (Java servers only),
+  with a line explaining it. When it runs it checks Modrinth; with nothing
+  to update it does nothing (no backup, no restart). Otherwise it stops the
+  server, makes a backup with the server's default backup, installs every
+  update, and starts the server again if it was running. With no backup
+  set up, or a failed backup, nothing is updated. The result goes to the
+  notification bell and the audit log ("Updated on Survival: ...").
+- The schedule list now shows actions in words ("Restart Server", "Update
+  mods and plugins") instead of `restart`.
+
+How: `app/classes/helpers/mod_updates.py`. Crafty checks every Minecraft
+Java server 2 minutes after starting and then every 6 hours (a job in
+`tasks.py`, 2 seconds between servers), and the Mods tab refreshes a
+server's entry whenever it lists the files. The result is kept in
+`app/config/db/servers/<id>/mod_updates.json` (so the dashboard reads a
+small file and asks Modrinth nothing, and it survives a restart), with the
+server type and Minecraft version chosen on the Mods tab when Crafty could
+not find them (a choice wins over what is found; opening the tab without a
+choice, when the type is found, clears it). Only files that are turned on
+count: installing an update would turn a turned off file back on. For the
+same reason the Mods tab's "Update all" now leaves turned off files out
+(each still has its own "Update to" button). The scheduled task is the
+command `update_mods_server` (`tasks.py` command watcher), run by
+`ServerInstance.update_mods` in `server.py`.
+
+Tested: `tests/classes/helpers/test_mod_updates.py` (14) and
+`tests/classes/shared/test_update_mods.py` (5, the task's steps with a fake
+server); 396 pass. `dev/handoff-tools/test_mod_updates.js` (needs the
+internet) on server 1: an old Chunky jar gives the badge (desktop and
+phone) and the tab number, updating it on the Mods tab clears both, a
+turned off jar is not counted, the schedule form and list, then the task
+run now updates the jar after a backup, and run again with nothing to do
+makes no backup. `test_mods.js` and `test_datapacks.js` still pass.
+
+Not done: warning the players before the task restarts the server (the
+restart action has this; the update task stops at once, only when there
+are updates); a setting to turn the 6-hourly check off (it sends only file
+hashes to Modrinth, like opening the Mods tab).
+
+Files: new `app/classes/helpers/mod_updates.py`,
+`tests/classes/helpers/test_mod_updates.py`,
+`tests/classes/shared/test_update_mods.py`,
+`dev/handoff-tools/test_mod_updates.js`; changed `server.py`
+(`update_mods`), `tasks.py` (job and command), `panel_handler.py`
+(`mod_updates()` for the dashboard and server pages), the Mods and data
+packs API handlers (keep the result, `update_count`), `dashboard.html`,
+`parts/server_controls_list.html`, `server_mods.html` (tab number, Update
+all), `server_schedule_edit.html`, `server_schedules.html`,
+`crafty-dashboard.css`, `crafty.css`, `en_EN.json`, `CLAUDE.md`,
+`handoff.md`.
+
 ## Development setup (any machine)
 
 Written for Linux, macOS and Windows, but so far only run on Linux (the
@@ -2385,7 +2453,7 @@ section. Commands are for a terminal in the repo root. On Windows use
 python3 -m venv .venv
 . .venv/bin/activate            # Windows: .venv\Scripts\activate
 pip install -r requirements.txt pytest black pylint
-pytest -q tests                 # 377 pass
+pytest -q tests                 # 396 pass
 black --check app tests
 node dev/command-data/test_complete.js   # command suggestions engine, no browser
 ```
@@ -2484,6 +2552,7 @@ Settings come from `local.json`; the environment variables `CRAFTY_URL`,
 | `test_restart_warned.js` | Restart with in-game warnings: dialog, countdown, Cancel, schedules, phone (about 2 minutes; leaves server 1 running) |
 | `test_world.js` | World tab: download (stopped and running), reset of the End and the Nether, phone; writes the test world again at the end |
 | `test_mods.js` | Mods tab: choose the server type, most downloaded, search, install LuckPerms from Modrinth, turn it off and on, remove it, refused requests, phone; needs the internet, deletes the `plugins` folder it made |
+| `test_mod_updates.js` | Update notices on server 1: an old Chunky jar gives the dashboard badge (desktop and phone) and the Mods tab number, updating clears them, a turned off jar is not counted, the schedule form and list, the task run now (backup, then update) and again with nothing to do; needs the internet, puts `plugins/` back and deletes the backup it made |
 | `test_datapacks.js` | Mods tab's Data packs: opens on it for server 1, version, list, refused requests, install Terralith, off and on, older version and update, a pack folder, remove, phone; needs the internet, deletes the `datapacks` folder it made |
 | `test_modpack.js` | Modpack tab: list, search, choose a version, refused requests, upload a `.mrpack`, phone, then builds a small Fabric pack and checks its files; needs the internet, deletes the server it made |
 | `test_offsite.js` | Off-site storage page and a backup's off-site copy: folder place always; S3 too when `S3_ENDPOINT`, `S3_BUCKET`, `S3_KEY`, `S3_SECRET` are set (see Session 12) |

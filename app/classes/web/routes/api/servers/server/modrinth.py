@@ -3,7 +3,7 @@ import logging
 
 import tornado.ioloop
 
-from app.classes.helpers import modrinth
+from app.classes.helpers import mod_updates, modrinth
 from app.classes.models.server_permissions import EnumPermissionsServer
 from app.classes.web.base_api_handler import BaseApiHandler
 from app.classes.web.routes.api.refused import Refused
@@ -115,6 +115,18 @@ class ApiServersServerModrinthHandler(BaseApiHandler):
                 try:
                     info["installed"] = await _run(
                         modrinth.installed, server_data["path"], platform, game_version
+                    )
+                    # For the dashboard's badge and the scheduled update
+                    mod_updates.remember(
+                        self.helper.root_dir,
+                        server_id,
+                        "mods",
+                        info["installed"],
+                        platform=chosen["platform"],
+                        game_version=chosen["game_version"],
+                    )
+                    info["update_count"] = mod_updates.count(
+                        mod_updates.get(self.helper.root_dir, server_id)
                     )
                 except modrinth.ModrinthError as ex:
                     # Still show the jars, without their names from Modrinth

@@ -253,6 +253,28 @@
     color: var(--warning);
 }
 
+/* Mods, plugins or data packs with updates, and how many */
+.dash-mod-updates {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.15rem;
+    padding: 0 0.4rem;
+    border-radius: 1rem;
+    background: var(--info);
+    color: #fff;
+    font-size: 0.75rem;
+    font-weight: 600;
+    line-height: 1.5;
+    white-space: nowrap;
+}
+
+.dash-mod-updates:hover,
+.dash-mod-updates:focus-visible {
+    color: #fff;
+    text-decoration: none;
+    filter: brightness(1.15);
+}
+
 .dash-server-icon {
     width: 32px;
     height: 32px;

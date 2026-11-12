@@ -23,7 +23,7 @@ from app.classes.models.crafty_permissions import EnumPermissionsCrafty
 from app.classes.models.management import HelpersManagement
 from app.classes.models.offsite import HelperOffsite
 from app.classes.controllers.roles_controller import RolesController
-from app.classes.helpers import command_data
+from app.classes.helpers import command_data, mod_updates
 from app.classes.helpers.helpers import Helpers, MASTER_CONFIG
 from app.classes.helpers.java_memory import read_memory
 from app.classes.shared.main_models import DatabaseShortcuts
@@ -102,6 +102,7 @@ WORLD_TEXT = (
 # The Mods page's text, for its script
 MODS_TEXT = (
     "title",
+    "updatesWaiting",
     "loadFailed",
     "platform",
     "gameVersion",
@@ -262,6 +263,22 @@ class PanelHandler(BaseHandler):
             if self.get_argument(f"role_{role.role_id}_membership", None) == "1":
                 roles.add(role.role_id)
         return roles
+
+    def mod_updates(self, exec_user, superuser, server_data):
+        """How many mod, plugin and data pack updates the last check found,
+        and their names, for users who may install mods on the server."""
+        if server_data.get("type") != "minecraft-java":
+            return 0, []
+        server_id = str(server_data["server_id"])
+        if not superuser and (
+            EnumPermissionsServer.FILES
+            not in self.controller.server_perms.get_user_id_permissions_list(
+                exec_user["user_id"], server_id
+            )
+        ):
+            return 0, []
+        state = mod_updates.get(self.helper.root_dir, server_id)
+        return mod_updates.count(state), mod_updates.names(state)
 
     def check_subpage_perms(self, user_perms, subpage):
         if SUBPAGE_PERMS.get(subpage, False) in user_perms:
@@ -701,6 +718,9 @@ class PanelHandler(BaseHandler):
                     server_obj.update_manager.update_available
                     and server["server_data"]["update_watcher"]
                 )  # Only add update notify if user has the watcher enabled
+                server["mod_updates"], server["mod_update_names"] = self.mod_updates(
+                    exec_user, superuser, server["server_data"]
+                )
 
             # num players is set to zero here. If we poll all servers while
             # dashboard is loading it takes FOREVER. We leave this to the
@@ -749,6 +769,10 @@ class PanelHandler(BaseHandler):
             page_data["server_data"] = self.controller.servers.get_server_data_by_id(
                 server_id
             )
+            (
+                page_data["mod_update_count"],
+                page_data["mod_update_names"],
+            ) = self.mod_updates(exec_user, superuser, page_data["server_data"])
             if not self.failed_server:
                 page_data["server_stats"] = (
                     self.controller.servers.get_server_stats_by_id(server_id)

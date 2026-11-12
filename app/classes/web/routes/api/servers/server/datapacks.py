@@ -1,7 +1,7 @@
 import json
 import logging
 
-from app.classes.helpers import datapacks, modrinth
+from app.classes.helpers import datapacks, mod_updates, modrinth
 from app.classes.web.base_api_handler import BaseApiHandler
 from app.classes.web.routes.api.refused import Refused
 from app.classes.web.routes.api.servers.server.modrinth import (
@@ -60,10 +60,9 @@ class ApiServersServerDatapacksHandler(BaseApiHandler):
     async def get(self, server_id: str):
         if not _authorize_mods(self, server_id):
             return
+        chosen_version = self.get_query_argument("game_version", None)
         try:
-            server_data, game_version = _target(
-                self, server_id, self.get_query_argument("game_version", None)
-            )
+            server_data, game_version = _target(self, server_id, chosen_version)
             path = server_data["path"]
             world = datapacks.world_folder(path)
             info = {
@@ -76,6 +75,17 @@ class ApiServersServerDatapacksHandler(BaseApiHandler):
             }
             try:
                 info["installed"] = await _run(datapacks.installed, path, game_version)
+                if game_version:
+                    mod_updates.remember(
+                        self.helper.root_dir,
+                        server_id,
+                        "packs",
+                        info["installed"],
+                        game_version=chosen_version,
+                    )
+                    info["update_count"] = mod_updates.count(
+                        mod_updates.get(self.helper.root_dir, server_id)
+                    )
             except modrinth.ModrinthError as ex:
                 if ex.code == "BAD_FOLDER":
                     raise

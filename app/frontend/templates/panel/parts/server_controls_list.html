@@ -26,7 +26,7 @@
         <li class="nav-item"><a class="nav-link {{ 'active' if tabs_active == 'files' else '' }}" href="{{ tabs_url }}files"><i class="ph-bold ph-folder-open"></i>{{ translate('serverDetails', 'files', data['lang']) }}</a></li>
         {% end %}
         {% if data['permissions']['Files'] in tabs_perms and tabs_server_type == 'minecraft-java' %}
-        <li class="nav-item"><a class="nav-link {{ 'active' if tabs_active == 'mods' else '' }}" href="{{ tabs_url }}mods"><i class="ph-bold ph-puzzle-piece"></i>{{ translate('serverDetails', 'mods', data['lang']) }}</a></li>
+        <li class="nav-item"><a class="nav-link {{ 'active' if tabs_active == 'mods' else '' }}" href="{{ tabs_url }}mods"><i class="ph-bold ph-puzzle-piece"></i>{{ translate('serverDetails', 'mods', data['lang']) }}{% if data.get('mod_update_count') %}<span class="tab-count" title="{{ translate('dashboard', 'modUpdateNames', data['lang']).replace('{names}', ', '.join(data['mod_update_names'])) }}">{{ data['mod_update_count'] }}<span class="sr-only"> {{ translate('dashboard', 'modUpdates', data['lang']).replace('{count}', str(data['mod_update_count'])) }}</span></span>{% end %}</a></li>
         {% end %}
         {% if data['permissions']['Config'] in tabs_perms %}
         <li class="nav-item"><a class="nav-link {{ 'active' if tabs_active == 'config' else '' }}" href="{{ tabs_url }}config"><i class="ph-bold ph-gear"></i>{{ translate('serverDetails', 'config', data['lang']) }}</a></li>

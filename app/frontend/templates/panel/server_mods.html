@@ -162,6 +162,7 @@
     // The user switched between mods and data packs meanwhile
     if (kind !== modsKind) return false;
     mods = found;
+    updateTabCount(mods.update_count);
     $("#mods_loading").addClass("d-none");
     $("#mods_content").removeClass("d-none");
     renderTarget();
@@ -247,7 +248,8 @@
       box.append($('<p class="mods-empty"></p>').text(fill(modsText.noneInstalled, { folder: mods.folder })));
       return;
     }
-    const outdated = mods.installed.filter((jar) => jar.update && jar.project_id);
+    // A turned off file stays out: installing the update would turn it on
+    const outdated = mods.installed.filter((jar) => jar.update && jar.project_id && jar.enabled);
     if (outdated.length > 1) {
       const all = $('<button type="button" class="btn btn-primary btn-sm mods-action mods-update-all"></button>')
         .text(fill(modsText.updateAll, { count: outdated.length }))
@@ -293,6 +295,17 @@
       row.append(buttons);
       box.append(row);
     });
+  }
+
+  // The number on the Mods tab: updates found for mods, plugins and data packs
+  function updateTabCount(count) {
+    if (typeof count !== "number") return;
+    const link = $('.server-tabs .nav-link[href$="subpage=mods"]');
+    link.find(".tab-count").remove();
+    if (!count) return;
+    const text = fill(modsText.updatesWaiting, { count: count });
+    link.append($('<span class="tab-count"></span>').attr("title", text).text(count)
+      .append($('<span class="sr-only"></span>').text(` ${text}`)));
   }
 
   async function updateAll(jars, button) {

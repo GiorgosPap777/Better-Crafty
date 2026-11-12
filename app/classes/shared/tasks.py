@@ -21,6 +21,7 @@ from tzlocal import get_localzone
 from app.classes.controllers.users_controller import UsersController
 from app.classes.helpers.file_helpers import FileHelpers
 from app.classes.helpers.helpers import Helpers
+from app.classes.helpers import mod_updates
 from app.classes.models.management import HelpersManagement, Schedules
 from app.classes.models.users import HelperUsers
 from app.classes.shared.console import Console
@@ -212,6 +213,8 @@ class TasksManager:
                             "Failed to run server backup on schedule with error %s",
                             why,
                         )
+                case "update_mods_server":
+                    svr.update_mods_threaded(user_id)
                 case "update_executable":
                     svr.cancel_restart_countdown(announce=False)
                     svr.server_upgrade()
@@ -324,6 +327,16 @@ class TasksManager:
             hours=24,
             id="mfa_purge",
             start_date=datetime.datetime.now(),
+        )
+        # Mod, plugin and data pack updates for the dashboard's badge; the
+        # first check waits a little, so starting Crafty stays quick
+        self.scheduler.add_job(
+            mod_updates.check_all,
+            "interval",
+            hours=mod_updates.CHECK_HOURS,
+            id="mod_update_check",
+            args=[self.controller, self.helper.root_dir],
+            start_date=datetime.datetime.now() + datetime.timedelta(minutes=2),
         )
         self.scheduler.add_job(
             self.controller.passkey.purge_expired_challenges,

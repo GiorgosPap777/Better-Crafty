@@ -57,9 +57,13 @@
                       </option>
                       <option id="backup" value="backup">{{ translate('serverScheduleConfig', 'backup' , data['lang'])
                         }}</option>
+                      {% if data['server_stats']['server_type'] == "minecraft-java" %}
+                      <option id="update_mods" value="update_mods">{{ translate('serverScheduleConfig', 'updateMods', data['lang']) }}</option>
+                      {% end %}
                       <option id="command" value="command">{{ translate('serverScheduleConfig', 'custom' , data['lang'])
                         }}</option>
                     </select>
+                    <p id="ifUpdateMods" class="form-text text-muted d-none">{{ translate('serverScheduleConfig', 'updateMods-explain', data['lang']) }}</p>
                     <div id="ifBackup" class="d-none">
                       <br>
                       <label id="action_id_label" for="action_id" data-backup-translate="{{ translate('serverSchedules', 'backupPol', data['lang']) }}" data-action-translate="{{ translate('serverSchedules', 'actionId', data['lang']) }}"><small
@@ -385,6 +389,8 @@
       }
       const isRestart = document.getElementById('action').value == "restart";
       document.getElementById("ifRestart").classList.toggle("d-none", !isRestart);
+      const isUpdateMods = document.getElementById('action').value == "update_mods";
+      document.getElementById("ifUpdateMods").classList.toggle("d-none", !isUpdateMods);
     }
     function basicAdvanced() {
       if (document.getElementById('difficulty').value == "advanced") {

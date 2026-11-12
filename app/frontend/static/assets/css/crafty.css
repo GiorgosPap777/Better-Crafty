@@ -276,6 +276,19 @@ td::-webkit-scrollbar {
     font-size: 0.9rem;
 }
 
+/* How many mods, plugins or data packs have updates */
+.server-tabs .tab-count {
+    min-width: 1.15rem;
+    padding: 0 0.3rem;
+    border-radius: 1rem;
+    background: var(--info);
+    color: #fff;
+    font-size: 0.7rem;
+    font-weight: 600;
+    line-height: 1.15rem;
+    text-align: center;
+}
+
 .server-tabs-scroll {
     display: none;
     position: absolute;

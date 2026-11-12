@@ -6,6 +6,7 @@
 {% block title %}Crafty Controller - {{ translate('serverDetails', 'serverDetails', data['lang']) }}{% end %}
 
 {% block content %}
+{% set action_names = {key: translate('serverScheduleConfig', name, data['lang']) for key, name in (('start', 'start'), ('restart', 'restart'), ('stop', 'stop'), ('backup', 'backup'), ('update_mods', 'updateMods'), ('command', 'custom'))} %}
 
 <div class="content-wrapper">
 
@@ -87,7 +88,7 @@
                             <p>{{schedule.name}}</p>
                           </td>
                           <td id="{{schedule.action}}">
-                            <p>{{schedule.action}}</p>
+                            <p>{{ action_names.get(schedule.action, schedule.action) }}</p>
                           </td>
                           <td id="{{schedule.command}}" class="overflow-scroll" style="max-width: 30px;">
                             <p class="no-scroll">{{schedule.command}}</p>
@@ -146,7 +147,7 @@
                         {% for schedule in data['schedules'] %}
                         <tr data-toggle="modal" data-target="#task_details_{{schedule.schedule_id}}">
                           <td id="{{schedule.action}}" class="action">
-                            <p>{{schedule.action}}</p>
+                            <p>{{ action_names.get(schedule.action, schedule.action) }}</p>
                           </td>
                           <td id="{{schedule.command}}" class="action overflow-scroll" style="max-width: 30px;">
                             <p class="overflow-scroll;">{{schedule.command}}</p>
@@ -183,7 +184,7 @@
                                   </li>
                                   <li id="{{schedule.action}}" class="action list-group-item">
                                     <h4>{{ translate('serverSchedules', 'action', data['lang']) }}</h4>
-                                    <p class="mb-0">{{schedule.action}}</p>
+                                    <p class="mb-0">{{ action_names.get(schedule.action, schedule.action) }}</p>
                                   </li>
                                   <li id="{{schedule.command}}" class="action list-group-item">
                                     <h4>{{ translate('serverSchedules', 'command', data['lang']) }}</h4>

@@ -168,6 +168,9 @@
                       {% if server['update'] %}
                       <a class="dash-server-update" href="/panel/server_detail?id={{ sid }}&subpage=update_center" title="{{ translate('serverUpdate', 'updateCtr', data['lang']) }}"><i class="ph-bold ph-cloud-arrow-down"></i></a>
                       {% end %}
+                      {% if server.get('mod_updates') %}
+                      <a class="dash-mod-updates" href="/panel/server_detail?id={{ sid }}&subpage=mods" title="{{ translate('dashboard', 'modUpdateNames', data['lang']).replace('{names}', ', '.join(server['mod_update_names'])) }}"><i class="ph-bold ph-puzzle-piece"></i>{{ server['mod_updates'] }}<span class="sr-only"> {{ translate('dashboard', 'modUpdates', data['lang']).replace('{count}', str(server['mod_updates'])) }}</span></a>
+                      {% end %}
                     </div>
                   </td>
                   <td class="col-serverIcon" draggable="false" id="server_icon_{{ sid }}">
@@ -242,6 +245,9 @@
                 {% if server['alert'] %}<i class="ph-fill ph-warning server-alert"></i>{% end %}
                 {% if server['update'] %}
                 <a class="dash-server-update" href="/panel/server_detail?id={{ sid }}&subpage=update_center" title="{{ translate('serverUpdate', 'updateCtr', data['lang']) }}"><i class="ph-bold ph-cloud-arrow-down"></i></a>
+                {% end %}
+                {% if server.get('mod_updates') %}
+                <a class="dash-mod-updates" href="/panel/server_detail?id={{ sid }}&subpage=mods" title="{{ translate('dashboard', 'modUpdateNames', data['lang']).replace('{names}', ', '.join(server['mod_update_names'])) }}"><i class="ph-bold ph-puzzle-piece"></i>{{ server['mod_updates'] }}<span class="sr-only"> {{ translate('dashboard', 'modUpdates', data['lang']).replace('{count}', str(server['mod_updates'])) }}</span></a>
                 {% end %}
                 <span id="m_server_running_status_{{ sid }}" class="dash-status">{% include "parts/dashboard_status.html" %}</span>
               </div>

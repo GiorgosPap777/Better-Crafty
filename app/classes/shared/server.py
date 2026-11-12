@@ -25,6 +25,7 @@ from prometheus_client import CollectorRegistry, Gauge, Info
 from tzlocal import get_localzone
 
 from app.classes.helpers.file_helpers import FileHelpers
+from app.classes.helpers import mod_updates
 from app.classes.helpers.helpers import Helpers
 from app.classes.models.management import HelpersManagement, HelpersWebhooks
 from app.classes.models.server_permissions import (
@@ -1652,6 +1653,81 @@ class ServerInstance:
                     self.settings["path"], self.server_id
                 )
         self._after_update(downloaded, was_started)
+
+    def update_mods_threaded(self, user_id):
+        """The scheduled "Update mods and plugins" task, in the background."""
+        threading.Thread(
+            target=self.update_mods,
+            daemon=True,
+            name=f"mod_update_{self.name}",
+            args=[user_id],
+        ).start()
+
+    def _mods_notice(self, message: str, audit: bool = False):
+        WebSocketManager().broadcast_to_server_users(
+            self.server_id, "notification", message
+        )
+        if audit:
+            self.management_helper.add_to_audit_log_raw(
+                "Alert", "-1", self.server_id, message, self.settings["server_ip"]
+            )
+
+    def update_mods(self, user_id):
+        """Install every Modrinth update of the server's mods, plugins and
+        data packs: stop the server, back it up with its default backup, update,
+        and start it again if it was running. Nothing happens (no backup, no
+        restart) when there is nothing to update."""
+        settings = HelperServers.get_server_data_by_id(self.server_id)
+        stats = self.stats_helper.get_latest_server_stats()
+        version = str(stats.get("version") or "")
+        root = self.helper.root_dir
+        logger.info(f"Scheduled mod update for {self.name} (user {user_id})")
+        if not mod_updates.count(mod_updates.check(root, settings, version)):
+            self._mods_notice(f"{self.name}: no mod, plugin or data pack updates")
+            return
+        try:
+            backup = HelpersManagement.get_default_server_backup(self.server_id)
+        except (IndexError, peewee.DoesNotExist):
+            backup = None
+        if not backup:
+            self._mods_notice(
+                f"{self.name} has no backup set up, so its mods were not updated",
+                audit=True,
+            )
+            return
+        was_running = bool(self.check_running())
+        if was_running:
+            self.cancel_restart_countdown(announce=False)
+            self.stop_threaded_server()
+        self.stats_helper.set_update(True)
+        try:
+            result = self.backup_server(backup["backup_id"]) or {}
+            if result.get("backup_status") != "ok":
+                self._mods_notice(
+                    f"The backup of {self.name} failed, so its mods were not "
+                    f"updated: {result.get('backup_error') or 'see the log'}",
+                    audit=True,
+                )
+            else:
+                done = mod_updates.update_all(root, settings, version)
+                parts = []
+                if done["updated"]:
+                    parts.append(
+                        f"Updated on {self.name}: {', '.join(done['updated'])}"
+                    )
+                if done["failed"]:
+                    parts.append(f"Not updated: {'; '.join(done['failed'])}")
+                self._mods_notice(
+                    ". ".join(parts) or f"{self.name}: nothing was updated",
+                    audit=True,
+                )
+        except Exception as ex:  # pylint: disable=broad-exception-caught
+            logger.exception(f"Scheduled mod update for {self.name} failed")
+            self._mods_notice(f"Updating the mods of {self.name} failed: {ex}")
+        finally:
+            self.stats_helper.set_update(False)
+        if was_running:
+            self.run_threaded_server(HelperUsers.get_user_id_by_name("system"))
 
     def start_dir_calc_task(self):
         server_dt = HelperServers.get_server_data_by_id(self.server_id)

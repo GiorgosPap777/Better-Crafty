@@ -189,7 +189,9 @@
         "stopAllConfirm": "Are you sure you want to stop all running servers?",
         "stopAllServers": "Stop All Servers",
         "stoppingServers": "Please be patient while we stop all servers.",
-        "searchServers": "Search servers"
+        "searchServers": "Search servers",
+        "modUpdates": "Updates for mods, plugins or data packs: {count}",
+        "modUpdateNames": "Updates on Modrinth: {names}"
     },
     "datatables": {
         "i18n": {
@@ -960,7 +962,9 @@
         "start": "Start Server",
         "stop": "Shutdown Server",
         "time": "Time",
-        "time-explain": "What time do you want your schedule to execute?"
+        "time-explain": "What time do you want your schedule to execute?",
+        "updateMods": "Update mods and plugins",
+        "updateMods-explain": "Backs the server up with its default backup, installs every update of its mods, plugins and data packs from Modrinth, and starts it again if it was running. When there is nothing to update, nothing happens."
     },
     "serverSchedules": {
         "action": "Action",
@@ -1414,7 +1418,8 @@
         "packsModrinthNote": "Files come from modrinth.com. Data packs change how the world plays, so make a backup first.",
         "reloadNeeded": "Type /minecraft:reload in the Terminal, or restart the server, to use the change.",
         "packsOnStart": "The server uses the new data packs when it starts.",
-        "removePackMessage": "The data pack is deleted from the {folder} folder. What it already changed in the world stays."
+        "removePackMessage": "The data pack is deleted from the {folder} folder. What it already changed in the world stays.",
+        "updatesWaiting": "Updates for mods, plugins or data packs: {count}"
     },
     "modpackWizard": {
         "tab": "Modpack",
