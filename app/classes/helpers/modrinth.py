@@ -13,6 +13,7 @@ import logging
 import os
 import re
 import threading
+from contextlib import contextmanager
 from pathlib import Path
 from urllib.parse import quote, urlparse
 
@@ -242,12 +243,12 @@ def search_facets(platform: str, game_version):
 def search(platform: str, game_version, query: str = "", offset: int = 0):
     """One page (20) of matching projects, most relevant first, or most
     downloaded when there is no search text."""
-    return _search(search_facets(platform, game_version), query, offset)
+    return search_projects(search_facets(platform, game_version), query, offset)
 
 
 def search_modpacks(query: str = "", offset: int = 0):
     """One page of modpacks that can run on a server."""
-    page = _search(
+    page = search_projects(
         [["project_type:modpack"], ["server_side!=unsupported"]], query, offset
     )
     # Modrinth's filter lets a few client-only packs through
@@ -257,7 +258,8 @@ def search_modpacks(query: str = "", offset: int = 0):
     return page
 
 
-def _search(facets: list, query: str, offset: int):
+def search_projects(facets: list, query: str, offset: int):
+    """One page (20) of projects matching Modrinth search facets."""
     data = _get(
         f"{API}/search",
         query=query[:100],
@@ -304,14 +306,23 @@ def pick_version(candidates, loaders):
     return None
 
 
-def project_versions(project_id: str, platform: str, game_version):
+def loader_versions(project_id: str, loaders, game_version):
+    """A project's versions for these loaders (and Minecraft version, when
+    given), newest first."""
     if not PROJECT_ID.match(project_id or ""):
         raise ModrinthError("INVALID_PROJECT", "Not a Modrinth project")
-    loaders = PLATFORMS[platform][1]
     params = {"loaders": json.dumps(loaders)}
-    if game_version and platform not in PROXIES:
+    if game_version:
         params["game_versions"] = json.dumps([game_version])
     return _get(f"{API}/project/{quote(project_id, safe='')}/version", **params)
+
+
+def project_versions(project_id: str, platform: str, game_version):
+    return loader_versions(
+        project_id,
+        PLATFORMS[platform][1],
+        None if platform in PROXIES else game_version,
+    )
 
 
 def best_version(project_id: str, platform: str, game_version):
@@ -337,7 +348,7 @@ def chosen_version(project_id: str, platform: str, game_version, version_id: str
     )
 
 
-def _version_summary(version: dict) -> dict:
+def version_summary(version: dict) -> dict:
     return {
         "id": version.get("id"),
         "version_number": version.get("version_number"),
@@ -352,7 +363,7 @@ def _version_summary(version: dict) -> dict:
 def versions(project_id: str, platform: str, game_version):
     """The versions of a project this server can load, newest first."""
     return [
-        _version_summary(version)
+        version_summary(version)
         for version in project_versions(project_id, platform, game_version)[
             :MAX_VERSIONS
         ]
@@ -364,7 +375,7 @@ def modpack_versions(project_id: str):
     if not PROJECT_ID.match(project_id or ""):
         raise ModrinthError("INVALID_PROJECT", "Not a Modrinth project")
     found = _get(f"{API}/project/{quote(project_id, safe='')}/version")
-    return [_version_summary(version) for version in found[:MAX_VERSIONS]]
+    return [version_summary(version) for version in found[:MAX_VERSIONS]]
 
 
 def get_version(version_id: str) -> dict:
@@ -380,11 +391,17 @@ def primary_file(version: dict) -> dict:
     chosen = next((f for f in files if f.get("primary")), files[0] if files else None)
     if not chosen:
         raise ModrinthError("NO_FILE", "This version has no file")
+    if not safe_jar_name(chosen.get("filename", "")):
+        raise ModrinthError("BAD_FILE", "The file does not have a usable jar name")
+    return checked_file(chosen)
+
+
+def checked_file(chosen: dict) -> dict:
+    """A version's file, after checking where it comes from, its checksum
+    and its size (the caller checks its name)."""
     url = urlparse(str(chosen.get("url", "")))
     if url.scheme != "https" or url.hostname not in DOWNLOAD_HOSTS:
         raise ModrinthError("BAD_FILE", "The file is not on Modrinth's servers")
-    if not safe_jar_name(chosen.get("filename", "")):
-        raise ModrinthError("BAD_FILE", "The file does not have a usable jar name")
     if not (chosen.get("hashes") or {}).get("sha512"):
         raise ModrinthError("BAD_FILE", "Modrinth gave no checksum for the file")
     if int(chosen.get("size") or 0) > MAX_FILE_SIZE:
@@ -413,7 +430,7 @@ def jar_folder(server_path, platform: str) -> Path:
     return folder
 
 
-def _sha1(path: Path) -> str:
+def sha1_of(path: Path) -> str:
     digest = hashlib.sha1()
     with open(path, "rb") as f:
         for chunk in iter(lambda: f.read(1024 * 1024), b""):
@@ -480,24 +497,32 @@ def installed(server_path, platform: str, game_version=None):
     folder = jar_folder(server_path, platform)
     jars = local_jars(server_path, platform)
     for jar in jars:
-        jar["sha1"] = _sha1(folder / jar["file"])
-    if not jars:
-        return []
-    hashes = [jar["sha1"] for jar in jars]
+        jar["sha1"] = sha1_of(folder / jar["file"])
+    return identify(
+        jars,
+        PLATFORMS[platform][1],
+        None if platform in PROXIES else game_version,
+    )
+
+
+def identify(jars: list, loaders, game_version=None):
+    """Fill in the Modrinth project, version and update of each file that has
+    a "sha1" (None for files from elsewhere)."""
+    hashed = [jar for jar in jars if jar.get("sha1")]
+    if not hashed:
+        return jars
+    hashes = [jar["sha1"] for jar in hashed]
     known = _post(f"{API}/version_files", {"hashes": hashes, "algorithm": "sha1"})
-    loaders = PLATFORMS[platform][1]
     updates = {}
     if known:
         body = {"hashes": list(known), "algorithm": "sha1", "loaders": loaders}
-        if game_version and platform not in PROXIES:
+        if game_version:
             body["game_versions"] = [game_version]
         updates = _post(f"{API}/version_files/update", body) or {}
-    projects = {}
-    ids = sorted({v.get("project_id") for v in known.values() if v.get("project_id")})
-    if ids:
-        for project in _get(f"{API}/projects", ids=json.dumps(ids)):
-            projects[project.get("id")] = project
-    for jar in jars:
+    projects = get_projects(
+        sorted({v.get("project_id") for v in known.values() if v.get("project_id")})
+    )
+    for jar in hashed:
         version = known.get(jar["sha1"])
         jar["project_id"] = version.get("project_id") if version else None
         project = projects.get(jar["project_id"], {})
@@ -513,6 +538,16 @@ def installed(server_path, platform: str, game_version=None):
             else None
         )
     return jars
+
+
+def get_projects(ids) -> dict:
+    """Modrinth's projects with these ids, by id."""
+    if not ids:
+        return {}
+    return {
+        project.get("id"): project
+        for project in _get(f"{API}/projects", ids=json.dumps(list(ids)))
+    }
 
 
 def download(
@@ -576,11 +611,7 @@ def install(
     """
     if version_id is not None and not PROJECT_ID.match(version_id):
         raise ModrinthError("INVALID_VERSION_ID", "Not a Modrinth version")
-    with _busy_lock:
-        if busy_key in _busy:
-            raise ModrinthError("BUSY", "Another install for this server is running")
-        _busy.add(busy_key)
-    try:
+    with only_one(busy_key):
         folder = jar_folder(server_path, platform)
         present = {
             jar["project_id"]: jar
@@ -647,6 +678,17 @@ def install(
                 if dep.get("dependency_type") == "required" and dep_id:
                     queue.append((dep_id, dep.get("version_id"), False))
         return {"installed": done, "missing": missing}
+
+
+@contextmanager
+def only_one(busy_key: str):
+    """Refuse a second install for the same server while one runs."""
+    with _busy_lock:
+        if busy_key in _busy:
+            raise ModrinthError("BUSY", "Another install for this server is running")
+        _busy.add(busy_key)
+    try:
+        yield
     finally:
         with _busy_lock:
             _busy.discard(busy_key)

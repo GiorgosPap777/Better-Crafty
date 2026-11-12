@@ -154,6 +154,20 @@ MODS_TEXT = (
     "versionsNote",
     "versionsFailed",
     "noVersions",
+    "kinds",
+    "datapacksTitle",
+    "packsLoadFailed",
+    "packsNote",
+    "packsNoWorld",
+    "vanillaPacks",
+    "usePacks",
+    "packFolder",
+    "popularPacks",
+    "searchPacks",
+    "packsModrinthNote",
+    "reloadNeeded",
+    "packsOnStart",
+    "removePackMessage",
 )
 
 SCHEDULE_AUTH_ERROR_URL = "/panel/error?error=Unauthorized access To Schedules"

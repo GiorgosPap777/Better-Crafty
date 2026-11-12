@@ -44,6 +44,13 @@ from app.classes.web.routes.api.servers.server.players import (
     ApiServersServerPlayerSkinHandler,
     ApiServersServerPlayersHandler,
 )
+from app.classes.web.routes.api.servers.server.datapacks import (
+    ApiServersServerDatapacksHandler,
+    ApiServersServerDatapacksInstallHandler,
+    ApiServersServerDatapacksPackHandler,
+    ApiServersServerDatapacksSearchHandler,
+    ApiServersServerDatapacksVersionsHandler,
+)
 from app.classes.web.routes.api.servers.server.modrinth import (
     ApiServersServerModrinthHandler,
     ApiServersServerModrinthInstallHandler,
@@ -625,6 +632,31 @@ def api_handlers(handler_args):
         (
             r"/api/v2/servers/([a-z0-9-]+)/modrinth/jar/?",
             ApiServersServerModrinthJarHandler,
+            handler_args,
+        ),
+        (
+            r"/api/v2/servers/([a-z0-9-]+)/datapacks/?",
+            ApiServersServerDatapacksHandler,
+            handler_args,
+        ),
+        (
+            r"/api/v2/servers/([a-z0-9-]+)/datapacks/search/?",
+            ApiServersServerDatapacksSearchHandler,
+            handler_args,
+        ),
+        (
+            r"/api/v2/servers/([a-z0-9-]+)/datapacks/versions/?",
+            ApiServersServerDatapacksVersionsHandler,
+            handler_args,
+        ),
+        (
+            r"/api/v2/servers/([a-z0-9-]+)/datapacks/install/?",
+            ApiServersServerDatapacksInstallHandler,
+            handler_args,
+        ),
+        (
+            r"/api/v2/servers/([a-z0-9-]+)/datapacks/pack/?",
+            ApiServersServerDatapacksPackHandler,
             handler_args,
         ),
         (

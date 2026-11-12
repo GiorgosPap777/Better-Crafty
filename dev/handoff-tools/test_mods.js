@@ -41,6 +41,10 @@ const SHOTS = process.env.SHOTS || path.join(__dirname, 'shots');
   const detected = (await api('GET', '/modrinth')).body.data;
   console.log('     detected:', detected.platform || 'nothing', detected.game_version || '');
   if (!detected.supported) {
+    // A server whose type is not found opens on Data packs (test_datapacks.js)
+    await p.waitForFunction(() => document.querySelector('#mods_title').textContent === 'Data packs', null, { timeout: 30000 });
+    await p.click('.mods-kinds .btn[data-kind="jar"]');
+    await p.waitForSelector('#mods_choose:not(.d-none)', { timeout: 30000 });
     check(await p.isVisible('#mods_choose'), 'asks for the server type when it is not found');
     check(/could not tell/.test(await p.textContent('#mods_note')), 'says why');
   } else {

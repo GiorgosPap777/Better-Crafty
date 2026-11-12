@@ -28,9 +28,13 @@
             <div class="col-12">
               <div class="card">
                 <div class="card-header header-sm d-flex justify-content-between align-items-center">
-                  <h4 class="card-title"><i class="ph-fill ph-puzzle-piece"></i> {{ translate('serverMods', 'title', data['lang']) }}</h4>
+                  <h4 class="card-title"><i class="ph-fill ph-puzzle-piece"></i> <span id="mods_title">{{ translate('serverMods', 'title', data['lang']) }}</span></h4>
                 </div>
                 <div class="card-body">
+                  <div class="btn-group btn-group-sm mods-kinds" role="group" aria-label="{{ translate('serverMods', 'kinds', data['lang']) }}">
+                    <button type="button" class="btn btn-outline-primary active" data-kind="jar" aria-pressed="true"><i class="ph-bold ph-puzzle-piece"></i> {{ translate('serverMods', 'title', data['lang']) }}</button>
+                    <button type="button" class="btn btn-outline-primary" data-kind="datapack" aria-pressed="false"><i class="ph-bold ph-stack"></i> {{ translate('serverMods', 'datapacksTitle', data['lang']) }}</button>
+                  </div>
                   <div id="mods_status" class="alert d-none" role="status"></div>
                   <div id="mods_loading" class="text-center py-4">
                     <span class="spinner-border" aria-hidden="true"></span>
@@ -38,7 +42,7 @@
                   <div id="mods_content" class="d-none">
                     <div id="mods_target" class="mods-target"></div>
                     <form id="mods_choose" class="mods-choose d-none">
-                      <label>{{ translate('serverMods', 'platform', data['lang']) }}
+                      <label id="mods_platform_label">{{ translate('serverMods', 'platform', data['lang']) }}
                         <select id="mods_platform" class="form-control form-control-sm"></select>
                       </label>
                       <label>{{ translate('serverMods', 'gameVersion', data['lang']) }}
@@ -60,7 +64,7 @@
                       <div class="text-center">
                         <button type="button" id="mods_more" class="btn btn-outline-primary btn-sm d-none">{{ translate('serverMods', 'more', data['lang']) }}</button>
                       </div>
-                      <p class="mods-note">{{ translate('serverMods', 'modrinthNote', data['lang']) }}</p>
+                      <p id="mods_modrinth_note" class="mods-note">{{ translate('serverMods', 'modrinthNote', data['lang']) }}</p>
                     </div>
                   </div>
                 </div>
@@ -88,9 +92,22 @@
   try {
     Object.assign(modsChosen, JSON.parse(localStorage.getItem(modsChoiceKey) || "{}"));
   } catch (e) { /* no saved choice */ }
+  // "jar": plugins or mods; "datapack": data packs in the world
+  const modsKindKey = `better-crafty-mods-kind-${modsServerId}`;
+  let modsKind = "jar";
+  let modsKindSaved = false;
+  try {
+    const saved = localStorage.getItem(modsKindKey);
+    if (saved === "jar" || saved === "datapack") {
+      modsKind = saved;
+      modsKindSaved = true;
+    }
+  } catch (e) { /* no saved choice */ }
   let mods = null;
   let modsQuery = "";
   let modsOffset = 0;
+  // Only the newest search fills the list
+  let modsSearchId = 0;
   let modsInstalling = false;
 
   function fill(text, values) {
@@ -101,15 +118,24 @@
     $("#mods_status").removeClass("d-none alert-success alert-danger alert-warning alert-info").addClass("alert-" + kind).text(text);
   }
 
+  function packs() {
+    return modsKind === "datapack";
+  }
+
+  // What the requests send about the server: data packs only need the version
+  function chosenFields() {
+    const fields = {};
+    if (modsChosen.platform && !packs()) fields.platform = modsChosen.platform;
+    if (modsChosen.game_version) fields.game_version = modsChosen.game_version;
+    return fields;
+  }
+
   function chosenParams() {
-    const params = new URLSearchParams();
-    if (modsChosen.platform) params.set("platform", modsChosen.platform);
-    if (modsChosen.game_version) params.set("game_version", modsChosen.game_version);
-    return params;
+    return new URLSearchParams(chosenFields());
   }
 
   async function modsApi(path, options) {
-    const res = await fetch(`/api/v2/servers/${modsServerId}/modrinth${path}`, {
+    const res = await fetch(`/api/v2/servers/${modsServerId}/${packs() ? "datapacks" : "modrinth"}${path}`, {
       headers: { "X-XSRFToken": getCookie("_xsrf") },
       ...options,
     });
@@ -123,13 +149,19 @@
 
   async function loadMods() {
     $("#mods_loading").removeClass("d-none");
+    const kind = modsKind;
+    let found;
     try {
-      mods = await modsApi(`?${chosenParams()}`);
+      found = await modsApi(`?${chosenParams()}`);
     } catch (e) {
+      if (kind !== modsKind) return false;
       $("#mods_loading").addClass("d-none");
-      showStatus("danger", `${modsText.loadFailed}: ${e.message}`);
+      showStatus("danger", `${packs() ? modsText.packsLoadFailed : modsText.loadFailed}: ${e.message}`);
       return false;
     }
+    // The user switched between mods and data packs meanwhile
+    if (kind !== modsKind) return false;
+    mods = found;
     $("#mods_loading").addClass("d-none");
     $("#mods_content").removeClass("d-none");
     renderTarget();
@@ -148,16 +180,40 @@
       .append($('<span class="mods-fact-value"></span>').text(value));
   }
 
+  function renderPacksTarget(box, note) {
+    $("#mods_platform_label").addClass("d-none");
+    box.append(targetFact(modsText.gameVersion, mods.game_version || modsText.unknown));
+    box.append(targetFact(modsText.folder, mods.folder + "/"));
+    const change = $('<button type="button" class="btn btn-link btn-sm"></button>')
+      .text(modsText.change)
+      .on("click", () => $("#mods_choose").toggleClass("d-none"));
+    box.append($('<div class="mods-fact mods-fact-button"></div>').append(change));
+    const notes = [modsText.packsNote];
+    if (!mods.world_exists) notes.push(modsText.packsNoWorld);
+    if (!mods.game_version) notes.push(modsText.noVersion);
+    if (mods.modrinth_error) notes.push(fill(modsText.offline, { error: mods.modrinth_error }));
+    note.removeClass("d-none").text(notes.join(" "));
+  }
+
   function renderTarget() {
     const box = $("#mods_target").empty();
+    const note = $("#mods_note").addClass("d-none").empty();
+    $("#mods_platform_label").removeClass("d-none");
+    if (packs()) {
+      $("#mods_game_version").val(mods.game_version || modsChosen.game_version || "");
+      renderPacksTarget(box, note);
+      return;
+    }
     const select = $("#mods_platform").empty().append($('<option value=""></option>').text(modsText.choosePlatform));
     Object.entries(mods.platforms).forEach(([key, name]) => select.append($("<option></option>").val(key).text(name)));
     select.val(mods.platform || "");
     $("#mods_game_version").val(mods.game_version || modsChosen.game_version || "");
-    const note = $("#mods_note").addClass("d-none");
     if (!mods.supported) {
       $("#mods_choose").removeClass("d-none");
-      note.removeClass("d-none").text(modsText.notDetected);
+      const usePacks = $('<button type="button" class="btn btn-link btn-sm p-0 align-baseline"></button>')
+        .text(modsText.usePacks)
+        .on("click", () => setKind("datapack", true));
+      note.removeClass("d-none").append(document.createTextNode(`${modsText.notDetected} ${modsText.vanillaPacks} `), usePacks);
       return;
     }
     box.append(targetFact(modsText.platform, mods.platform_name));
@@ -180,7 +236,7 @@
     if (/^https:\/\//.test(url || "")) {
       icon.append($('<img alt="" loading="lazy" referrerpolicy="no-referrer">').attr("src", url));
     } else {
-      icon.append('<i class="ph-fill ph-puzzle-piece"></i>');
+      icon.append($("<i></i>").addClass(packs() ? "ph-fill ph-stack" : "ph-fill ph-puzzle-piece"));
     }
     return icon;
   }
@@ -202,8 +258,8 @@
       const row = $('<div class="mods-row"></div>').append(projectIcon(jar.icon_url));
       const text = $('<div class="mods-text"></div>');
       text.append($('<div class="mods-name"></div>').text(jar.title || jar.file));
-      const details = [jar.version || modsText.notFromModrinth];
-      if (jar.title) details.push(jar.file);
+      const details = [jar.folder ? modsText.packFolder : (jar.version || modsText.notFromModrinth)];
+      if (jar.title || jar.folder) details.push(jar.file);
       text.append($('<div class="mods-details"></div>').text(details.join(" · ")));
       if (!jar.enabled) {
         text.find(".mods-name").append(" ", $('<span class="badge badge-secondary"></span>').text(modsText.disabled));
@@ -222,10 +278,13 @@
         choose.on("click", () => chooseVersion(jar.project_id, jar.title || jar.file, choose));
         buttons.append(choose);
       }
-      buttons.append(
-        $('<button type="button" class="btn btn-outline-secondary btn-sm mods-action"></button>')
+      // The game loads a pack folder whatever its name: it can only be removed
+      if (!jar.folder) {
+        buttons.append($('<button type="button" class="btn btn-outline-secondary btn-sm mods-action"></button>')
           .text(jar.enabled ? modsText.turnOff : modsText.turnOn)
-          .on("click", () => changeJar(jar.file, jar.enabled ? "disable" : "enable")),
+          .on("click", () => changeJar(jar.file, jar.enabled ? "disable" : "enable")));
+      }
+      buttons.append(
         $('<button type="button" class="btn btn-outline-danger btn-sm mods-action"></button>')
           .attr("title", modsText.remove)
           .append('<i class="ph-bold ph-trash"></i>', $('<span class="sr-only"></span>').text(modsText.remove))
@@ -249,10 +308,10 @@
         const result = await modsApi("/install", {
           method: "POST",
           headers: { "X-XSRFToken": getCookie("_xsrf"), "Content-Type": "application/json" },
-          body: JSON.stringify({ project_id: jar.project_id, ...modsChosen }),
+          body: JSON.stringify({ project_id: jar.project_id, ...chosenFields() }),
         });
         result.installed.filter((item) => !item.up_to_date).forEach((item) => files.push(item.file));
-        restart = restart || result.restart_needed;
+        restart = restart || result.restart_needed || result.reload_needed;
       } catch (e) {
         failed.push(`${jar.title || jar.file}: ${e.message}`);
       }
@@ -262,17 +321,23 @@
     const parts = [];
     if (files.length) {
       parts.push(fill(modsText.installDone, { files: files.join(", ") }));
-      parts.push(restart ? modsText.restartNeeded : modsText.loadsOnStart);
+      parts.push(whenLoaded(restart));
     }
     if (failed.length) parts.push(`${modsText.installFailed}: ${failed.join("; ")}`);
     showStatus(failed.length ? "warning" : "success", parts.join(" "));
     $(".mods-action:not(.mods-done)").prop("disabled", false);
   }
 
+  // When the server uses a change: data packs reload, mods need a restart
+  function whenLoaded(running) {
+    if (packs()) return running ? modsText.reloadNeeded : modsText.packsOnStart;
+    return running ? modsText.restartNeeded : modsText.loadsOnStart;
+  }
+
   function confirmRemove(file) {
     bootbox.dialog({
       title: escapeHtml(fill(modsText.removeTitle, { file: file })),
-      message: escapeHtml(fill(modsText.removeMessage, { folder: mods.folder })),
+      message: escapeHtml(fill(packs() ? modsText.removePackMessage : modsText.removeMessage, { folder: mods.folder })),
       buttons: {
         cancel: { label: escapeHtml(modsText.cancel), className: "btn-secondary" },
         remove: {
@@ -292,10 +357,10 @@
     $(".mods-action").prop("disabled", true);
     let result = null;
     try {
-      result = await modsApi("/jar", {
+      result = await modsApi(packs() ? "/pack" : "/jar", {
         method: "POST",
         headers: { "X-XSRFToken": getCookie("_xsrf"), "Content-Type": "application/json" },
-        body: JSON.stringify({ file: file, action: action, platform: modsChosen.platform }),
+        body: JSON.stringify({ file: file, action: action, ...chosenFields() }),
       });
     } catch (e) {
       showStatus("danger", `${modsText.changeFailed} ${file}: ${e.message}`);
@@ -309,7 +374,7 @@
     const done = { remove: modsText.removed, disable: modsText.turnedOff, enable: modsText.turnedOn }[action];
     // A turned-off jar is named x.jar.disabled; name it as x.jar
     const parts = [fill(done, { file: file.replace(/\.disabled$/, "") })];
-    if (result.restart_needed) parts.push(modsText.restartNeeded);
+    if (result.restart_needed || result.reload_needed) parts.push(whenLoaded(true));
     showStatus("success", parts.join(" "));
     if (modsQuery || $("#mods_results .mods-row").length) {
       searchMods(false);
@@ -326,12 +391,13 @@
   }
 
   async function searchMods(more) {
+    const searchId = more ? modsSearchId : ++modsSearchId;
     if (!more) {
       modsOffset = 0;
       $("#mods_results").empty();
     }
     $("#mods_more").addClass("d-none");
-    $("#mods_results_title").text(modsQuery ? "" : modsText.popular);
+    $("#mods_results_title").text(modsQuery ? "" : (packs() ? modsText.popularPacks : modsText.popular));
     let page;
     try {
       const params = chosenParams();
@@ -339,9 +405,10 @@
       params.set("offset", modsOffset);
       page = await modsApi(`/search?${params}`);
     } catch (e) {
-      showStatus("danger", `${modsText.searchFailed}: ${e.message}`);
+      if (searchId === modsSearchId) showStatus("danger", `${modsText.searchFailed}: ${e.message}`);
       return;
     }
+    if (searchId !== modsSearchId) return;
     const box = $("#mods_results");
     const have = installedIds();
     if (!page.hits.length && !more) {
@@ -421,7 +488,7 @@
       result = await modsApi("/install", {
         method: "POST",
         headers: { "X-XSRFToken": getCookie("_xsrf"), "Content-Type": "application/json" },
-        body: JSON.stringify({ project_id: projectId, version_id: versionId || null, ...modsChosen }),
+        body: JSON.stringify({ project_id: projectId, version_id: versionId || null, ...chosenFields() }),
       });
     } catch (e) {
       showStatus("danger", `${modsText.installFailed} ${title}: ${e.message}`);
@@ -443,7 +510,7 @@
     if (added.length) parts.push(fill(modsText.alsoNeeded, { files: added.join(", ") }));
     if (result.missing.length) parts.push(fill(modsText.missing, { projects: result.missing.join(", ") }));
     if (!(main && main.up_to_date)) {
-      parts.push(result.restart_needed ? modsText.restartNeeded : modsText.loadsOnStart);
+      parts.push(whenLoaded(result.restart_needed || result.reload_needed));
     }
     await loadMods();
     showStatus(result.missing.length ? "warning" : "success", parts.join(" "));
@@ -465,7 +532,8 @@
 
   $("#mods_choose").on("submit", async (event) => {
     event.preventDefault();
-    modsChosen.platform = $("#mods_platform").val();
+    // Data packs do not depend on the server type: keep the chosen one
+    if (!packs()) modsChosen.platform = $("#mods_platform").val();
     modsChosen.game_version = $("#mods_game_version").val().trim();
     try {
       localStorage.setItem(modsChoiceKey, JSON.stringify(modsChosen));
@@ -477,9 +545,52 @@
     }
   });
 
-  $(async function () {
+  // Switch between plugins or mods and data packs; saved means the user chose
+  async function setKind(kind, saved) {
+    modsKind = kind;
+    if (saved) {
+      modsKindSaved = true;
+      try {
+        localStorage.setItem(modsKindKey, kind);
+      } catch (e) { /* only used now */ }
+    }
+    $(".mods-kinds .btn").each(function () {
+      const on = $(this).data("kind") === kind;
+      $(this).toggleClass("active", on).attr("aria-pressed", on ? "true" : "false");
+    });
+    $("#mods_title").text(packs() ? modsText.datapacksTitle : modsText.title);
+    $("#mods_query").val("").attr("placeholder", packs() ? modsText.searchPacks : modsText.searchPlaceholder);
+    $("#mods_modrinth_note").text(packs() ? modsText.packsModrinthNote : modsText.modrinthNote);
+    modsQuery = "";
+    modsSearchId++;
+    mods = null;
+    $("#mods_status").addClass("d-none");
+    $("#mods_choose").addClass("d-none");
+    $("#mods_content, #mods_body").addClass("d-none");
+    $("#mods_installed, #mods_results").empty();
+    $("#mods_results_title").text("");
+    $("#mods_more").addClass("d-none");
     if (await loadMods() && mods.supported) {
       searchMods(false);
+    }
+  }
+
+  $(".mods-kinds .btn").on("click", function () {
+    const kind = $(this).data("kind");
+    if (kind !== modsKind && !modsInstalling) setKind(kind, true);
+  });
+
+  $(async function () {
+    if (modsKind !== "jar") {
+      setKind(modsKind, false);
+      return;
+    }
+    if (!(await loadMods())) return;
+    if (mods.supported) {
+      searchMods(false);
+    } else if (!modsKindSaved && !modsChosen.platform) {
+      // Most likely a vanilla server: it can only use data packs
+      setKind("datapack", false);
     }
   });
 </script>

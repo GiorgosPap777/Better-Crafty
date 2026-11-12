@@ -9,11 +9,12 @@ commits table.
 ## Start here
 
 **State (2026-11-12, session 16, in progress):** a new server can be made
-from a Modrinth modpack (a Modpack tab in the new server pages; see
-"Session 16"). Forge, NeoForge and Quilt packs could not be tried here (the
-cloud container may not run downloaded installers); the owner should try
-one of each. Next: the other bigger features from "Suggestions for later"
-in "Session 13" (data packs, mod update notices, Bedrock players, server
+from a Modrinth modpack (a Modpack tab in the new server pages), and the
+Mods tab installs Modrinth data packs into the world, vanilla servers too
+(see "Session 16"). Forge, NeoForge and Quilt packs could not be tried here
+(the cloud container may not run downloaded installers); the owner should
+try one of each. Next: the other bigger features from "Suggestions for
+later" in "Session 13" (mod update notices, Bedrock players, server
 software updates, crash explainer). **Do not** update the README
 screenshots or make a release until the owner says so.
 
@@ -65,7 +66,7 @@ on any machine.
    repo default, so a fresh clone is already on it. In an existing clone:
    `git fetch origin && git checkout claude/login-server-admin-improvements-ctbqdu && git pull`.
 2. **Set up and check** with "Development setup" below (about 10 minutes).
-   You should see 362 passing pytest tests before changing anything.
+   You should see 377 passing pytest tests before changing anything.
 3. **Finish the Modrinth installer's follow-ups** ("Modrinth installer
    (first version)" in Session 12), unless the owner asks for something else.
 4. Before you finish, update this file, commit and push (see "The project").
@@ -290,7 +291,9 @@ on any machine.
 | `2c9763ce` | Terminal, Config and Backups cleaned up; Unraid template uses our image (session 15) |
 | `3dc8470d` | Items inside shulker boxes and bundles can be clicked for their details (session 15) |
 | `f3fb5a78` | Pictures for banners, decorated pots, dragon and piglin heads, copper golem statues; faces drawn with a depth buffer (session 15) |
-| (this commit) | New server from a Modrinth modpack (.mrpack): a Modpack tab that searches Modrinth or takes an upload; sets up Fabric, Quilt, Forge, NeoForge or vanilla with the right Java (session 16) |
+| `619abe09` | New server from a Modrinth modpack (.mrpack): a Modpack tab that searches Modrinth or takes an upload; sets up Fabric, Quilt, Forge, NeoForge or vanilla with the right Java (session 16) |
+| `f97d5356` | Remove an unused test argument (GitHub's pylint failed on it) (session 16) |
+| (this commit) | Data packs on the Mods tab: search, install, update, turn off and remove Modrinth data packs in the world's `datapacks` folder; vanilla servers open on it (session 16) |
 
 ### 1. Login (`d3946c3f`)
 
@@ -2188,7 +2191,7 @@ general cleanup and a nicer look, starting with those.
   `tests/classes/helpers/test_item_icons.py` (special items, drawing fix)
 - `docker/unraid.xml`, `handoff.md`
 
-## Session 16: new server from a modpack (in progress)
+## Session 16: new server from a modpack; data packs (in progress)
 
 The first of the bigger features (number 1 in "Suggestions for later",
 session 13). Picked first because it is the one most asked for in modded
@@ -2305,6 +2308,63 @@ files can be looked at, and can be deleted.
   wizard pages (tab), `app/translations/en_EN.json` (`modpackWizard`),
   `tests/classes/installers/test_modded.py`, `CLAUDE.md`, `handoff.md`
 
+### Data packs (the second bigger feature)
+
+Data packs work on every Java server, vanilla too, so they help the
+servers the Mods tab could do nothing for.
+
+What the owner sees: the Mods tab has two buttons at the top, **Mods and
+plugins** and **Data packs**. A server whose type is not found (vanilla)
+opens on Data packs; the choice is remembered per server in the browser.
+The Mods and plugins view of such a server says "A vanilla server cannot
+load mods or plugins, but it can use data packs" with a link. The Data
+packs view shows the Minecraft version and the folder
+(`<level-name>/datapacks/`), the packs in it (zips, turned off zips and
+pack folders), and the same search, Versions list, Install, Update, Update
+all, Turn off and Remove as for mods. A pack folder (one made by hand) can
+only be removed: the game loads any folder whatever its name. When the
+server is running, the message says to type `/minecraft:reload` (works on
+Paper too, where `/reload` means plugins) or restart. Before the first
+start the world folder is made, and the game uses the packs when it makes
+the world (what world generation packs like Terralith need).
+
+How: `app/classes/helpers/datapacks.py` reuses the Modrinth code
+(`modrinth.py` gained shared pieces: `search_projects`, `loader_versions`,
+`version_summary`, `checked_file`, `identify`, `get_projects`,
+`only_one`, `sha1_of`). Search facets `project_type:datapack` and the
+version; versions and updates with loader `datapack`; the version's zip
+(its main file if a zip, else its first zip; a project can put the mod jar
+in the same version); turned off is `x.zip.disabled`; required data packs
+are installed too, and the names Modrinth has no data pack for are listed.
+The folder is refused when `level-name` points outside the server or
+`datapacks` is a link; links and hidden files inside it are skipped.
+
+API (Files permission, like the mods): `GET /api/v2/servers/{id}/datapacks/`
+(`?game_version=`), `GET .../datapacks/search/?query=&offset=`,
+`GET .../datapacks/versions/?project_id=`, `POST .../datapacks/install/`
+(`project_id`, `version_id`, `game_version`), `POST .../datapacks/pack/`
+(`file`, `action` enable, disable or remove). Each change goes in the audit
+log.
+
+Tested: `tests/classes/helpers/test_datapacks.py` (15, fake Modrinth);
+377 pass. `dev/handoff-tools/test_datapacks.js` (needs the internet) on
+server 1: opens on Data packs, version, list, refused requests, installs
+Terralith, off and on, an older version and its update, a pack folder,
+removing both, switching views, phone width. `test_mods.js` now clicks
+Mods and plugins first (server 1's type is not found).
+
+Not done: turning off a pack folder (would need the game's own
+`/datapack disable` while running); a "Reload now" button (sending
+commands needs another permission).
+
+Files: new `app/classes/helpers/datapacks.py`,
+`app/classes/web/routes/api/servers/server/datapacks.py`,
+`tests/classes/helpers/test_datapacks.py`,
+`dev/handoff-tools/test_datapacks.js`; changed `modrinth.py` (shared
+pieces), `api_handlers.py` (routes), `panel_handler.py` (`MODS_TEXT`),
+`server_mods.html`, `crafty-mods.css`, `en_EN.json` (`serverMods`),
+`test_mods.js`, `CLAUDE.md`, `handoff.md`.
+
 ## Development setup (any machine)
 
 Written for Linux, macOS and Windows, but so far only run on Linux (the
@@ -2325,7 +2385,7 @@ section. Commands are for a terminal in the repo root. On Windows use
 python3 -m venv .venv
 . .venv/bin/activate            # Windows: .venv\Scripts\activate
 pip install -r requirements.txt pytest black pylint
-pytest -q tests                 # 362 pass
+pytest -q tests                 # 377 pass
 black --check app tests
 node dev/command-data/test_complete.js   # command suggestions engine, no browser
 ```
@@ -2424,6 +2484,7 @@ Settings come from `local.json`; the environment variables `CRAFTY_URL`,
 | `test_restart_warned.js` | Restart with in-game warnings: dialog, countdown, Cancel, schedules, phone (about 2 minutes; leaves server 1 running) |
 | `test_world.js` | World tab: download (stopped and running), reset of the End and the Nether, phone; writes the test world again at the end |
 | `test_mods.js` | Mods tab: choose the server type, most downloaded, search, install LuckPerms from Modrinth, turn it off and on, remove it, refused requests, phone; needs the internet, deletes the `plugins` folder it made |
+| `test_datapacks.js` | Mods tab's Data packs: opens on it for server 1, version, list, refused requests, install Terralith, off and on, older version and update, a pack folder, remove, phone; needs the internet, deletes the `datapacks` folder it made |
 | `test_modpack.js` | Modpack tab: list, search, choose a version, refused requests, upload a `.mrpack`, phone, then builds a small Fabric pack and checks its files; needs the internet, deletes the server it made |
 | `test_offsite.js` | Off-site storage page and a backup's off-site copy: folder place always; S3 too when `S3_ENDPOINT`, `S3_BUCKET`, `S3_KEY`, `S3_SECRET` are set (see Session 12) |
 | `crawl.js` | Opens every panel page (desktop and phone), reports page errors; `node crawl.js [substring]` |

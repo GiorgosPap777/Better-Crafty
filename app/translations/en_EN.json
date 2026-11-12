@@ -1400,7 +1400,21 @@
         "versionsTitle": "Versions of {title}",
         "versionsNote": "Newest first. Installing another version replaces the one in the folder.",
         "versionsFailed": "Could not list the versions",
-        "noVersions": "No version of {title} is for this server."
+        "noVersions": "No version of {title} is for this server.",
+        "kinds": "What to add",
+        "datapacksTitle": "Data packs",
+        "packsLoadFailed": "Could not load the data packs",
+        "packsNote": "Data packs go into the world and work on every Java server, vanilla too. Packs that change world generation only change parts of the world that are not made yet.",
+        "packsNoWorld": "The world is made on the first start, with the data packs put here before it.",
+        "vanillaPacks": "A vanilla server cannot load mods or plugins, but it can use data packs.",
+        "usePacks": "Show data packs",
+        "packFolder": "Folder",
+        "popularPacks": "Most downloaded data packs for this version",
+        "searchPacks": "Search data packs",
+        "packsModrinthNote": "Files come from modrinth.com. Data packs change how the world plays, so make a backup first.",
+        "reloadNeeded": "Type /minecraft:reload in the Terminal, or restart the server, to use the change.",
+        "packsOnStart": "The server uses the new data packs when it starts.",
+        "removePackMessage": "The data pack is deleted from the {folder} folder. What it already changed in the world stays."
     },
     "modpackWizard": {
         "tab": "Modpack",
