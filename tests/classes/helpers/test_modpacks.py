@@ -251,7 +251,7 @@ def test_required_java_asks_mojang_first():
     assert modpacks.required_java("1.20.1", {"javaVersion": {"majorVersion": 17}}) == 17
 
 
-def test_pick_java(tmp_path):
+def test_pick_java():
     installs = [
         "/usr/lib/jvm/java-21-openjdk-amd64/bin/java",
         "/usr/lib/jvm/java-8-openjdk-amd64/jre/bin/java",
